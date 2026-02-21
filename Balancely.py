@@ -22,7 +22,7 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (DESIGN & FARB-LOGIK) ---
+# --- 3. CSS (DESIGN & BUGFIX FÜR PASSWORT-AUGE) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -56,13 +56,23 @@ st.markdown("""
         border-color: #10b981 !important;
     }
 
+    /* INPUT STYLING & FIX FÜR DAS AUGE-ICON */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
     }
+    
+    /* Dieser Block behebt den Bug neben dem Auge: */
+    div[data-testid="stInputInstructions"] {
+        display: none !important;
+    }
+    div[data-baseweb="input"] > div:last-child {
+        background-color: transparent !important;
+        padding-right: 10px !important;
+    }
+    
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
-    div[data-testid="InputInstructions"] { display: none !important; }
 
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
