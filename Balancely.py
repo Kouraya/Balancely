@@ -6,7 +6,7 @@ import re
 # --- 1. SEITEN-KONFIGURATION ---
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
-# --- 2. CSS (Zentrierung & Clean Eye) ---
+# --- 2. CSS (Zentrierung & Clean Design) ---
 st.markdown("""
     <style>
     html, body, [data-testid="stAppViewContainer"] { background-color: #0e1117 !important; }
@@ -29,83 +29,95 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. LOGIK-FUNKTIONEN ---
+# --- 3. SESSION STATE INITIALISIEREN ---
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+if 'user_name' not in st.session_state:
+    st.session_state['user_name'] = ""
+if 'auth_mode' not in st.session_state:
+    st.session_state['auth_mode'] = 'login'
+
+# --- 4. FUNKTIONEN ---
 def check_password_strength(pwd):
-    if len(pwd) < 6:
-        return False, "Passwort muss mind. 6 Zeichen lang sein."
+    if len(pwd) < 6: return False, "Passwort muss mind. 6 Zeichen lang sein."
     if not re.search(r"[a-z]", pwd) or not re.search(r"[A-Z]", pwd):
         return False, "Passwort braucht Groß- und Kleinbuchstaben."
     return True, ""
 
-# --- 4. DATENBANK & NAVIGATION ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-if 'auth_mode' not in st.session_state:
-    st.session_state['auth_mode'] = 'login'
+# --- 5. HAUPT-LOGIK (DASHBOARD ODER LOGIN) ---
 
-# --- 5. INTERFACE ---
-st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
-_, center_col, _ = st.columns([1, 1.1, 1])
+# A: WENN EINGELOGGT
+if st.session_state['logged_in']:
+    st.markdown(f"<h1 style='text-align:center;'>Willkommen im Dashboard, {st.session_state['user_name']}! ⚖️</h1>", unsafe_allow_html=True)
+    
+    if st.button("Abmelden"):
+        st.session_state['logged_in'] = False
+        st.rerun()
+    
+    st.write("Hier kommen jetzt deine Inhalte hin...")
 
-with center_col:
-    st.markdown("<p class='main-title'>Balancely</p>", unsafe_allow_html=True)
+# B: WENN NICHT EINGELOGGT
+else:
+    st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
+    _, center_col, _ = st.columns([1, 1.1, 1])
 
-    if st.session_state['auth_mode'] == 'login':
-        with st.form("login_form"):
-            st.markdown("<h3 style='text-align:center; color:white; margin-top:0;'>Anmelden</h3>", unsafe_allow_html=True)
-            user_input = st.text_input("Username")
-            pass_input = st.text_input("Password", type="password")
-            
-            if st.form_submit_button("Login"):
-                # Aktuelle Nutzer laden
-                df = conn.read(worksheet="users", ttl="0")
-                # Prüfen, ob Username und Passwort übereinstimmen
-                user_match = df[(df['username'] == user_input) & (df['password'] == pass_input)]
+    with center_col:
+        st.markdown("<p class='main-title'>Balancely</p>", unsafe_allow_html=True)
+
+        if st.session_state['auth_mode'] == 'login':
+            with st.form("login_form"):
+                st.markdown("<h3 style='text-align:center; color:white; margin-top:0;'>Anmelden</h3>", unsafe_allow_html=True)
+                user_input = st.text_input("Username")
+                pass_input = st.text_input("Password", type="password")
                 
-                if not user_match.empty:
-                    st.success(f"Willkommen zurück, {user_match.iloc[0]['name']}!")
-                    # Hier könntest du st.session_state['logged_in'] = True setzen
-                else:
-                    st.error("Falscher Benutzername oder Passwort.")
-
-        f_left, f_right = st.columns([0.61, 0.39])
-        with f_left: st.markdown("<p style='text-align:right; color:#8b949e; font-size:14px; margin-top:8px;'>Du hast noch kein Konto?</p>", unsafe_allow_html=True)
-        with f_right:
-            if st.button("Registrieren"):
-                st.session_state['auth_mode'] = 'signup'
-                st.rerun()
-
-    else:
-        with st.form("signup_form"):
-            st.markdown("<h3 style='text-align:center; color:white; margin-top:0;'>Registrieren</h3>", unsafe_allow_html=True)
-            new_name = st.text_input("Dein Name")
-            new_user = st.text_input("Benutzername")
-            new_pass = st.text_input("Passwort", type="password")
-            confirm_pass = st.text_input("Passwort wiederholen", type="password")
-            
-            if st.form_submit_button("Konto erstellen"):
-                # Validierung
-                is_strong, msg = check_password_strength(new_pass)
-                df_existing = conn.read(worksheet="users", ttl="0")
-                
-                if new_pass != confirm_pass:
-                    st.error("Passwörter stimmen nicht überein!")
-                elif not is_strong:
-                    st.error(msg)
-                elif new_user in df_existing['username'].values:
-                    st.error("Dieser Benutzername ist bereits vergeben.")
-                else:
-                    # DATEN IN GSHEETS SCHREIBEN
-                    new_data = pd.DataFrame([{"name": new_name, "username": new_user, "password": new_pass}])
-                    updated_df = pd.concat([df_existing, new_data], ignore_index=True)
-                    conn.update(worksheet="users", data=updated_df)
+                if st.form_submit_button("Login"):
+                    df = conn.read(worksheet="users", ttl="0")
+                    user_match = df[(df['username'] == user_input) & (df['password'] == pass_input)]
                     
-                    st.success("Konto erfolgreich erstellt! Du kannst dich jetzt anmelden.")
-                    st.balloons()
+                    if not user_match.empty:
+                        st.session_state['logged_in'] = True
+                        st.session_state['user_name'] = user_match.iloc[0]['name']
+                        st.rerun() # SEITE NEU LADEN UM DASHBOARD ZU ZEIGEN
+                    else:
+                        st.error("Falscher Benutzername oder Passwort.")
 
-        f_left, f_right = st.columns([0.58, 0.42])
-        with f_left: st.markdown("<p style='text-align:right; color:#8b949e; font-size:14px; margin-top:8px;'>Bereits ein Konto?</p>", unsafe_allow_html=True)
-        with f_right:
-            if st.button("Anmelden"):
-                st.session_state['auth_mode'] = 'login'
-                st.rerun()
+            f_left, f_right = st.columns([0.61, 0.39])
+            with f_left: st.markdown("<p style='text-align:right; color:#8b949e; font-size:14px; margin-top:8px;'>Du hast noch kein Konto?</p>", unsafe_allow_html=True)
+            with f_right:
+                if st.button("Registrieren"):
+                    st.session_state['auth_mode'] = 'signup'
+                    st.rerun()
+
+        else:
+            with st.form("signup_form"):
+                st.markdown("<h3 style='text-align:center; color:white; margin-top:0;'>Registrieren</h3>", unsafe_allow_html=True)
+                new_name = st.text_input("Dein Name")
+                new_user = st.text_input("Benutzername")
+                new_pass = st.text_input("Passwort", type="password")
+                confirm_pass = st.text_input("Passwort wiederholen", type="password")
+                
+                if st.form_submit_button("Konto erstellen"):
+                    is_strong, msg = check_password_strength(new_pass)
+                    df_existing = conn.read(worksheet="users", ttl="0")
+                    
+                    if new_pass != confirm_pass:
+                        st.error("Passwörter stimmen nicht überein!")
+                    elif not is_strong:
+                        st.error(msg)
+                    elif new_user in df_existing['username'].values:
+                        st.error("Dieser Benutzername ist bereits vergeben.")
+                    else:
+                        new_data = pd.DataFrame([{"name": new_name, "username": new_user, "password": new_pass}])
+                        updated_df = pd.concat([df_existing, new_data], ignore_index=True)
+                        conn.update(worksheet="users", data=updated_df)
+                        st.success("Konto erstellt! Bitte melde dich an.")
+                        st.balloons()
+
+            f_left, f_right = st.columns([0.58, 0.42])
+            with f_left: st.markdown("<p style='text-align:right; color:#8b949e; font-size:14px; margin-top:8px;'>Bereits ein Konto?</p>", unsafe_allow_html=True)
+            with f_right:
+                if st.button("Anmelden"):
+                    st.session_state['auth_mode'] = 'login'
+                    st.rerun()
