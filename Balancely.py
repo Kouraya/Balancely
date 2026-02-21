@@ -2,7 +2,6 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import hashlib
-import numpy as np
 import datetime
 import re
 
@@ -43,80 +42,13 @@ st.markdown("""
         border-radius: 24px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
-
-    /* TYP-TOGGLE WRAPPER */
-    .typ-toggle {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 8px;
-    }
-    .typ-card {
-        flex: 1;
-        padding: 16px 20px;
-        border-radius: 16px;
-        border: 2px solid transparent;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 16px;
-        font-weight: 600;
-        transition: all 0.2s;
-    }
-    .typ-card-icon {
-        font-size: 22px;
-        line-height: 1;
-    }
-    .typ-card-label { font-size: 15px; font-weight: 700; }
-    .typ-card-sub   { font-size: 12px; font-weight: 400; opacity: 0.8; }
-
-    .typ-ausgabe-active {
-        background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(239,68,68,0.1));
-        border-color: #ef4444;
-        color: #fca5a5;
-        box-shadow: 0 0 20px rgba(239,68,68,0.2);
-    }
-    .typ-ausgabe-inactive {
-        background: rgba(255,255,255,0.03);
-        border-color: rgba(239,68,68,0.3);
-        color: #64748b;
-    }
-    .typ-einnahme-active {
-        background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.1));
-        border-color: #10b981;
-        color: #6ee7b7;
-        box-shadow: 0 0 20px rgba(16,185,129,0.2);
-    }
-    .typ-einnahme-inactive {
-        background: rgba(255,255,255,0.03);
-        border-color: rgba(16,185,129,0.3);
-        color: #64748b;
-    }
-
-    /* Streamlit Buttons unsichtbar machen, Cards darüberlegen */
-    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button,
-    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
-        opacity: 0 !important;
-        position: absolute !important;
-        width: 100% !important;
-        height: 100% !important;
-        top: 0 !important; left: 0 !important;
-        cursor: pointer !important;
-        z-index: 10 !important;
-    }
-
-    /* INPUT STYLING */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
     }
     div[data-testid="stInputInstructions"] { display: none !important; }
-    div[data-baseweb="input"] > div:last-child {
-        background-color: transparent !important;
-        padding-right: 10px !important;
-    }
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
-
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
         border-right: 1px solid #1e293b !important;
@@ -125,6 +57,37 @@ st.markdown("""
         background: linear-gradient(135deg, #38bdf8, #1d4ed8) !important;
         border: none !important; height: 50px !important;
         border-radius: 12px !important; font-weight: 700 !important;
+    }
+
+    /* TYP TOGGLE BUTTONS */
+    .toggle-ausgabe-active, .toggle-ausgabe-inactive,
+    .toggle-einnahme-active, .toggle-einnahme-inactive {
+        width: 100%; padding: 18px 20px; border-radius: 16px;
+        font-size: 15px; font-weight: 700; cursor: pointer;
+        border: 2px solid; transition: all 0.2s;
+        display: flex; align-items: center; gap: 10px;
+    }
+    /* Aktiv Ausgabe - Rot */
+    div[data-testid="column"]:nth-of-type(1) button {
+        background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.05)) !important;
+        border-color: #ef4444 !important;
+        color: #fca5a5 !important;
+        box-shadow: 0 0 20px rgba(239,68,68,0.15) !important;
+        border-radius: 16px !important;
+        font-weight: 700 !important;
+        font-size: 15px !important;
+        height: 70px !important;
+    }
+    /* Aktiv Einnahme - Grün */
+    div[data-testid="column"]:nth-of-type(2) button {
+        background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05)) !important;
+        border-color: #10b981 !important;
+        color: #6ee7b7 !important;
+        box-shadow: 0 0 20px rgba(16,185,129,0.15) !important;
+        border-radius: 16px !important;
+        font-weight: 700 !important;
+        font-size: 15px !important;
+        height: 70px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -174,56 +137,36 @@ if st.session_state['logged_in']:
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
-
         t_type = st.session_state['t_type']
 
-        # Schöne Karten als visuelle Anzeige
-        a_cls = "typ-ausgabe-active" if t_type == "Ausgabe" else "typ-ausgabe-inactive"
-        e_cls = "typ-einnahme-active" if t_type == "Einnahme" else "typ-einnahme-inactive"
-
-        st.markdown(f"""
-        <div class="typ-toggle">
-            <div class="typ-card {a_cls}">
-                <span class="typ-card-icon">↗️</span>
-                <div>
-                    <div class="typ-card-label">Ausgabe</div>
-                    <div class="typ-card-sub">Geld ausgeben</div>
-                </div>
-            </div>
-            <div class="typ-card {e_cls}">
-                <span class="typ-card-icon">↙️</span>
-                <div>
-                    <div class="typ-card-label">Einnahme</div>
-                    <div class="typ-card-sub">Geld einnehmen</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Unsichtbare echte Buttons darunter zum Klicken
+        # Toggle-Buttons mit Emoji-Indikator für aktiven Zustand
+        st.markdown("<p style='color:#94a3b8; font-size:14px; margin-bottom:8px;'>Typ wählen</p>", unsafe_allow_html=True)
         col_a, col_e = st.columns(2)
         with col_a:
-            if st.button("Ausgabe wählen", use_container_width=True, key="btn_ausgabe"):
+            label_a = "✅  Ausgabe" if t_type == "Ausgabe" else "↗️  Ausgabe"
+            if st.button(label_a, use_container_width=True, key="btn_ausgabe"):
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
         with col_e:
-            if st.button("Einnahme wählen", use_container_width=True, key="btn_einnahme"):
+            label_e = "✅  Einnahme" if t_type == "Einnahme" else "↙️  Einnahme"
+            if st.button(label_e, use_container_width=True, key="btn_einnahme"):
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
 
-        st.markdown("<div style='margin-top: -10px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 
+        # Formular
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
-                t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
+                t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01, format="%.2f")
                 t_date = st.date_input("Datum", datetime.date.today())
             with col2:
                 cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                 t_cat = st.selectbox("Kategorie", cats)
                 t_note = st.text_input("Notiz")
 
-            if st.form_submit_button("Speichern"):
+            if st.form_submit_button("Speichern", use_container_width=True):
                 new_row = pd.DataFrame([{
                     "user": st.session_state['user_name'],
                     "datum": str(t_date),
@@ -235,11 +178,10 @@ if st.session_state['logged_in']:
                 df_old = conn.read(worksheet="transactions", ttl="0")
                 df_new = pd.concat([df_old, new_row], ignore_index=True)
                 conn.update(worksheet="transactions", data=df_new)
-                st.success(f"{t_type} erfolgreich gespeichert!")
+                st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
 
 else:
-    # --- LOGIN / SIGNUP ---
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
@@ -261,7 +203,6 @@ else:
                         st.rerun()
                     else:
                         st.error("Login ungültig.")
-
             if st.button("Konto erstellen", use_container_width=True):
                 st.session_state['auth_mode'] = 'signup'
                 st.rerun()
