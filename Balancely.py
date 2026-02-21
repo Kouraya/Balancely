@@ -2,8 +2,8 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import hashlib
-import numpy as np
 import datetime
+import plotly.express as px
 
 # --- 1. SEITEN-KONFIGURATION ---
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
@@ -12,53 +12,41 @@ st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
 
-# --- 3. CSS (OPTIMIERTES DESIGN) ---
+# --- 3. CSS (OPTIMIERTES DESIGN & BUGFIXES) ---
 st.markdown("""
     <style>
+    /* Hintergrund & Font */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617) !important;
     }
-    .main-title {
-        text-align: center; color: #f8fafc; font-size: 64px; font-weight: 800;
-        letter-spacing: -2px; margin-bottom: 0px;
-        text-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+    
+    /* SEGMENTED CONTROL: Einnahme grün */
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"] {
+        background-color: #10b981 !important;
+        color: white !important;
+        border: 1px solid #10b981 !important;
     }
-    .sub-title {
-        text-align: center; color: #94a3b8; font-size: 18px; margin-bottom: 40px;
-    }
-    [data-testid="stForm"] {
-        background-color: rgba(30, 41, 59, 0.7) !important;
-        backdrop-filter: blur(15px);
-        padding: 40px !important;
-        border-radius: 24px !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-    /* INPUT FIXES */
-    div[data-baseweb="input"] {
-        background-color: rgba(15, 23, 42, 0.8) !important;
-        border: 1px solid #334155 !important;
-        border-radius: 12px !important;
-        padding-right: 0px !important; 
-    }
-    input { padding-left: 15px !important; color: #f1f5f9 !important; }
-    div[data-baseweb="input"] > div:last-child { margin-right: 0px !important; padding-right: 0px !important; }
-    div[data-testid="InputInstructions"] { display: none !important; }
 
-    [data-testid="stSidebar"] {
-        background-color: #0b0f1a !important;
-        border-right: 1px solid #1e293b !important;
+    /* BUGFIX: Versteckt den hässlichen Text neben dem Passwort-Auge */
+    section[data-testid="stForm"] div[data-baseweb="input"] div:last-child {
+        display: none !important;
     }
     
-    /* Logout Button Styling */
-    .logout-btn {
-        margin-top: 20px;
+    /* Entfernt die Plus/Minus Pfeile im Zahlenfeld */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; margin: 0; 
+    }
+    input[type=number] { -moz-appearance: textfield; }
+
+    /* Eingabefelder Design */
+    div[data-baseweb="input"] {
+        background-color: rgba(15, 23, 42, 0.9) !important;
+        border: 1px solid #334155 !important;
+        border-radius: 10px !important;
     }
     
-    button[kind="primaryFormSubmit"] {
-        background: linear-gradient(135deg, #38bdf8, #1d4ed8) !important;
-        border: none !important; height: 50px !important;
-        border-radius: 12px !important; font-weight: 700 !important;
-    }
+    [data-testid="stSidebar"] { background-color: #0b0f1a !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -69,105 +57,107 @@ if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- 5. LOGIK ---
+# --- 5. HAUPTLOGIK ---
 
 if st.session_state['logged_in']:
     with st.sidebar:
-        st.markdown(f"<h2 style='color:white;'>Balancely ⚖️</h2>", unsafe_allow_html=True)
-        st.markdown(f"👤 Eingeloggt: **{st.session_state['user_name']}**")
+        st.markdown(f"## Balancely ⚖️")
+        st.write(f"👤 **{st.session_state['user_name']}**")
         st.markdown("---")
-        menu = st.radio("Navigation", ["📈 Dashboard", "💸 Transaktion", "📂 Analysen", "⚙️ Einstellungen"], label_visibility="collapsed")
-        
+        menu = st.radio("Navigation", ["📈 Dashboard", "💸 Buchung erfassen", "⚙️ Einstellungen"])
         st.markdown("<div style='height: 30vh;'></div>", unsafe_allow_html=True)
-        if st.button("Logout ➜", use_container_width=True, type="secondary"):
+        if st.button("Abmelden ➔", use_container_width=True):
             st.session_state['logged_in'] = False
             st.rerun()
 
     if menu == "📈 Dashboard":
-        st.title(f"Deine Übersicht, {st.session_state['user_name']}! ⚖️")
-        
+        st.title("Finanz-Übersicht")
         try:
             df_t = conn.read(worksheet="transactions", ttl="0")
-            # Sicherstellen, dass die Spalte 'user' existiert
-            if 'user' in df_t.columns:
-                user_df = df_t[df_t['user'] == st.session_state['user_name']]
+            user_df = df_t[df_t['user'] == st.session_state['user_name']]
+            
+            if not user_df.empty:
+                user_df['betrag'] = pd.to_numeric(user_df['betrag'])
+                ein = user_df[user_df['betrag'] > 0]['betrag'].sum()
+                aus = abs(user_df[user_df['betrag'] < 0]['betrag'].sum())
                 
-                if not user_df.empty:
-                    ein = pd.to_numeric(user_df[user_df['typ'] == "Einnahme"]['betrag']).sum()
-                    aus = abs(pd.to_numeric(user_df[user_df['typ'] == "Ausgabe"]['betrag']).sum())
-                    bal = ein - aus
-                    
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("Kontostand", f"{bal:,.2f} €")
-                    c2.metric("Einnahmen", f"{ein:,.2f} €")
-                    c3.metric("Ausgaben", f"{aus:,.2f} €", delta_color="inverse")
-                    
-                    st.subheader("Ausgaben nach Kategorie")
-                    ausg_df = user_df[user_df['typ'] == "Ausgabe"].copy()
-                    ausg_df['betrag'] = abs(pd.to_numeric(ausg_df['betrag']))
-                    st.bar_chart(data=ausg_df, x="kategorie", y="betrag", color="kategorie")
-                else:
-                    st.info("Noch keine Daten. Klicke links auf '💸 Transaktion'.")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Saldo", f"{ein-aus:,.2f} €")
+                c2.metric("Einnahmen", f"{ein:,.2f} €")
+                c3.metric("Ausgaben", f"-{aus:,.2f} €", delta_color="inverse")
+                
+                st.markdown("---")
+                ausg_df = user_df[user_df['betrag'] < 0].copy()
+                ausg_df['betrag'] = abs(ausg_df['betrag'])
+                if not ausg_df.empty:
+                    fig = px.pie(ausg_df, names="kategorie", values="betrag", hole=0.4)
+                    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color="white")
+                    st.plotly_chart(fig, use_container_width=True)
             else:
-                st.error("Fehler: Die Spalte 'user' fehlt im Google Sheet 'transactions'!")
-        except Exception as e:
-            st.warning("Warte auf Datenverbindung...")
+                st.info("Noch keine Daten vorhanden.")
+        except:
+            st.warning("Verbindung wird aufgebaut...")
 
-    elif menu == "💸 Transaktion":
-        st.title("Buchung hinzufügen ✍️")
-        with st.form("t_form", clear_on_submit=True):
+    elif menu == "💸 Buchung erfassen":
+        st.title("Neue Buchung ✍️")
+        with st.form("entry_form", clear_on_submit=True):
+            t_type = st.segmented_control("Typ", ["Ausgabe", "Einnahme"], default="Ausgabe")
             col1, col2 = st.columns(2)
             with col1:
-                t_type = st.selectbox("Typ", ["Ausgabe", "Einnahme"])
-                t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
-            with col2:
-                cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
-                t_cat = st.selectbox("Kategorie", cats)
+                t_amount = st.number_input("Betrag in €", min_value=0.0, step=0.01, format="%.2f")
                 t_date = st.date_input("Datum", datetime.date.today())
-            t_note = st.text_input("Notiz")
+            with col2:
+                base_cats = ["Essen", "Miete", "Freizeit", "Transport"] if t_type == "Ausgabe" else ["Gehalt", "Geschenk"]
+                t_cat_select = st.selectbox("Kategorie", base_cats + ["+ Eigene Kategorie..."])
+                t_cat_custom = st.text_input("Name der neuen Kategorie") if t_cat_select == "+ Eigene Kategorie..." else ""
             
-            if st.form_submit_button("Speichern"):
-                new_row = pd.DataFrame([{"user": st.session_state['user_name'], "datum": str(t_date), "typ": t_type, "kategorie": t_cat, "betrag": t_amount if t_type == "Einnahme" else -t_amount, "notiz": t_note}])
-                df_old = conn.read(worksheet="transactions", ttl="0")
-                df_new = pd.concat([df_old, new_row], ignore_index=True)
-                conn.update(worksheet="transactions", data=df_new)
-                st.success("Gespeichert!")
+            t_note = st.text_input("Notiz (optional)")
+            if st.form_submit_button("Speichern", use_container_width=True):
+                final_cat = t_cat_custom if t_cat_select == "+ Eigene Kategorie..." else t_cat_select
+                if t_amount > 0 and final_cat != "":
+                    final_val = t_amount if t_type == "Einnahme" else -t_amount
+                    new_entry = pd.DataFrame([{"user": st.session_state['user_name'], "datum": str(t_date), "typ": t_type, "kategorie": final_cat, "betrag": final_val, "notiz": t_note}])
+                    old_df = conn.read(worksheet="transactions", ttl="0")
+                    conn.update(worksheet="transactions", data=pd.concat([old_df, new_entry], ignore_index=True))
+                    st.success(f"Gebucht: {final_cat} ({final_val}€)")
+                    st.balloons()
 
 else:
     # --- LOGIN / SIGNUP ---
-    st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
-    st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center;'>Balancely</h1>", unsafe_allow_html=True)
     _, center_col, _ = st.columns([1, 1.2, 1])
+    
     with center_col:
         if st.session_state['auth_mode'] == 'login':
-            with st.form("l_f"):
-                st.markdown("<h3 style='text-align:center; color:white;'>Anmelden</h3>", unsafe_allow_html=True)
-                u_in = st.text_input("Username", placeholder="Benutzername")
+            with st.form("login_form"):
+                u_in = st.text_input("Username")
                 p_in = st.text_input("Passwort", type="password")
-                if st.form_submit_button("Anmelden"):
+                if st.form_submit_button("Anmelden", use_container_width=True):
                     df_u = conn.read(worksheet="users", ttl="0")
                     user_row = df_u[df_u['username'] == u_in]
                     if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
                         st.session_state['logged_in'] = True
                         st.session_state['user_name'] = u_in
                         st.rerun()
-                    else: st.error("Login ungültig.")
-            if st.button("Konto erstellen", use_container_width=True):
-                st.session_state['auth_mode'] = 'signup'; st.rerun()
+                    else: st.error("Logindaten falsch.")
+            if st.button("Neu hier? Registrieren"):
+                st.session_state['auth_mode'] = 'signup'
+                st.rerun()
         else:
-            with st.form("s_f"):
-                st.markdown("<h3 style='text-align:center; color:white;'>Registrierung</h3>", unsafe_allow_html=True)
-                s_name = st.text_input("Name", placeholder="Max Mustermann")
-                s_user = st.text_input("Username", placeholder="max123")
+            with st.form("signup_form"):
+                st.subheader("Konto erstellen")
+                s_name = st.text_input("Name")
+                s_user = st.text_input("Username")
                 s_pass = st.text_input("Passwort", type="password")
-                c_pass = st.text_input("Wiederholen", type="password")
-                if st.form_submit_button("Konto erstellen"):
-                    df_u = conn.read(worksheet="users", ttl="0")
-                    if s_pass != c_pass: st.error("Passwörter ungleich.")
-                    else:
+                s_conf = st.text_input("Passwort wiederholen", type="password") # Korrektur hier
+                if st.form_submit_button("Registrieren", use_container_width=True):
+                    if s_pass == s_conf:
+                        df_u = conn.read(worksheet="users", ttl="0")
                         new_u = pd.DataFrame([{"name": s_name, "username": s_user, "password": make_hashes(s_pass)}])
                         conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
-                        st.success("Konto erstellt!"); st.session_state['auth_mode'] = 'login'
-            if st.button("Zurück", use_container_width=True):
-                st.session_state['auth_mode'] = 'login'; st.rerun()
+                        st.success("Erfolgreich! Bitte einloggen.")
+                        st.session_state['auth_mode'] = 'login'
+                    else: st.error("Passwörter stimmen nicht überein.")
+            if st.button("Zurück zum Login"):
+                st.session_state['auth_mode'] = 'login'
+                st.rerun()
