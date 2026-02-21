@@ -12,7 +12,7 @@ st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
 
-# --- 3. CSS (OPTIMIERTES DESIGN & BUGFIXES) ---
+# --- 3. CSS (FINALE OPTIMIERUNG) ---
 st.markdown("""
     <style>
     /* Hintergrund & Font */
@@ -147,9 +147,9 @@ else:
             with st.form("signup_form"):
                 st.subheader("Konto erstellen")
                 s_name = st.text_input("Name")
-                s_user = st.text_input("Username")
+                s_user = st.text_input("Username") # Geändert von Wunsch-Username
                 s_pass = st.text_input("Passwort", type="password")
-                s_conf = st.text_input("Passwort wiederholen", type="password") # Korrektur hier
+                s_conf = st.text_input("Passwort wiederholen", type="password")
                 if st.form_submit_button("Registrieren", use_container_width=True):
                     if s_pass == s_conf:
                         df_u = conn.read(worksheet="users", ttl="0")
