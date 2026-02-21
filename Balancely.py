@@ -14,7 +14,6 @@ def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
 
 def check_password_strength(password):
-    # Mindestens 6 Zeichen, ein Großbuchstabe, ein Kleinbuchstabe
     if len(password) < 6:
         return False, "Das Passwort muss mindestens 6 Zeichen lang sein."
     if not re.search(r"[a-z]", password):
@@ -23,30 +22,57 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (OPTIMIERTES DESIGN) ---
+# --- 3. CSS (DESIGN & FARB-LOGIK) ---
 st.markdown("""
     <style>
-    /* Grundstyling für Segmented Control Buttons */
-    div[data-testid="stSegmentedControl"] button {
-        border: 1px solid #334155 !important;
+    [data-testid="stAppViewContainer"] {
+        background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617) !important;
     }
-
-    /* Styling wenn 'Ausgabe' ausgewählt ist (Rot) */
-    div[data-testid="stSegmentedControl"] button[aria-checked="true"] div[data-testid="stMarkdownContainer"] p:contains("Ausgabe") {
-        color: white !important;
+    .main-title {
+        text-align: center; color: #f8fafc; font-size: 64px; font-weight: 800;
+        letter-spacing: -2px; margin-bottom: 0px;
+        text-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
     }
+    .sub-title {
+        text-align: center; color: #94a3b8; font-size: 18px; margin-bottom: 40px;
+    }
+    [data-testid="stForm"] {
+        background-color: rgba(30, 41, 59, 0.7) !important;
+        backdrop-filter: blur(15px);
+        padding: 40px !important;
+        border-radius: 24px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    /* SEGMENTED CONTROL FARBEN */
     div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p:contains("Ausgabe")) {
-        background-color: #ef4444 !important; /* Rot */
+        background-color: #ef4444 !important;
+        color: white !important;
         border-color: #ef4444 !important;
     }
-
-    /* Styling wenn 'Einnahme' ausgewählt ist (Grün) */
-    div[data-testid="stSegmentedControl"] button[aria-checked="true"] div[data-testid="stMarkdownContainer"] p:contains("Einnahme") {
-        color: white !important;
-    }
     div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p:contains("Einnahme")) {
-        background-color: #10b981 !important; /* Grün */
+        background-color: #10b981 !important;
+        color: white !important;
         border-color: #10b981 !important;
+    }
+
+    div[data-baseweb="input"] {
+        background-color: rgba(15, 23, 42, 0.8) !important;
+        border: 1px solid #334155 !important;
+        border-radius: 12px !important;
+    }
+    input { padding-left: 15px !important; color: #f1f5f9 !important; }
+    div[data-testid="InputInstructions"] { display: none !important; }
+
+    [data-testid="stSidebar"] {
+        background-color: #0b0f1a !important;
+        border-right: 1px solid #1e293b !important;
+    }
+    
+    button[kind="primaryFormSubmit"] {
+        background: linear-gradient(135deg, #38bdf8, #1d4ed8) !important;
+        border: none !important; height: 50px !important;
+        border-radius: 12px !important; font-weight: 700 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -91,9 +117,9 @@ if st.session_state['logged_in']:
                     ausg_df['betrag'] = abs(pd.to_numeric(ausg_df['betrag']))
                     st.bar_chart(data=ausg_df, x="kategorie", y="betrag", color="kategorie")
                 else:
-                    st.info("Noch keine Daten. Klicke links auf '💸 Transaktion'.")
+                    st.info("Noch keine Daten vorhanden.")
         except:
-            st.warning("Warte auf Datenverbindung...")
+            st.warning("Verbindung wird hergestellt...")
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
@@ -129,7 +155,9 @@ else:
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
+    
     _, center_col, _ = st.columns([1, 1.2, 1])
+    
     with center_col:
         if st.session_state['auth_mode'] == 'login':
             with st.form("l_f"):
@@ -143,9 +171,13 @@ else:
                         st.session_state['logged_in'] = True
                         st.session_state['user_name'] = u_in
                         st.rerun()
-                    else: st.error("Login ungültig.")
+                    else:
+                        st.error("Login ungültig.")
+            
             if st.button("Konto erstellen", use_container_width=True):
-                st.session_state['auth_mode'] = 'signup'; st.rerun()
+                st.session_state['auth_mode'] = 'signup'
+                st.rerun()
+        
         else:
             with st.form("s_f"):
                 st.markdown("<h3 style='text-align:center; color:white;'>Registrierung</h3>", unsafe_allow_html=True)
@@ -155,30 +187,31 @@ else:
                 c_pass = st.text_input("Passwort wiederholen", type="password")
                 
                 if st.form_submit_button("Konto erstellen"):
-                    # 1. Schritt: Alle Felder ausgefüllt?
                     if not s_name or not s_user or not s_pass:
                         st.error("❌ Bitte fülle alle Felder aus!")
-                    # 2. Schritt: Vor- und Nachname Prüfung
                     elif len(s_name.strip().split()) < 2:
                         st.error("❌ Bitte gib deinen vollständigen Vor- und Nachnamen an.")
-                    # 3. Schritt: Passwort-Stärke Prüfung
-                    is_strong, msg = check_password_strength(s_pass)
-                    if not is_strong:
-                        st.error(f"❌ {msg}")
-                    # 4. Schritt: Passwort Übereinstimmung
-                    elif s_pass != c_pass:
-                        st.error("❌ Die Passwörter stimmen nicht überein.")
                     else:
-                        df_u = conn.read(worksheet="users", ttl="0")
-                        if s_user in df_u['username'].values:
-                            st.error("⚠️ Dieser Username ist bereits vergeben.")
+                        is_strong, msg = check_password_strength(s_pass)
+                        if not is_strong:
+                            st.error(f"❌ {msg}")
+                        elif s_pass != c_pass:
+                            st.error("❌ Die Passwörter stimmen nicht überein.")
                         else:
-                            new_u = pd.DataFrame([{"name": s_name.strip(), "username": s_user, "password": make_hashes(s_pass)}])
-                            conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
-                            st.success("✅ Konto erstellt! Bitte logge dich ein.")
-                            st.balloons()
-                            st.session_state['auth_mode'] = 'login'
+                            df_u = conn.read(worksheet="users", ttl="0")
+                            if s_user in df_u['username'].values:
+                                st.error("⚠️ Dieser Username ist bereits vergeben.")
+                            else:
+                                new_u = pd.DataFrame([{
+                                    "name": s_name.strip(), 
+                                    "username": s_user, 
+                                    "password": make_hashes(s_pass)
+                                }])
+                                conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
+                                st.success("✅ Konto erstellt! Bitte logge dich ein.")
+                                st.balloons()
+                                st.session_state['auth_mode'] = 'login'
             
             if st.button("Zurück zum Login", use_container_width=True):
-                st.session_state['auth_mode'] = 'login'; st.rerun()
-
+                st.session_state['auth_mode'] = 'login'
+                st.rerun()
