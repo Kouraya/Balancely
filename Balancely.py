@@ -4,6 +4,7 @@ import pandas as pd
 import hashlib
 import numpy as np
 import datetime
+import re
 
 # --- 1. SEITEN-KONFIGURATION ---
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
@@ -11,6 +12,16 @@ st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 # --- 2. HILFSFUNKTIONEN ---
 def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
+
+def check_password_strength(password):
+    # Mindestens 6 Zeichen, ein Großbuchstabe, ein Kleinbuchstabe
+    if len(password) < 6:
+        return False, "Das Passwort muss mindestens 6 Zeichen lang sein."
+    if not re.search(r"[a-z]", password):
+        return False, "Das Passwort muss mindestens einen Kleinbuchstaben enthalten."
+    if not re.search(r"[A-Z]", password):
+        return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
+    return True, ""
 
 # --- 3. CSS (OPTIMIERTES DESIGN) ---
 st.markdown("""
@@ -157,7 +168,11 @@ else:
                     # 2. Schritt: Vor- und Nachname Prüfung
                     elif len(s_name.strip().split()) < 2:
                         st.error("❌ Bitte gib deinen vollständigen Vor- und Nachnamen an.")
-                    # 3. Schritt: Passwort Übereinstimmung
+                    # 3. Schritt: Passwort-Stärke Prüfung
+                    is_strong, msg = check_password_strength(s_pass)
+                    if not is_strong:
+                        st.error(f"❌ {msg}")
+                    # 4. Schritt: Passwort Übereinstimmung
                     elif s_pass != c_pass:
                         st.error("❌ Die Passwörter stimmen nicht überein.")
                     else:
