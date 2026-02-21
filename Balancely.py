@@ -22,9 +22,10 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (DESIGN & BUGFIX FÜR PASSWORT-AUGE) ---
+# --- 3. CSS (DESIGN & FIX FÜR DEN ENTER-TEXT & INPUT-BUG) ---
 st.markdown("""
     <style>
+    /* Grund-Design */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617) !important;
     }
@@ -36,6 +37,8 @@ st.markdown("""
     .sub-title {
         text-align: center; color: #94a3b8; font-size: 18px; margin-bottom: 40px;
     }
+    
+    /* Formular-Design */
     [data-testid="stForm"] {
         background-color: rgba(30, 41, 59, 0.7) !important;
         backdrop-filter: blur(15px);
@@ -56,24 +59,28 @@ st.markdown("""
         border-color: #10b981 !important;
     }
 
-    /* INPUT STYLING & FIX FÜR DAS AUGE-ICON */
+    /* --- BUGFIXES FÜR INPUTS --- */
+    
+    /* FIX: Entfernt "Press Enter to submit form" */
+    div[data-testid="stInputInstructions"] {
+        display: none !important;
+    }
+    
+    /* FIX: Behebt den grauen Balken am Ende des Input-Feldes (neben dem Auge) */
+    div[data-baseweb="input"] > div:last-child {
+        background-color: transparent !important;
+        padding-right: 10px !important;
+    }
+
+    /* Restliches Input-Design */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
     }
-    
-    /* Dieser Block behebt den Bug neben dem Auge: */
-    div[data-testid="stInputInstructions"] {
-        display: none !important;
-    }
-    div[data-baseweb="input"] > div:last-child {
-        background-color: transparent !important;
-        padding-right: 10px !important;
-    }
-    
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
 
+    /* Sidebar & Buttons */
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
         border-right: 1px solid #1e293b !important;
