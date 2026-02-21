@@ -22,7 +22,7 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (DEIN ORIGINAL-DESIGN) ---
+# --- 3. CSS (DESIGN & BUGFIX FÜR PASSWORT-AUGE) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -44,6 +44,7 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
     
+    /* SEGMENTED CONTROL FARBEN */
     div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p:contains("Ausgabe")) {
         background-color: #ef4444 !important;
         color: white !important;
@@ -55,10 +56,20 @@ st.markdown("""
         border-color: #10b981 !important;
     }
 
+    /* INPUT STYLING & FIX FÜR DAS AUGE-ICON */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
+    }
+    
+    /* Dieser Block behebt den Bug neben dem Auge: */
+    div[data-testid="stInputInstructions"] {
+        display: none !important;
+    }
+    div[data-baseweb="input"] > div:last-child {
+        background-color: transparent !important;
+        padding-right: 10px !important;
     }
     
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
@@ -124,6 +135,7 @@ if st.session_state['logged_in']:
         st.title("Buchung hinzufügen ✍️")
         with st.form("t_form", clear_on_submit=True):
             t_type = st.segmented_control("Typ wählen", ["Ausgabe", "Einnahme"], default="Ausgabe")
+            
             col1, col2 = st.columns(2)
             with col1:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
@@ -149,6 +161,7 @@ if st.session_state['logged_in']:
                 st.balloons()
 
 else:
+    # --- LOGIN / SIGNUP ---
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
@@ -199,9 +212,8 @@ else:
                             if s_user in df_u['username'].values:
                                 st.error("⚠️ Dieser Username ist bereits vergeben.")
                             else:
-                                # NUR HIER WURDE DER NAME GEHASHT
                                 new_u = pd.DataFrame([{
-                                    "name": make_hashes(s_name.strip()), 
+                                    "name": s_name.strip(), 
                                     "username": s_user, 
                                     "password": make_hashes(s_pass)
                                 }])
@@ -213,3 +225,5 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
+
