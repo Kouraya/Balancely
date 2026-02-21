@@ -2,18 +2,15 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import re
-import hashlib  # Für die Verschlüsselung
+import hashlib
 
-# --- 1. HILFSFUNKTIONEN FÜR SICHERHEIT ---
-def make_hashes(password):
-    """Erstellt einen unleserlichen SHA256-Hash aus dem Passwort."""
-    return hashlib.sha256(str.encode(password)).hexdigest()
+# --- 1. SEITEN-KONFIGURATION ---
+st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
-def check_hashes(password, hashed_text):
-    """Vergleicht das eingegebene Passwort mit dem gespeicherten Hash."""
-    if make_hashes(password) == hashed_text:
-        return True
-    return False
+# --- 2. HILFSFUNKTIONEN (SICHERHEIT) ---
+def make_hashes(text):
+    """Erzeugt einen SHA256-Hash."""
+    return hashlib.sha256(str.encode(text)).hexdigest()
 
 def check_password_strength(pwd):
     if len(pwd) < 6: return False, "Passwort zu kurz (min. 6)."
@@ -21,11 +18,11 @@ def check_password_strength(pwd):
         return False, "Braucht Groß/Kleinbuchstaben."
     return True, ""
 
-# --- 2. SEITEN-KONFIGURATION & CSS ---
-st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
+# --- 3. CSS ---
 st.markdown("""
     <style>
     html, body, [data-testid="stAppViewContainer"] { background-color: #0e1117 !important; }
+    [data-testid="InputInstructions"] { display: none !important; }
     [data-testid="stForm"] {
         background-color: #161b22 !important;
         padding: 40px !important;
@@ -43,23 +40,46 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. SESSION STATE ---
+# --- 4. SESSION STATE ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
-if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
+if 'user_name' not in st.session_state: st.session_state['user_name'] = "" # Dies ist der Username
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- 4. HAUPT-LOGIK ---
+# --- 5. HAUPT-LOGIK ---
 
 if st.session_state['logged_in']:
-    # DASHBOARD
-    st.markdown(f"## Willkommen im Dashboard, {st.session_state['user_name']}! ⚖️")
-    if st.button("Abmelden"):
-        st.session_state['logged_in'] = False
-        st.rerun()
+    # --- DASHBOARD ---
+    col1, col2 = st.columns([0.8, 0.2])
+    with col1:
+        st.markdown(f"## Willkommen, @{st.session_state['user_name']}! ⚖️")
+    with col2:
+        if st.button("Abmelden"):
+            st.session_state['logged_in'] = False
+            st.rerun()
+
+    st.write("Dein Name ist in der Datenbank sicher gehasht und unleserlich.")
+    
+    st.markdown("---")
+    
+    # ACCOUNT LÖSCHEN FUNKTION
+    with st.expander("Gefahrenzone"):
+        st.warning("Das Löschen deines Accounts kann nicht rückgängig gemacht werden.")
+        if st.button("Meinen Account unwiderruflich löschen"):
+            # 1. Daten laden
+            df_current = conn.read(worksheet="users", ttl="0")
+            # 2. Filtern (Username bleibt im Klartext im Sheet zur Identifikation)
+            df_updated = df_current[df_current['username'] != st.session_state['user_name']]
+            # 3. Zurückschreiben
+            conn.update(worksheet="users", data=df_updated)
+            # 4. Logout
+            st.session_state['logged_in'] = False
+            st.success("Account wurde gelöscht.")
+            st.rerun()
+
 else:
-    # AUTHENTIFIZIERUNG
+    # --- AUTHENTIFIZIERUNG ---
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     _, center_col, _ = st.columns([1, 1.1, 1])
 
@@ -69,34 +89,30 @@ else:
         if st.session_state['auth_mode'] == 'login':
             with st.form("login_form"):
                 st.markdown("<h3 style='text-align:center; color:white;'>Anmelden</h3>", unsafe_allow_html=True)
-                user_input = st.text_input("Username")
-                pass_input = st.text_input("Password", type="password")
+                u_input = st.text_input("Username")
+                p_input = st.text_input("Password", type="password")
                 if st.form_submit_button("Login"):
                     df = conn.read(worksheet="users", ttl="0")
-                    # Filtere nach Username
-                    user_data = df[df['username'] == user_input]
+                    user_data = df[df['username'] == u_input]
                     
                     if not user_data.empty:
-                        # Vergleiche Hash aus GSheet mit Hash der Eingabe
-                        stored_password_hash = user_data.iloc[0]['password']
-                        if check_hashes(pass_input, stored_password_hash):
+                        # Passwort-Hash Vergleich
+                        if make_hashes(p_input) == user_data.iloc[0]['password']:
                             st.session_state['logged_in'] = True
-                            st.session_state['user_name'] = user_data.iloc[0]['name']
+                            st.session_state['user_name'] = u_input
                             st.rerun()
-                        else:
-                            st.error("Passwort falsch.")
-                    else:
-                        st.error("Benutzer nicht gefunden.")
+                        else: st.error("Passwort falsch.")
+                    else: st.error("Benutzer nicht gefunden.")
 
-            if st.button("Noch kein Konto? Registrieren"):
+            if st.button("Registrieren"):
                 st.session_state['auth_mode'] = 'signup'
                 st.rerun()
 
         else:
             with st.form("signup_form"):
                 st.markdown("<h3 style='text-align:center; color:white;'>Registrieren</h3>", unsafe_allow_html=True)
-                n_name = st.text_input("Name")
-                n_user = st.text_input("Username")
+                n_name = st.text_input("Name (wird gehasht)")
+                n_user = st.text_input("Username (Klartext)")
                 n_pass = st.text_input("Passwort", type="password")
                 c_pass = st.text_input("Wiederholen", type="password")
                 
@@ -108,9 +124,12 @@ else:
                     elif not is_strong: st.error(msg)
                     elif n_user in df_ex['username'].values: st.error("Username vergeben.")
                     else:
-                        # HASH ERSTELLEN BEVOR ES INS SHEET GEHT
-                        hashed_password = make_hashes(n_pass)
-                        new_row = pd.DataFrame([{"name": n_name, "username": n_user, "password": hashed_password}])
+                        # NAME UND PASSWORT HASHEN
+                        new_row = pd.DataFrame([{
+                            "name": make_hashes(n_name), 
+                            "username": n_user, 
+                            "password": make_hashes(n_pass)
+                        }])
                         conn.update(worksheet="users", data=pd.concat([df_ex, new_row], ignore_index=True))
                         st.success("Erfolg! Bitte einloggen.")
             
