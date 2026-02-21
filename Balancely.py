@@ -22,7 +22,7 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (URSPRÜNGLICHES DESIGN - OHNE ENTER-TEXT FIX) ---
+# --- 3. CSS (DEIN ORIGINAL-DESIGN) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -44,7 +44,6 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
     
-    /* SEGMENTED CONTROL FARBEN */
     div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p:contains("Ausgabe")) {
         background-color: #ef4444 !important;
         color: white !important;
@@ -56,7 +55,6 @@ st.markdown("""
         border-color: #10b981 !important;
     }
 
-    /* INPUT STYLING */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
@@ -126,7 +124,6 @@ if st.session_state['logged_in']:
         st.title("Buchung hinzufügen ✍️")
         with st.form("t_form", clear_on_submit=True):
             t_type = st.segmented_control("Typ wählen", ["Ausgabe", "Einnahme"], default="Ausgabe")
-            
             col1, col2 = st.columns(2)
             with col1:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
@@ -152,7 +149,6 @@ if st.session_state['logged_in']:
                 st.balloons()
 
 else:
-    # --- LOGIN / SIGNUP ---
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
@@ -203,7 +199,7 @@ else:
                             if s_user in df_u['username'].values:
                                 st.error("⚠️ Dieser Username ist bereits vergeben.")
                             else:
-                                # NAME WIRD HIER GEHASHT (Punkt 1)
+                                # NUR HIER WURDE DER NAME GEHASHT
                                 new_u = pd.DataFrame([{
                                     "name": make_hashes(s_name.strip()), 
                                     "username": s_user, 
@@ -213,7 +209,6 @@ else:
                                 st.success("✅ Konto erstellt! Bitte logge dich ein.")
                                 st.balloons()
                                 st.session_state['auth_mode'] = 'login'
-                                st.rerun()
             
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
