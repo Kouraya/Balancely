@@ -96,29 +96,33 @@ if st.session_state['logged_in']:
             st.warning("Warte auf Datenverbindung...")
 
     elif menu == "💸 Transaktion":
-    st.title("Buchung hinzufügen ✍️")
-    with st.form("t_form", clear_on_submit=True):
-        # Der neue Selektor für die farbige Auswahl
-        t_type = st.segmented_control(
-            "Typ wählen", 
-            ["Ausgabe", "Einnahme"], 
-            default="Ausgabe",
-            label_visibility="visible"
-        )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
-            t_date = st.date_input("Datum", datetime.date.today())
-        with col2:
-            # Kategorien passen sich dem Typ an
-            cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
-            t_cat = st.selectbox("Kategorie", cats)
-            t_note = st.text_input("Notiz")
-        
-        if st.form_submit_button("Speichern"):
-            # ... dein bestehender Speicher-Code ...
-            st.success(f"{t_type} erfolgreich gespeichert!")
+        st.title("Buchung hinzufügen ✍️")
+        with st.form("t_form", clear_on_submit=True):
+            t_type = st.segmented_control("Typ wählen", ["Ausgabe", "Einnahme"], default="Ausgabe")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
+                t_date = st.date_input("Datum", datetime.date.today())
+            with col2:
+                cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
+                t_cat = st.selectbox("Kategorie", cats)
+                t_note = st.text_input("Notiz")
+            
+            if st.form_submit_button("Speichern"):
+                new_row = pd.DataFrame([{
+                    "user": st.session_state['user_name'], 
+                    "datum": str(t_date), 
+                    "typ": t_type, 
+                    "kategorie": t_cat, 
+                    "betrag": t_amount if t_type == "Einnahme" else -t_amount, 
+                    "notiz": t_note
+                }])
+                df_old = conn.read(worksheet="transactions", ttl="0")
+                df_new = pd.concat([df_old, new_row], ignore_index=True)
+                conn.update(worksheet="transactions", data=df_new)
+                st.success(f"{t_type} erfolgreich gespeichert!")
+                st.balloons()
 
 else:
     # --- LOGIN / SIGNUP ---
