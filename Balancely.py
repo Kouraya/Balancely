@@ -3,11 +3,12 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import re
 import hashlib
+import numpy as np # Für die Grafik-Beispieldaten
 
 # --- 1. SEITEN-KONFIGURATION ---
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
-# --- 2. HILFSFUNKTIONEN (SICHERHEIT & VALIDIERUNG) ---
+# --- 2. HILFSFUNKTIONEN ---
 def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
 
@@ -18,17 +19,18 @@ def check_password_strength(pwd):
     return True, ""
 
 def validate_full_name(name):
-    # Prüft, ob mindestens zwei durch Leerzeichen getrennte Wörter vorhanden sind
     parts = name.strip().split()
     if len(parts) < 2:
         return False, "Bitte gib deinen vollständigen Vor- und Nachnamen ein."
     return True, ""
 
-# --- 3. CSS (ZENTRIERUNG & CLEAN DESIGN) ---
+# --- 3. CSS (Individuelles Styling) ---
 st.markdown("""
     <style>
     html, body, [data-testid="stAppViewContainer"] { background-color: #0e1117 !important; }
     [data-testid="InputInstructions"] { display: none !important; }
+    
+    /* Login/Register Form */
     [data-testid="stForm"] {
         background-color: #161b22 !important;
         padding: 40px !important;
@@ -37,11 +39,19 @@ st.markdown("""
         min-width: 380px !important;
         margin: 0 auto !important;
     }
+    
     input { color: white !important; }
     div[data-baseweb="input"] { background-color: #0d1117 !important; border-radius: 8px !important; }
+    
+    /* Das Auge ohne Hitbox */
     button[aria-label="Show password"] { background-color: transparent !important; border: none !important; color: #8b949e !important; }
+    
+    /* Buttons */
     button[kind="primaryFormSubmit"] { background-color: #1f6feb !important; width: 100% !important; border-radius: 8px !important; font-weight: bold !important; }
-    div.stButton > button { background: none !important; border: none !important; color: #58a6ff !important; font-weight: 600 !important; }
+    
+    /* Sidebar/Navigation Styling */
+    [data-testid="stSidebar"] { background-color: #161b22 !important; }
+    
     .main-title { text-align: center; color: white; font-size: 45px; font-weight: bold; margin-bottom: 20px; }
     </style>
     """, unsafe_allow_html=True)
@@ -56,30 +66,58 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 # --- 5. HAUPT-LOGIK ---
 
 if st.session_state['logged_in']:
-    # --- DASHBOARD ---
-    col1, col2 = st.columns([0.85, 0.15])
-    with col1:
-        st.markdown(f"## Willkommen, @{st.session_state['user_name']}! ⚖️")
-    with col2:
+    # --- DASHBOARD NAVIGATION (SIDEBAR) ---
+    with st.sidebar:
+        st.title("Balancely ⚖️")
+        st.write(f"Angemeldet als: **{st.session_state['user_name']}**")
+        menu = st.radio("Menü", ["Dashboard", "Statistiken", "Einstellungen"])
+        
         if st.button("Abmelden"):
             st.session_state['logged_in'] = False
             st.rerun()
 
-    st.markdown("---")
-    st.write("Dein Dashboard ist bereit.")
+    # --- INHALT BASIEREND AUF AUSWAHL ---
+    if menu == "Dashboard":
+        st.title(f"Willkommen, {st.session_state['user_name']}!") # Ohne @
+        
+        # Metriken mit Grafiken
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Bilanz", "1.450 €", "8%")
+        m2.metric("Ausgaben", "420 €", "-2%")
+        m3.metric("Sparrate", "25%", "1.5%")
+        
+        st.markdown("### Verlauf")
+        chart_data = pd.DataFrame(np.random.randn(20, 3), columns=['Einnahmen', 'Ausgaben', 'Puffer'])
+        st.line_chart(chart_data)
 
-    # GEFAHRENZONE ZUM LÖSCHEN
-    with st.expander("Gefahrenzone"):
-        st.warning("Achtung: Das Löschen deines Kontos kann nicht rückgängig gemacht werden.")
-        if st.button("Meinen Account unwiderruflich löschen"):
-            df_current = conn.read(worksheet="users", ttl="0")
-            df_updated = df_current[df_current['username'] != st.session_state['user_name']]
-            conn.update(worksheet="users", data=df_updated)
-            st.session_state['logged_in'] = False
-            st.rerun()
+    elif menu == "Statistiken":
+        st.title("Deine Analysen")
+        col_left, col_right = st.columns(2)
+        
+        with col_left:
+            st.write("Verteilung der Kategorien")
+            st.bar_chart(np.random.rand(5))
+        
+        with col_right:
+            st.write("Monatliche Entwicklung")
+            st.area_chart(np.random.randn(10, 2))
+
+    elif menu == "Einstellungen":
+        st.title("Kontoeinstellungen")
+        st.subheader("Sicherheit")
+        
+        with st.expander("Gefahrenzone: Account löschen"):
+            st.error("Achtung: Alle Daten werden dauerhaft aus dem Google Sheet entfernt.")
+            if st.button("Meinen Account jetzt unwiderruflich löschen"):
+                df_current = conn.read(worksheet="users", ttl="0")
+                df_updated = df_current[df_current['username'] != st.session_state['user_name']]
+                conn.update(worksheet="users", data=df_updated)
+                
+                st.session_state['logged_in'] = False
+                st.rerun()
 
 else:
-    # --- AUTHENTIFIZIERUNG ---
+    # --- LOGIN / REGISTRIERUNG ---
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     _, center_col, _ = st.columns([1, 1.1, 1])
 
@@ -100,7 +138,7 @@ else:
                         st.rerun()
                     else: st.error("Logindaten nicht korrekt.")
 
-            if st.button("Noch kein Konto? Registrieren"):
+            if st.button("Registrieren"):
                 st.session_state['auth_mode'] = 'signup'
                 st.rerun()
 
@@ -120,7 +158,7 @@ else:
                     if not name_ok: st.error(name_msg)
                     elif n_pass != c_pass: st.error("Die Passwörter stimmen nicht überein!")
                     elif not pwd_ok: st.error(pwd_msg)
-                    elif n_user in df_ex['username'].values: st.error("Dieser Username ist bereits vergeben.")
+                    elif n_user in df_ex['username'].values: st.error("Username vergeben.")
                     else:
                         new_row = pd.DataFrame([{
                             "name": make_hashes(n_name), 
@@ -128,8 +166,7 @@ else:
                             "password": make_hashes(n_pass)
                         }])
                         conn.update(worksheet="users", data=pd.concat([df_ex, new_row], ignore_index=True))
-                        st.success("Konto erstellt! Du kannst dich jetzt anmelden.")
-                        st.balloons()
+                        st.success("Erfolg! Bitte einloggen.")
             
             if st.button("Zurück zum Login"):
                 st.session_state['auth_mode'] = 'login'
