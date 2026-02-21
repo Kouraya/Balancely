@@ -59,38 +59,48 @@ st.markdown("""
         border-radius: 12px !important; font-weight: 700 !important;
     }
 
-    /* AUSGABE BUTTON (Spalte 1) */
-    div[data-testid="column"]:nth-of-type(1) button {
-        background-color: rgba(239, 68, 68, 0.15) !important;
-        border: 1.5px solid rgba(239, 68, 68, 0.4) !important;
-        color: #fca5a5 !important;
-        border-radius: 10px !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        height: 38px !important;
-        padding: 0 16px !important;
-        transition: all 0.2s !important;
+    /* TYP TOGGLE via HTML-Buttons */
+    .typ-btn-ausgabe-active {
+        display: block; width: 100%; padding: 10px 20px;
+        background-color: rgba(239, 68, 68, 0.25) !important;
+        border: 2px solid #ef4444 !important;
+        color: #fca5a5 !important; font-weight: 700;
+        border-radius: 10px; font-size: 14px; cursor: pointer;
+        box-shadow: 0 0 12px rgba(239,68,68,0.2);
     }
-    div[data-testid="column"]:nth-of-type(1) button:hover {
-        background-color: rgba(239, 68, 68, 0.3) !important;
-        border-color: #ef4444 !important;
+    .typ-btn-ausgabe-inactive {
+        display: block; width: 100%; padding: 10px 20px;
+        background-color: rgba(239, 68, 68, 0.05) !important;
+        border: 1.5px solid rgba(239, 68, 68, 0.2) !important;
+        color: #94a3b8 !important; font-weight: 500;
+        border-radius: 10px; font-size: 14px; cursor: pointer;
     }
-
-    /* EINNAHME BUTTON (Spalte 2) */
-    div[data-testid="column"]:nth-of-type(2) button {
-        background-color: rgba(16, 185, 129, 0.15) !important;
-        border: 1.5px solid rgba(16, 185, 129, 0.4) !important;
-        color: #6ee7b7 !important;
-        border-radius: 10px !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        height: 38px !important;
-        padding: 0 16px !important;
-        transition: all 0.2s !important;
+    .typ-btn-einnahme-active {
+        display: block; width: 100%; padding: 10px 20px;
+        background-color: rgba(16, 185, 129, 0.25) !important;
+        border: 2px solid #10b981 !important;
+        color: #6ee7b7 !important; font-weight: 700;
+        border-radius: 10px; font-size: 14px; cursor: pointer;
+        box-shadow: 0 0 12px rgba(16,185,129,0.2);
     }
-    div[data-testid="column"]:nth-of-type(2) button:hover {
-        background-color: rgba(16, 185, 129, 0.3) !important;
-        border-color: #10b981 !important;
+    .typ-btn-einnahme-inactive {
+        display: block; width: 100%; padding: 10px 20px;
+        background-color: rgba(16, 185, 129, 0.05) !important;
+        border: 1.5px solid rgba(16, 185, 129, 0.2) !important;
+        color: #94a3b8 !important; font-weight: 500;
+        border-radius: 10px; font-size: 14px; cursor: pointer;
+    }
+    /* Echte Streamlit-Buttons im Toggle-Bereich verstecken */
+    div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
+        opacity: 0 !important;
+        position: absolute !important;
+        top: 0 !important; left: 0 !important;
+        width: 100% !important; height: 100% !important;
+        cursor: pointer !important;
+        z-index: 5 !important;
+    }
+    div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] {
+        position: relative !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -142,21 +152,30 @@ if st.session_state['logged_in']:
         st.title("Buchung hinzufügen ✍️")
         t_type = st.session_state['t_type']
 
-        # Kompakte Toggle-Buttons
+        # Visuelle Karten (rein dekorativ)
+        a_cls = "typ-btn-ausgabe-active" if t_type == "Ausgabe" else "typ-btn-ausgabe-inactive"
+        e_cls = "typ-btn-einnahme-active" if t_type == "Einnahme" else "typ-btn-einnahme-inactive"
+
         st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:6px;'>Typ wählen</p>", unsafe_allow_html=True)
-        col_a, col_e, col_rest = st.columns([1, 1, 4])
-        with col_a:
-            a_label = "▶ Ausgabe" if t_type == "Ausgabe" else "Ausgabe"
-            if st.button(a_label, use_container_width=True, key="btn_ausgabe"):
+
+        card_col1, card_col2, _ = st.columns([1, 1, 3])
+        with card_col1:
+            st.markdown(f'<div class="{a_cls}">↗ Ausgabe</div>', unsafe_allow_html=True)
+        with card_col2:
+            st.markdown(f'<div class="{e_cls}">↙ Einnahme</div>', unsafe_allow_html=True)
+
+        # Echte (unsichtbare) Buttons direkt darunter zum Klicken
+        btn_col1, btn_col2, _ = st.columns([1, 1, 3])
+        with btn_col1:
+            if st.button("Ausgabe", key="btn_ausgabe", use_container_width=True):
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
-        with col_e:
-            e_label = "▶ Einnahme" if t_type == "Einnahme" else "Einnahme"
-            if st.button(e_label, use_container_width=True, key="btn_einnahme"):
+        with btn_col2:
+            if st.button("Einnahme", key="btn_einnahme", use_container_width=True):
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
 
-        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
