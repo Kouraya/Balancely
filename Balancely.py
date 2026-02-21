@@ -5,10 +5,8 @@ import hashlib
 import datetime
 import re
 
-# --- 1. SEITEN-KONFIGURATION ---
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
-# --- 2. HILFSFUNKTIONEN ---
 def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
 
@@ -21,7 +19,6 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -58,54 +55,9 @@ st.markdown("""
         border: none !important; height: 50px !important;
         border-radius: 12px !important; font-weight: 700 !important;
     }
-
-    /* TYP TOGGLE via HTML-Buttons */
-    .typ-btn-ausgabe-active {
-        display: block; width: 100%; padding: 10px 20px;
-        background-color: rgba(239, 68, 68, 0.25) !important;
-        border: 2px solid #ef4444 !important;
-        color: #fca5a5 !important; font-weight: 700;
-        border-radius: 10px; font-size: 14px; cursor: pointer;
-        box-shadow: 0 0 12px rgba(239,68,68,0.2);
-    }
-    .typ-btn-ausgabe-inactive {
-        display: block; width: 100%; padding: 10px 20px;
-        background-color: rgba(239, 68, 68, 0.05) !important;
-        border: 1.5px solid rgba(239, 68, 68, 0.2) !important;
-        color: #94a3b8 !important; font-weight: 500;
-        border-radius: 10px; font-size: 14px; cursor: pointer;
-    }
-    .typ-btn-einnahme-active {
-        display: block; width: 100%; padding: 10px 20px;
-        background-color: rgba(16, 185, 129, 0.25) !important;
-        border: 2px solid #10b981 !important;
-        color: #6ee7b7 !important; font-weight: 700;
-        border-radius: 10px; font-size: 14px; cursor: pointer;
-        box-shadow: 0 0 12px rgba(16,185,129,0.2);
-    }
-    .typ-btn-einnahme-inactive {
-        display: block; width: 100%; padding: 10px 20px;
-        background-color: rgba(16, 185, 129, 0.05) !important;
-        border: 1.5px solid rgba(16, 185, 129, 0.2) !important;
-        color: #94a3b8 !important; font-weight: 500;
-        border-radius: 10px; font-size: 14px; cursor: pointer;
-    }
-    /* Echte Streamlit-Buttons im Toggle-Bereich verstecken */
-    div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] button {
-        opacity: 0 !important;
-        position: absolute !important;
-        top: 0 !important; left: 0 !important;
-        width: 100% !important; height: 100% !important;
-        cursor: pointer !important;
-        z-index: 5 !important;
-    }
-    div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] {
-        position: relative !important;
-    }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- 4. SESSION STATE ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
@@ -113,10 +65,9 @@ if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- 5. LOGIK ---
 if st.session_state['logged_in']:
     with st.sidebar:
-        st.markdown(f"<h2 style='color:white;'>Balancely ⚖️</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color:white;'>Balancely ⚖️</h2>", unsafe_allow_html=True)
         st.markdown(f"👤 Eingeloggt: **{st.session_state['user_name']}**")
         st.markdown("---")
         menu = st.radio("Navigation", ["📈 Dashboard", "💸 Transaktion", "📂 Analysen", "⚙️ Einstellungen"], label_visibility="collapsed")
@@ -152,30 +103,27 @@ if st.session_state['logged_in']:
         st.title("Buchung hinzufügen ✍️")
         t_type = st.session_state['t_type']
 
-        # Visuelle Karten (rein dekorativ)
-        a_cls = "typ-btn-ausgabe-active" if t_type == "Ausgabe" else "typ-btn-ausgabe-inactive"
-        e_cls = "typ-btn-einnahme-active" if t_type == "Einnahme" else "typ-btn-einnahme-inactive"
+        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
 
-        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:6px;'>Typ wählen</p>", unsafe_allow_html=True)
+        col_a, col_e, _ = st.columns([1, 1, 3])
 
-        card_col1, card_col2, _ = st.columns([1, 1, 3])
-        with card_col1:
-            st.markdown(f'<div class="{a_cls}">↗ Ausgabe</div>', unsafe_allow_html=True)
-        with card_col2:
-            st.markdown(f'<div class="{e_cls}">↙ Einnahme</div>', unsafe_allow_html=True)
+        with col_a:
+            if t_type == "Ausgabe":
+                st.markdown('<div style="background:rgba(239,68,68,0.25);border:2px solid #ef4444;border-radius:10px;padding:8px 16px;color:#fca5a5;font-weight:700;font-size:14px;text-align:center;margin-bottom:4px;">↗ Ausgabe ✓</div>', unsafe_allow_html=True)
+            else:
+                if st.button("↗ Ausgabe", key="btn_ausgabe", use_container_width=True):
+                    st.session_state['t_type'] = "Ausgabe"
+                    st.rerun()
 
-        # Echte (unsichtbare) Buttons direkt darunter zum Klicken
-        btn_col1, btn_col2, _ = st.columns([1, 1, 3])
-        with btn_col1:
-            if st.button("Ausgabe", key="btn_ausgabe", use_container_width=True):
-                st.session_state['t_type'] = "Ausgabe"
-                st.rerun()
-        with btn_col2:
-            if st.button("Einnahme", key="btn_einnahme", use_container_width=True):
-                st.session_state['t_type'] = "Einnahme"
-                st.rerun()
+        with col_e:
+            if t_type == "Einnahme":
+                st.markdown('<div style="background:rgba(16,185,129,0.25);border:2px solid #10b981;border-radius:10px;padding:8px 16px;color:#6ee7b7;font-weight:700;font-size:14px;text-align:center;margin-bottom:4px;">↙ Einnahme ✓</div>', unsafe_allow_html=True)
+            else:
+                if st.button("↙ Einnahme", key="btn_einnahme", use_container_width=True):
+                    st.session_state['t_type'] = "Einnahme"
+                    st.rerun()
 
-        st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
