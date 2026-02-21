@@ -59,35 +59,38 @@ st.markdown("""
         border-radius: 12px !important; font-weight: 700 !important;
     }
 
-    /* TYP TOGGLE BUTTONS */
-    .toggle-ausgabe-active, .toggle-ausgabe-inactive,
-    .toggle-einnahme-active, .toggle-einnahme-inactive {
-        width: 100%; padding: 18px 20px; border-radius: 16px;
-        font-size: 15px; font-weight: 700; cursor: pointer;
-        border: 2px solid; transition: all 0.2s;
-        display: flex; align-items: center; gap: 10px;
-    }
-    /* Aktiv Ausgabe - Rot */
+    /* AUSGABE BUTTON (Spalte 1) */
     div[data-testid="column"]:nth-of-type(1) button {
-        background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.05)) !important;
-        border-color: #ef4444 !important;
+        background-color: rgba(239, 68, 68, 0.15) !important;
+        border: 1.5px solid rgba(239, 68, 68, 0.4) !important;
         color: #fca5a5 !important;
-        box-shadow: 0 0 20px rgba(239,68,68,0.15) !important;
-        border-radius: 16px !important;
-        font-weight: 700 !important;
-        font-size: 15px !important;
-        height: 70px !important;
+        border-radius: 10px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        height: 38px !important;
+        padding: 0 16px !important;
+        transition: all 0.2s !important;
     }
-    /* Aktiv Einnahme - Grün */
+    div[data-testid="column"]:nth-of-type(1) button:hover {
+        background-color: rgba(239, 68, 68, 0.3) !important;
+        border-color: #ef4444 !important;
+    }
+
+    /* EINNAHME BUTTON (Spalte 2) */
     div[data-testid="column"]:nth-of-type(2) button {
-        background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05)) !important;
-        border-color: #10b981 !important;
+        background-color: rgba(16, 185, 129, 0.15) !important;
+        border: 1.5px solid rgba(16, 185, 129, 0.4) !important;
         color: #6ee7b7 !important;
-        box-shadow: 0 0 20px rgba(16,185,129,0.15) !important;
-        border-radius: 16px !important;
-        font-weight: 700 !important;
-        font-size: 15px !important;
-        height: 70px !important;
+        border-radius: 10px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        height: 38px !important;
+        padding: 0 16px !important;
+        transition: all 0.2s !important;
+    }
+    div[data-testid="column"]:nth-of-type(2) button:hover {
+        background-color: rgba(16, 185, 129, 0.3) !important;
+        border-color: #10b981 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -139,23 +142,22 @@ if st.session_state['logged_in']:
         st.title("Buchung hinzufügen ✍️")
         t_type = st.session_state['t_type']
 
-        # Toggle-Buttons mit Emoji-Indikator für aktiven Zustand
-        st.markdown("<p style='color:#94a3b8; font-size:14px; margin-bottom:8px;'>Typ wählen</p>", unsafe_allow_html=True)
-        col_a, col_e = st.columns(2)
+        # Kompakte Toggle-Buttons
+        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:6px;'>Typ wählen</p>", unsafe_allow_html=True)
+        col_a, col_e, col_rest = st.columns([1, 1, 4])
         with col_a:
-            label_a = "✅  Ausgabe" if t_type == "Ausgabe" else "↗️  Ausgabe"
-            if st.button(label_a, use_container_width=True, key="btn_ausgabe"):
+            a_label = "▶ Ausgabe" if t_type == "Ausgabe" else "Ausgabe"
+            if st.button(a_label, use_container_width=True, key="btn_ausgabe"):
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
         with col_e:
-            label_e = "✅  Einnahme" if t_type == "Einnahme" else "↙️  Einnahme"
-            if st.button(label_e, use_container_width=True, key="btn_einnahme"):
+            e_label = "▶ Einnahme" if t_type == "Einnahme" else "Einnahme"
+            if st.button(e_label, use_container_width=True, key="btn_einnahme"):
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
 
-        st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-        # Formular
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
