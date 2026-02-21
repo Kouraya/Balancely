@@ -161,14 +161,38 @@ else:
                 s_name = st.text_input("Name", placeholder="Max Mustermann")
                 s_user = st.text_input("Username", placeholder="max123")
                 s_pass = st.text_input("Passwort", type="password")
-                c_pass = st.text_input(" Passwort wiederholen", type="password")
+                c_pass = st.text_input("Passwort wiederholen", type="password")
+                
                 if st.form_submit_button("Konto erstellen"):
-                    df_u = conn.read(worksheet="users", ttl="0")
-                    if s_pass != c_pass: st.error("Passwörter ungleich.")
+                    # 1. Schritt: Sind alle Felder ausgefüllt?
+                    if not s_name or not s_user or not s_pass:
+                        st.error("❌ Bitte fülle alle Felder aus!")
+                    
+                    # 2. Schritt: Stimmen die Passwörter überein?
+                    elif s_pass != c_pass:
+                        st.error("❌ Die Passwörter stimmen nicht überein.")
+                    
                     else:
-                        new_u = pd.DataFrame([{"name": s_name, "username": s_user, "password": make_hashes(s_pass)}])
-                        conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
-                        st.success("Konto erstellt!"); st.session_state['auth_mode'] = 'login'
-            if st.button("Zurück", use_container_width=True):
-                st.session_state['auth_mode'] = 'login'; st.rerun()
-
+                        # Daten laden, um Dubletten zu prüfen
+                        df_u = conn.read(worksheet="users", ttl="0")
+                        
+                        # 3. Schritt: Existiert der Username schon?
+                        if s_user in df_u['username'].values:
+                            st.error("⚠️ Dieser Username ist bereits vergeben. Wähle einen anderen.")
+                        else:
+                            # Alles okay -> Speichern
+                            new_u = pd.DataFrame([{
+                                "name": s_name, 
+                                "username": s_user, 
+                                "password": make_hashes(s_pass)
+                            }])
+                            conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
+                            
+                            st.success("✅ Konto erfolgreich erstellt! Du kannst dich jetzt einloggen.")
+                            st.balloons()
+                            st.session_state['auth_mode'] = 'login'
+                            # Kein automatischer Rerun, damit der User die Erfolgsmeldung sieht
+            
+            if st.button("Zurück zum Login", use_container_width=True):
+                st.session_state['auth_mode'] = 'login'
+                st.rerun()
