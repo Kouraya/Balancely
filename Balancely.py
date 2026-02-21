@@ -25,20 +25,36 @@ def check_password_strength(password):
 # --- 3. CSS (DESIGN & BUGFIX FÜR PASSWORT-AUGE) ---
 st.markdown("""
     <style>
+    [data-testid="stAppViewContainer"] {
+        background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617) !important;
+    }
+    .main-title {
+        text-align: center; color: #f8fafc; font-size: 64px; font-weight: 800;
+        letter-spacing: -2px; margin-bottom: 0px;
+        text-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+    }
+    .sub-title {
+        text-align: center; color: #94a3b8; font-size: 18px; margin-bottom: 40px;
+    }
+    [data-testid="stForm"] {
+        background-color: rgba(30, 41, 59, 0.7) !important;
+        backdrop-filter: blur(15px);
+        padding: 40px !important;
+        border-radius: 24px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
     /* SEGMENTED CONTROL FARBEN */
-div[data-testid="stSegmentedControl"] button:nth-of-type(1)[aria-checked="true"] {
-    background-color: #ef4444 !important;
-    color: white !important;
-    border-color: #ef4444 !important;
-}
-div[data-testid="stSegmentedControl"] button:nth-of-type(2)[aria-checked="true"] {
-    background-color: #10b981 !important;
-    color: white !important;
-    border-color: #10b981 !important;
-}
-div[data-testid="stSegmentedControl"] button[aria-checked="true"] p {
-    color: white !important;
-}
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:nth-child(1) {
+        background-color: #ef4444 !important;
+        color: white !important;
+        border-color: #ef4444 !important;
+    }
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p, span, div):nth-child(2) {
+        background-color: #10b981 !important;
+        color: white !important;
+        border-color: #10b981 !important;
+    }
 
     /* INPUT STYLING & FIX FÜR DAS AUGE-ICON */
     div[data-baseweb="input"] {
