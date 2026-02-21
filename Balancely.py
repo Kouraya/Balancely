@@ -22,7 +22,7 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (DESIGN & ULTIMATIVER ENTER-TEXT FIX) ---
+# --- 3. CSS (DESIGN & BUGFIX FÜR PASSWORT-AUGE) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -56,22 +56,20 @@ st.markdown("""
         border-color: #10b981 !important;
     }
 
-    /* INPUT STYLING */
+    /* INPUT STYLING & FIX FÜR DAS AUGE-ICON */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
     }
     
-    /* --- DER FIX FÜR "PRESS ENTER" --- */
-    /* Versucht alle bekannten Streamlit-Hinweise auszublenden */
-    div[data-testid="stInputInstructions"], 
-    .st-emotion-cache-1pxm63p, 
-    small {
+    /* Dieser Block behebt den Bug neben dem Auge: */
+    div[data-testid="stInputInstructions"] {
         display: none !important;
-        visibility: hidden !important;
-        height: 0px !important;
-        padding: 0px !important;
+    }
+    div[data-baseweb="input"] > div:last-child {
+        background-color: transparent !important;
+        padding-right: 10px !important;
     }
     
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
@@ -227,3 +225,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
