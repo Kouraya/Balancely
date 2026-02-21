@@ -44,27 +44,64 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    /* TYP-BUTTONS */
-    .typ-btn {
-        width: 100%; padding: 10px; border-radius: 10px;
-        border: 2px solid transparent; font-size: 15px;
-        font-weight: 600; cursor: pointer; transition: all 0.2s;
+    /* TYP-TOGGLE WRAPPER */
+    .typ-toggle {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 8px;
     }
-    .btn-ausgabe-active {
-        background-color: #ef4444 !important; color: white !important;
-        border-color: #ef4444 !important;
+    .typ-card {
+        flex: 1;
+        padding: 16px 20px;
+        border-radius: 16px;
+        border: 2px solid transparent;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.2s;
     }
-    .btn-ausgabe-inactive {
-        background-color: transparent !important; color: #ef4444 !important;
-        border-color: #ef4444 !important;
+    .typ-card-icon {
+        font-size: 22px;
+        line-height: 1;
     }
-    .btn-einnahme-active {
-        background-color: #10b981 !important; color: white !important;
-        border-color: #10b981 !important;
+    .typ-card-label { font-size: 15px; font-weight: 700; }
+    .typ-card-sub   { font-size: 12px; font-weight: 400; opacity: 0.8; }
+
+    .typ-ausgabe-active {
+        background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(239,68,68,0.1));
+        border-color: #ef4444;
+        color: #fca5a5;
+        box-shadow: 0 0 20px rgba(239,68,68,0.2);
     }
-    .btn-einnahme-inactive {
-        background-color: transparent !important; color: #10b981 !important;
-        border-color: #10b981 !important;
+    .typ-ausgabe-inactive {
+        background: rgba(255,255,255,0.03);
+        border-color: rgba(239,68,68,0.3);
+        color: #64748b;
+    }
+    .typ-einnahme-active {
+        background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.1));
+        border-color: #10b981;
+        color: #6ee7b7;
+        box-shadow: 0 0 20px rgba(16,185,129,0.2);
+    }
+    .typ-einnahme-inactive {
+        background: rgba(255,255,255,0.03);
+        border-color: rgba(16,185,129,0.3);
+        color: #64748b;
+    }
+
+    /* Streamlit Buttons unsichtbar machen, Cards darüberlegen */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) button,
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) button {
+        opacity: 0 !important;
+        position: absolute !important;
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important; left: 0 !important;
+        cursor: pointer !important;
+        z-index: 10 !important;
     }
 
     /* INPUT STYLING */
@@ -138,25 +175,43 @@ if st.session_state['logged_in']:
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
 
-        # TYP-AUSWAHL BUTTONS (außerhalb des Forms!)
-        st.markdown("**Typ wählen**")
+        t_type = st.session_state['t_type']
+
+        # Schöne Karten als visuelle Anzeige
+        a_cls = "typ-ausgabe-active" if t_type == "Ausgabe" else "typ-ausgabe-inactive"
+        e_cls = "typ-einnahme-active" if t_type == "Einnahme" else "typ-einnahme-inactive"
+
+        st.markdown(f"""
+        <div class="typ-toggle">
+            <div class="typ-card {a_cls}">
+                <span class="typ-card-icon">↗️</span>
+                <div>
+                    <div class="typ-card-label">Ausgabe</div>
+                    <div class="typ-card-sub">Geld ausgeben</div>
+                </div>
+            </div>
+            <div class="typ-card {e_cls}">
+                <span class="typ-card-icon">↙️</span>
+                <div>
+                    <div class="typ-card-label">Einnahme</div>
+                    <div class="typ-card-sub">Geld einnehmen</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Unsichtbare echte Buttons darunter zum Klicken
         col_a, col_e = st.columns(2)
         with col_a:
-            a_class = "btn-ausgabe-active" if st.session_state['t_type'] == "Ausgabe" else "btn-ausgabe-inactive"
-            if st.button("🔴  Ausgabe", use_container_width=True, key="btn_ausgabe"):
+            if st.button("Ausgabe wählen", use_container_width=True, key="btn_ausgabe"):
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
         with col_e:
-            if st.button("🟢  Einnahme", use_container_width=True, key="btn_einnahme"):
+            if st.button("Einnahme wählen", use_container_width=True, key="btn_einnahme"):
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
 
-        # Farbige Anzeige welcher Typ aktiv ist
-        t_type = st.session_state['t_type']
-        if t_type == "Ausgabe":
-            st.markdown("<p style='color:#ef4444; font-weight:600;'>● Ausgabe ausgewählt</p>", unsafe_allow_html=True)
-        else:
-            st.markdown("<p style='color:#10b981; font-weight:600;'>● Einnahme ausgewählt</p>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: -10px;'></div>", unsafe_allow_html=True)
 
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
