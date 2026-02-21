@@ -49,11 +49,6 @@ st.markdown("""
         border-right: 1px solid #1e293b !important;
     }
     
-    /* Logout Button Styling */
-    .logout-btn {
-        margin-top: 20px;
-    }
-    
     button[kind="primaryFormSubmit"] {
         background: linear-gradient(135deg, #38bdf8, #1d4ed8) !important;
         border: none !important; height: 50px !important;
@@ -85,32 +80,25 @@ if st.session_state['logged_in']:
 
     if menu == "📈 Dashboard":
         st.title(f"Deine Übersicht, {st.session_state['user_name']}! ⚖️")
-        
         try:
             df_t = conn.read(worksheet="transactions", ttl="0")
-            # Sicherstellen, dass die Spalte 'user' existiert
             if 'user' in df_t.columns:
                 user_df = df_t[df_t['user'] == st.session_state['user_name']]
-                
                 if not user_df.empty:
                     ein = pd.to_numeric(user_df[user_df['typ'] == "Einnahme"]['betrag']).sum()
                     aus = abs(pd.to_numeric(user_df[user_df['typ'] == "Ausgabe"]['betrag']).sum())
                     bal = ein - aus
-                    
                     c1, c2, c3 = st.columns(3)
                     c1.metric("Kontostand", f"{bal:,.2f} €")
                     c2.metric("Einnahmen", f"{ein:,.2f} €")
                     c3.metric("Ausgaben", f"{aus:,.2f} €", delta_color="inverse")
-                    
                     st.subheader("Ausgaben nach Kategorie")
                     ausg_df = user_df[user_df['typ'] == "Ausgabe"].copy()
                     ausg_df['betrag'] = abs(pd.to_numeric(ausg_df['betrag']))
                     st.bar_chart(data=ausg_df, x="kategorie", y="betrag", color="kategorie")
                 else:
                     st.info("Noch keine Daten. Klicke links auf '💸 Transaktion'.")
-            else:
-                st.error("Fehler: Die Spalte 'user' fehlt im Google Sheet 'transactions'!")
-        except Exception as e:
+        except:
             st.warning("Warte auf Datenverbindung...")
 
     elif menu == "💸 Transaktion":
@@ -125,7 +113,6 @@ if st.session_state['logged_in']:
                 t_cat = st.selectbox("Kategorie", cats)
                 t_date = st.date_input("Datum", datetime.date.today())
             t_note = st.text_input("Notiz")
-            
             if st.form_submit_button("Speichern"):
                 new_row = pd.DataFrame([{"user": st.session_state['user_name'], "datum": str(t_date), "typ": t_type, "kategorie": t_cat, "betrag": t_amount if t_type == "Einnahme" else -t_amount, "notiz": t_note}])
                 df_old = conn.read(worksheet="transactions", ttl="0")
@@ -164,35 +151,25 @@ else:
                 c_pass = st.text_input("Passwort wiederholen", type="password")
                 
                 if st.form_submit_button("Konto erstellen"):
-                    # 1. Schritt: Sind alle Felder ausgefüllt?
+                    # 1. Schritt: Alle Felder ausgefüllt?
                     if not s_name or not s_user or not s_pass:
                         st.error("❌ Bitte fülle alle Felder aus!")
-                    
-                    # 2. Schritt: Stimmen die Passwörter überein?
+                    # 2. Schritt: Vor- und Nachname Prüfung
+                    elif len(s_name.strip().split()) < 2:
+                        st.error("❌ Bitte gib deinen vollständigen Vor- und Nachnamen an.")
+                    # 3. Schritt: Passwort Übereinstimmung
                     elif s_pass != c_pass:
                         st.error("❌ Die Passwörter stimmen nicht überein.")
-                    
                     else:
-                        # Daten laden, um Dubletten zu prüfen
                         df_u = conn.read(worksheet="users", ttl="0")
-                        
-                        # 3. Schritt: Existiert der Username schon?
                         if s_user in df_u['username'].values:
-                            st.error("⚠️ Dieser Username ist bereits vergeben. Wähle einen anderen.")
+                            st.error("⚠️ Dieser Username ist bereits vergeben.")
                         else:
-                            # Alles okay -> Speichern
-                            new_u = pd.DataFrame([{
-                                "name": s_name, 
-                                "username": s_user, 
-                                "password": make_hashes(s_pass)
-                            }])
+                            new_u = pd.DataFrame([{"name": s_name.strip(), "username": s_user, "password": make_hashes(s_pass)}])
                             conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
-                            
-                            st.success("✅ Konto erfolgreich erstellt! Du kannst dich jetzt einloggen.")
+                            st.success("✅ Konto erstellt! Bitte logge dich ein.")
                             st.balloons()
                             st.session_state['auth_mode'] = 'login'
-                            # Kein automatischer Rerun, damit der User die Erfolgsmeldung sieht
             
             if st.button("Zurück zum Login", use_container_width=True):
-                st.session_state['auth_mode'] = 'login'
-                st.rerun()
+                st.session_state['auth_mode'] = 'login'; st.rerun()
