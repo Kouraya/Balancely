@@ -45,12 +45,12 @@ st.markdown("""
     }
     
     /* SEGMENTED CONTROL FARBEN */
-    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p:contains("Ausgabe")) {
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:nth-child(1) {
         background-color: #ef4444 !important;
         color: white !important;
         border-color: #ef4444 !important;
     }
-    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p, span, div):has(*:contains("Einnahme")) {
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p, span, div):nth-child(2) {
         background-color: #10b981 !important;
         color: white !important;
         border-color: #10b981 !important;
