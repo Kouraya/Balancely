@@ -14,7 +14,6 @@ def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
 
 def check_password_strength(password):
-    # Mindestens 6 Zeichen, ein Großbuchstabe, ein Kleinbuchstabe
     if len(password) < 6:
         return False, "Das Passwort muss mindestens 6 Zeichen lang sein."
     if not re.search(r"[a-z]", password):
@@ -23,7 +22,7 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (OPTIMIERTES DESIGN) ---
+# --- 3. CSS (DESIGN & FARB-LOGIK) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -44,15 +43,27 @@ st.markdown("""
         border-radius: 24px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
-    /* INPUT FIXES */
+    
+    /* SEGMENTED CONTROL FARBEN */
+    /* Rot für Ausgabe */
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(div[data-testid="stMarkdownContainer"] p:contains("Ausgabe")) {
+        background-color: #ef4444 !important;
+        color: white !important;
+        border-color: #ef4444 !important;
+    }
+    /* Grün für Einnahme */
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(div[data-testid="stMarkdownContainer"] p:contains("Einnahme")) {
+        background-color: #10b981 !important;
+        color: white !important;
+        border-color: #10b981 !important;
+    }
+
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
-        padding-right: 0px !important; 
     }
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
-    div[data-baseweb="input"] > div:last-child { margin-right: 0px !important; padding-right: 0px !important; }
     div[data-testid="InputInstructions"] { display: none !important; }
 
     [data-testid="stSidebar"] {
@@ -108,28 +119,31 @@ if st.session_state['logged_in']:
                     ausg_df['betrag'] = abs(pd.to_numeric(ausg_df['betrag']))
                     st.bar_chart(data=ausg_df, x="kategorie", y="betrag", color="kategorie")
                 else:
-                    st.info("Noch keine Daten. Klicke links auf '💸 Transaktion'.")
+                    st.info("Noch keine Daten vorhanden.")
         except:
-            st.warning("Warte auf Datenverbindung...")
+            st.warning("Verbindung zum Sheet wird aufgebaut...")
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
         with st.form("t_form", clear_on_submit=True):
+            t_type = st.segmented_control("Typ wählen", ["Ausgabe", "Einnahme"], default="Ausgabe")
+            
             col1, col2 = st.columns(2)
             with col1:
-                t_type = st.selectbox("Typ", ["Ausgabe", "Einnahme"])
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
+                t_date = st.date_input("Datum", datetime.date.today())
             with col2:
                 cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                 t_cat = st.selectbox("Kategorie", cats)
-                t_date = st.date_input("Datum", datetime.date.today())
-            t_note = st.text_input("Notiz")
+                t_note = st.text_input("Notiz")
+            
             if st.form_submit_button("Speichern"):
                 new_row = pd.DataFrame([{"user": st.session_state['user_name'], "datum": str(t_date), "typ": t_type, "kategorie": t_cat, "betrag": t_amount if t_type == "Einnahme" else -t_amount, "notiz": t_note}])
                 df_old = conn.read(worksheet="transactions", ttl="0")
                 df_new = pd.concat([df_old, new_row], ignore_index=True)
                 conn.update(worksheet="transactions", data=df_new)
-                st.success("Gespeichert!")
+                st.success(f"{t_type} erfolgreich gespeichert!")
+                st.balloons()
 
 else:
     # --- LOGIN / SIGNUP ---
@@ -162,29 +176,26 @@ else:
                 c_pass = st.text_input("Passwort wiederholen", type="password")
                 
                 if st.form_submit_button("Konto erstellen"):
-                    # 1. Schritt: Alle Felder ausgefüllt?
                     if not s_name or not s_user or not s_pass:
                         st.error("❌ Bitte fülle alle Felder aus!")
-                    # 2. Schritt: Vor- und Nachname Prüfung
                     elif len(s_name.strip().split()) < 2:
                         st.error("❌ Bitte gib deinen vollständigen Vor- und Nachnamen an.")
-                    # 3. Schritt: Passwort-Stärke Prüfung
-                    is_strong, msg = check_password_strength(s_pass)
-                    if not is_strong:
-                        st.error(f"❌ {msg}")
-                    # 4. Schritt: Passwort Übereinstimmung
-                    elif s_pass != c_pass:
-                        st.error("❌ Die Passwörter stimmen nicht überein.")
                     else:
-                        df_u = conn.read(worksheet="users", ttl="0")
-                        if s_user in df_u['username'].values:
-                            st.error("⚠️ Dieser Username ist bereits vergeben.")
+                        is_strong, msg = check_password_strength(s_pass)
+                        if not is_strong:
+                            st.error(f"❌ {msg}")
+                        elif s_pass != c_pass:
+                            st.error("❌ Die Passwörter stimmen nicht überein.")
                         else:
-                            new_u = pd.DataFrame([{"name": s_name.strip(), "username": s_user, "password": make_hashes(s_pass)}])
-                            conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
-                            st.success("✅ Konto erstellt! Bitte logge dich ein.")
-                            st.balloons()
-                            st.session_state['auth_mode'] = 'login'
+                            df_u = conn.read(worksheet="users", ttl="0")
+                            if s_user in df_u['username'].values:
+                                st.error("⚠️ Dieser Username ist bereits vergeben.")
+                            else:
+                                new_u = pd.DataFrame([{"name": s_name.strip(), "username": s_user, "password": make_hashes(s_pass)}])
+                                conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
+                                st.success("✅ Konto erstellt! Bitte logge dich ein.")
+                                st.balloons()
+                                st.session_state['auth_mode'] = 'login'
             
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'; st.rerun()
