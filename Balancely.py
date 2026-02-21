@@ -50,7 +50,7 @@ st.markdown("""
         color: white !important;
         border-color: #ef4444 !important;
     }
-    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p:contains("Einnahme")) {
+    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p, span, div):has(*:contains("Einnahme")) {
         background-color: #10b981 !important;
         color: white !important;
         border-color: #10b981 !important;
