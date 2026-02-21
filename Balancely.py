@@ -7,62 +7,63 @@ import streamlit_authenticator as stauth
 # --- 1. SEITEN-KONFIGURATION ---
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
-# --- 2. CSS FÜR PERFEKTE AUSRICHTUNG ---
+# --- 2. DAS ULTIMATIVE CSS (ZENTRIERT & GLEICHMÄSSIG) ---
 st.markdown("""
     <style>
+    /* Hintergrund & Font */
     html, body, [data-testid="stAppViewContainer"] {
         background-color: #0e1117 !important;
     }
 
-    /* Zentriert den gesamten Block auf der Seite */
-    [data-testid="stMain"] > div {
-        display: flex !important;
-        justify-content: center !important;
+    /* 1. Alles vertikal und horizontal zentrieren */
+    [data-testid="stMain"] [data-testid="stVerticalBlock"] {
         align-items: center !important;
-        flex-direction: column !important;
+        justify-content: center !important;
     }
 
-    /* Die Login/Register Box */
+    /* 2. Die Login-Box fixieren */
     [data-testid="stForm"] {
         background-color: #161b22 !important;
-        padding: 3rem !important;
+        padding: 40px !important;
         border-radius: 12px !important;
         border: 1px solid #30363d !important;
-        width: 400px !important;
+        width: 380px !important;
         margin: 0 auto !important;
     }
 
-    /* Gleiche Höhe für ALLE Eingabefelder */
-    div[data-baseweb="input"], input {
-        height: 48px !important;
-        line-height: 48px !important;
-        font-size: 16px !important;
-        background-color: #0d1117 !important;
-        color: white !important;
+    /* 3. Zeilenhöhe für alle Felder erzwingen */
+    div[data-baseweb="input"] {
+        height: 45px !important;
         border-radius: 6px !important;
+        background-color: #0d1117 !important;
+    }
+    
+    input {
+        height: 45px !important;
+        color: white !important;
     }
 
-    /* Dashboard-Blau bei Klick */
+    /* 4. Kein Gelb! Nur Dashboard-Blau */
     div[data-baseweb="input"]:focus-within {
         border-color: #1f6feb !important;
         box-shadow: 0 0 0 1px #1f6feb !important;
     }
 
-    /* Button Styling */
+    /* 5. Buttons Stylen */
     button[kind="primaryFormSubmit"] {
         background-color: #1f6feb !important;
-        height: 48px !important;
+        height: 45px !important;
         width: 100% !important;
+        border: none !important;
         font-weight: bold !important;
-        border-radius: 8px !important;
-        margin-top: 20px !important;
+        margin-top: 10px !important;
     }
 
-    /* Zentrierter Footer-Bereich */
+    /* 6. Footer (Noch kein Konto?) */
     .auth-footer {
-        width: 400px;
         text-align: center;
-        margin-top: 15px;
+        width: 380px;
+        margin-top: 20px;
     }
     
     .footer-text {
@@ -71,88 +72,79 @@ st.markdown("""
         margin-bottom: 0px;
     }
 
-    /* Switch-Link zentrieren */
+    /* Registrieren-Link */
     div.stButton > button {
         background: none !important;
         border: none !important;
         color: #58a6ff !important;
         margin: 0 auto !important;
         display: block !important;
-        padding: 0 !important;
-    }
-    
-    /* Entfernt den Standard-Auge-Button von Streamlit im Feld */
-    button[aria-label="Show password"] {
-        display: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. DATENBANK ---
+# --- 3. DATEN & AUTH ---
 conn = st.connection("gsheets", type=GSheetsConnection)
 user_db = conn.read(worksheet="users", ttl="0")
 
-# --- 4. NAVIGATION STATE ---
+credentials = {'usernames': {}}
+for _, row in user_db.iterrows():
+    credentials['usernames'][str(row['username'])] = {
+        'name': str(row['name']),
+        'password': str(row['password']) 
+    }
+
+authenticator = stauth.Authenticate(credentials, 'balancely_cookie', 'auth_key', cookie_expiry_days=30)
+
 if 'auth_mode' not in st.session_state:
     st.session_state['auth_mode'] = 'login'
-if 'show_pw' not in st.session_state:
-    st.session_state['show_pw'] = False
 
-# --- 5. INTERFACE ---
-st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)
-st.markdown("<h1 style='text-align: center; color: white;'>Balancely</h1>", unsafe_allow_html=True)
+# --- 4. DAS INTERFACE ---
+# Spacer für vertikale Mitte
+st.write("##") 
+st.write("##")
 
-# Container für die Box
-with st.container():
-    if st.session_state['auth_mode'] == 'login':
-        with st.form("login_form"):
-            st.markdown("<h3 style='text-align:center; color:white;'>Login</h3>", unsafe_allow_html=True)
-            user = st.text_input("Username")
+if not st.session_state.get("authentication_status"):
+    
+    st.markdown("<h1 style='text-align: center; color: white;'>Balancely</h1>", unsafe_allow_html=True)
+
+    # Wir nutzen EINE zentrale Spalte für die Box
+    col_main = st.columns([1, 2, 1])[1]
+
+    with col_main:
+        if st.session_state['auth_mode'] == 'login':
+            # Das Login-Feld vom Authenticator (bereits stabil gebaut)
+            authenticator.login(location='main')
             
-            # Passwort-Logik mit Auge daneben
-            pw_col, eye_col = st.columns([0.85, 0.15])
-            pw_type = "text" if st.session_state['show_pw'] else "password"
-            
-            with pw_col:
-                pw = st.text_input("Password", type=pw_type)
-            with eye_col:
-                st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
-                if st.button("👁️", key="toggle_login"):
-                    st.session_state['show_pw'] = not st.session_state['show_pw']
-                    st.rerun()
+            st.markdown('<div class="auth-footer"><p class="footer-text">Du hast noch kein Konto?</p></div>', unsafe_allow_html=True)
+            if st.button("Registrieren"):
+                st.session_state['auth_mode'] = 'signup'
+                st.rerun()
 
-            if st.form_submit_button("Login"):
-                # Hier Login-Prüfung einfügen
-                pass
-        
-        st.markdown('<div class="auth-footer"><p class="footer-text">Du hast noch kein Konto?</p></div>', unsafe_allow_html=True)
-        if st.button("Registrieren"):
-            st.session_state['auth_mode'] = 'signup'
-            st.rerun()
-
-    else:
-        with st.form("signup_form"):
-            st.markdown("<h3 style='text-align:center; color:white;'>Registrieren</h3>", unsafe_allow_html=True)
-            st.text_input("Dein voller Name")
-            st.text_input("Wunsch-Benutzername")
+        else:
+            with st.form("signup_form"):
+                st.markdown("<h3 style='text-align:center; color:white;'>Registrieren</h3>", unsafe_allow_html=True)
+                # Die Keys müssen eindeutig sein, um Fehler zu vermeiden
+                name = st.text_input("Name", key="reg_name")
+                user = st.text_input("Benutzername", key="reg_user")
+                pw = st.text_input("Passwort", type="password", key="reg_pass")
+                
+                if st.form_submit_button("Konto erstellen"):
+                    if name and user and pw:
+                        new_row = pd.DataFrame([{"name": name, "username": user, "password": pw}])
+                        updated = pd.concat([user_db, new_row], ignore_index=True)
+                        conn.update(worksheet="users", data=updated)
+                        st.success("Konto erstellt!")
+                        st.session_state['auth_mode'] = 'login'
+                        st.rerun()
             
-            # Passwort mit Auge daneben für Registrierung
-            pw_col_reg, eye_col_reg = st.columns([0.85, 0.15])
-            pw_type_reg = "text" if st.session_state['show_pw'] else "password"
-            
-            with pw_col_reg:
-                new_pw = st.text_input("Passwort", type=pw_type_reg)
-            with eye_col_reg:
-                st.markdown("<div style='height:28px;'></div>", unsafe_allow_html=True)
-                if st.button("👁️", key="toggle_reg"):
-                    st.session_state['show_pw'] = not st.session_state['show_pw']
-                    st.rerun()
+            st.markdown('<div class="auth-footer"><p class="footer-text">Bereits ein Konto?</p></div>', unsafe_allow_html=True)
+            if st.button("Anmelden"):
+                st.session_state['auth_mode'] = 'login'
+                st.rerun()
 
-            if st.form_submit_button("Konto erstellen"):
-                # Hier Speicher-Logik einfügen
-                pass
-        
-        st.markdown('<div class="auth-footer"><p class="footer-text">Bereits ein Konto?</p></div>', unsafe_allow_html=True)
-        if st.button("Anmelden"):
-            st.session_state['auth_mode'] = 'login'
-            st.rerun()
+# --- 5. DASHBOARD ---
+else:
+    authenticator.logout('Abmelden', 'sidebar')
+    st.title("⚖️ Dashboard")
+    # Hier dein Finanz-Code...
