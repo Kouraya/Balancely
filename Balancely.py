@@ -13,36 +13,42 @@ st.set_page_config(
 
 DB_FILE = "balancely_data.csv"
 
-# --- 2. ERWEITERTES CSS FÜR DESIGN-FIXES ---
+# --- 2. DESIGN-OPTIMIERUNG (CSS) ---
 st.markdown("""
     <style>
-    /* Hintergrundfarbe der App */
+    /* Hintergrund und Karten-Design */
     .stApp { background-color: #0e1117; }
     
-    /* Eingabefelder stylen und vergrößern */
+    /* Eingabefelder in Spalten optimieren */
     div[data-testid="stNumberInput"] {
         background-color: #161b22;
-        border-radius: 10px;
-        padding: 5px;
+        border-radius: 8px;
+        padding: 2px;
     }
     
-    /* Den roten Rahmen bei 0.00 Euro unterdrücken */
+    /* Verhindert das "Rote Leuchten" bei Startwert 0.00 */
     input[aria-invalid="true"] {
         border-color: rgba(255, 255, 255, 0.1) !important;
         box-shadow: none !important;
     }
 
-    /* Metriken schöner anzeigen */
+    /* Hilfstext unter Eingabefeldern ausblenden (vermeidet Quetschen) */
+    div[data-testid="stMarkdownContainer"] p {
+        font-size: 0.85rem !important;
+        margin-bottom: 0px !important;
+    }
+
+    /* Metriken (KPIs) verschönern */
     [data-testid="stMetric"] {
         background-color: #1f2937;
         padding: 20px;
-        border-radius: 15px;
+        border-radius: 12px;
         border: 1px solid #374151;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. DATEN-FUNKTIONEN ---
+# --- 3. DATEN-LOGIK ---
 def load_data():
     if os.path.exists(DB_FILE):
         try:
@@ -59,12 +65,12 @@ def save_data(df):
 if 'data' not in st.session_state:
     st.session_state.data = load_data()
 
-# --- 4. HEADER ---
+# --- 4. HEADER & NAVIGATION ---
 st.title("⚖️ Balancely")
-st.write("Dein intelligentes Finanz-Dashboard")
+st.write("Dein Weg zur finanziellen Übersicht.")
 
-# --- 5. EINGABE-BEREICH (JETZT OBEN IM HAUPTFENSTER) ---
-with st.expander("➕ Neue Transaktion hinzufügen", expanded=True):
+# --- 5. EINGABE-BEREICH (HORIZONTAL) ---
+with st.expander("➕ Neue Buchung erfassen", expanded=True):
     with st.form("main_form", clear_on_submit=True):
         col_date, col_type, col_kat, col_amt = st.columns(4)
         
@@ -78,10 +84,10 @@ with st.expander("➕ Neue Transaktion hinzufügen", expanded=True):
                 "Transport", "Shopping", "Abo & Verträge", "Sonstiges"
             ])
         with col_amt:
-            # Fix: Startwert auf 0.00 und explizites Format
+            # Fix: Startwert 0.0 verhindert rote Fehlermarkierung
             betrag = st.number_input("Betrag in €", min_value=0.0, step=0.01, format="%.2f")
         
-        notiz = st.text_input("Notiz / Beschreibung (optional)")
+        notiz = st.text_input("Notiz (optional)")
         
         submit = st.form_submit_button("Buchung speichern", use_container_width=True)
         
@@ -91,28 +97,58 @@ with st.expander("➕ Neue Transaktion hinzufügen", expanded=True):
                                         columns=st.session_state.data.columns)
                 st.session_state.data = pd.concat([st.session_state.data, new_entry], ignore_index=True)
                 save_data(st.session_state.data)
-                st.success(f"Gespeichert: {betrag:.2f} € für {kat}")
+                st.success(f"Erfolgreich hinzugefügt: {betrag:.2f} €")
                 st.rerun()
             else:
-                st.warning("Bitte gib einen Betrag größer als 0 ein.")
+                st.warning("Bitte gib einen Betrag ein.")
 
 st.divider()
 
-# --- 6. DASHBOARD-ANZEIGE ---
+# --- 6. DASHBOARD & STATISTIKEN ---
 if not st.session_state.data.empty:
     df = st.session_state.data
+    
+    # Berechnungen
     ein = df[df["Typ"] == "Einnahme"]["Betrag"].sum()
     aus = df[df["Typ"] == "Ausgabe"]["Betrag"].sum()
     bilanz = ein - aus
 
-    # Kennzahlen
+    # Info-Karten
     m1, m2, m3 = st.columns(3)
     m1.metric("Einnahmen", f"{ein:,.2f} €")
     m2.metric("Ausgaben", f"-{aus:,.2f} €", delta_color="inverse")
-    m3.metric("Kontostand", f"{bilanz:,.2f} €")
+    m3.metric("Balance", f"{bilanz:,.2f} €")
 
-    st.write("### Statistiken & Verlauf")
+    st.write("### Analyse")
     c1, c2 = st.columns([1, 1])
 
     with c1:
-        ausgaben_df = df[df["Typ"] == "
+        ausgaben_df = df[df["Typ"] == "Ausgabe"]
+        if not ausgaben_df.empty:
+            fig_pie = px.pie(ausgaben_df, values='Betrag', names='Kategorie', 
+                            title="Ausgaben nach Kategorie", hole=0.5,
+                            color_discrete_sequence=px.colors.qualitative.Safe)
+            st.plotly_chart(fig_pie, use_container_width=True)
+        else:
+            st.info("Noch keine Ausgaben für Statistik verfügbar.")
+
+    with c2:
+        df_sorted = df.sort_values("Datum")
+        fig_bar = px.bar(df_sorted, x="Datum", y="Betrag", color="Typ", 
+                        title="Verlauf der Buchungen", barmode="group",
+                        color_discrete_map={"Einnahme": "#00CC96", "Ausgabe": "#EF553B"})
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    # Transaktionsliste
+    st.subheader("Letzte Buchungen")
+    st.dataframe(df.sort_values(by="Datum", ascending=False), use_container_width=True, hide_index=True)
+    
+    # Reset in der Sidebar
+    if st.sidebar.button("🗑️ Alle Daten löschen"):
+        if os.path.exists(DB_FILE):
+            os.remove(DB_FILE)
+        st.session_state.data = pd.DataFrame(columns=["Datum", "Kategorie", "Typ", "Betrag", "Notiz"])
+        st.rerun()
+
+else:
+    st.info("Willkommen bei Balancely! Erfasse oben deine erste Buchung, um das Dashboard zu aktivieren.")
