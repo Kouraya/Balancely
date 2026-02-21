@@ -213,7 +213,7 @@ else:
                                 st.error("⚠️ Dieser Username ist bereits vergeben.")
                             else:
                                 new_u = pd.DataFrame([{
-                                    "name": s_name.strip(), 
+                                    "name": make_hashes(s_name.strip()),
                                     "username": s_user, 
                                     "password": make_hashes(s_pass)
                                 }])
