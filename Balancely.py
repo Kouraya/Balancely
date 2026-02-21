@@ -6,71 +6,87 @@ import streamlit_authenticator as stauth
 # --- 1. SEITEN-KONFIGURATION ---
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
-# --- 2. DAS ULTIMATIVE CSS (KEIN OVERLAP, PERFEKT ZENTRIERT) ---
+# --- 2. CSS FÜR ABSOLUTE ZENTRIERUNG & CLEAN LOOK ---
 st.markdown("""
     <style>
-    /* Hintergrund */
+    /* Hintergrundfarbe */
     html, body, [data-testid="stAppViewContainer"] {
         background-color: #0e1117 !important;
     }
 
-    /* FIX: "Press Enter to submit form" verstecken */
-    [data-testid="stForm"] div[data-testid="InputInstructions"] {
+    /* 1. Haupt-Container auf volle Höhe und Zentrierung zwingen */
+    [data-testid="stMain"] [data-testid="stVerticalBlock"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
+
+    /* 2. "Press Enter to submit" & Hilfstexte verstecken */
+    [data-testid="InputInstructions"] {
         display: none !important;
     }
 
-    /* Die Form-Box Stylen */
+    /* 3. Die Login-Box Stylen (Kein Margin-Left nötig durch Flex) */
     [data-testid="stForm"] {
         background-color: #161b22 !important;
         padding: 40px !important;
         border-radius: 12px !important;
         border: 1px solid #30363d !important;
-        min-width: 350px !important;
+        width: 400px !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
-    /* Zeilenhöhe und Font-Zwang */
+    /* 4. Einheitliche Felder & Dashboard-Farben */
     div[data-baseweb="input"] {
-        height: 45px !important;
+        height: 48px !important;
         background-color: #0d1117 !important;
+        border-radius: 8px !important;
     }
     
     input {
-        font-family: 'Source Sans Pro', sans-serif !important;
+        color: white !important;
     }
 
-    /* Button Styling */
+    /* Fokus-Farbe (Blau statt Gelb) */
+    div[data-baseweb="input"]:focus-within {
+        border-color: #1f6feb !important;
+        box-shadow: 0 0 0 1px #1f6feb !important;
+    }
+
+    /* Button Styling (Dashboard Blau) */
     button[kind="primaryFormSubmit"] {
         background-color: #1f6feb !important;
         height: 45px !important;
         width: 100% !important;
         border: none !important;
         font-weight: bold !important;
+        border-radius: 8px !important;
     }
 
-    /* Footer (Text und Link zentrieren) */
+    /* 5. Footer (Zentrierter Text unter der Box) */
     .auth-footer {
-        text-align: center;
-        margin-top: 20px;
-        color: #8b949e;
-        font-size: 14px;
+        text-align: center !important;
+        width: 400px !important; /* Exakt so breit wie die Form */
+        margin-top: 25px !important;
+    }
+    
+    .footer-text {
+        color: #8b949e !important;
+        font-size: 14px !important;
+        margin-bottom: 5px !important;
     }
 
-    /* Den Registrieren-Link mittig setzen */
+    /* Registrieren-Link als cleaner Button */
     div.stButton > button {
         background: none !important;
         border: none !important;
         color: #58a6ff !important;
+        font-weight: 600 !important;
         margin: 0 auto !important;
         display: block !important;
-    }
-    
-    /* Zentriert den Titel über der Box */
-    .main-title {
-        text-align: center;
-        color: white;
-        font-size: 42px;
-        font-weight: bold;
-        margin-bottom: 20px;
+        padding: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -79,46 +95,45 @@ st.markdown("""
 conn = st.connection("gsheets", type=GSheetsConnection)
 user_db = conn.read(worksheet="users", ttl="0")
 
-# Navigation State
 if 'auth_mode' not in st.session_state:
     st.session_state['auth_mode'] = 'login'
 
-# --- 4. DAS INTERFACE (MIT ECHTER ZENTRIERUNG) ---
-# Erzeugt drei Spalten: Links und rechts leer, die Mitte (Index 1) bekommt die Box
-_, center_col, _ = st.columns([1, 1.2, 1])
+# --- 4. INTERFACE ---
+# Vertikaler Abstand für die "echte" Mitte
+st.markdown("<div style='height: 12vh;'></div>", unsafe_allow_html=True)
 
-with center_col:
-    st.markdown("<div style='height: 10vh;'></div>", unsafe_allow_html=True)
-    st.markdown("<p class='main-title'>Balancely</p>", unsafe_allow_html=True)
+# Überschrift zentriert
+st.markdown("<h1 style='text-align: center; color: white; font-size: 45px; margin-bottom: 30px;'>Balancely</h1>", unsafe_allow_html=True)
 
-    if st.session_state['auth_mode'] == 'login':
-        with st.form("login_form"):
-            st.markdown("<h3 style='text-align:center; color:white;'>Login</h3>", unsafe_allow_html=True)
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            
-            # Hier nutzen wir den Streamlit-Authenticator Check oder deine eigene Logik
-            if st.form_submit_button("Anmelden"):
-                # Deine Login-Logik hier...
-                pass
+# Hier nutzen wir jetzt keine Spalten mehr im Python-Code, 
+# da das CSS die Zentrierung übernimmt!
+if st.session_state['auth_mode'] == 'login':
+    with st.form("login_form"):
+        st.markdown("<h3 style='text-align:center; color:white; margin-top:0;'>Anmelden</h3>", unsafe_allow_html=True)
+        st.text_input("Username")
+        st.text_input("Password", type="password")
+        if st.form_submit_button("Login"):
+            # Login Logik hier
+            pass
 
-        st.markdown('<div class="auth-footer">Du hast noch kein Konto?</div>', unsafe_allow_html=True)
-        if st.button("Registrieren"):
-            st.session_state['auth_mode'] = 'signup'
-            st.rerun()
+    # Der Footer-Bereich ist durch die CSS-Klasse "auth-footer" und 
+    # die Breite von 400px perfekt unter der Box ausgerichtet.
+    st.markdown('<div class="auth-footer"><p class="footer-text">Du hast noch kein Konto?</p></div>', unsafe_allow_html=True)
+    if st.button("Jetzt registrieren"):
+        st.session_state['auth_mode'] = 'signup'
+        st.rerun()
 
-    else:
-        with st.form("signup_form"):
-            st.markdown("<h3 style='text-align:center; color:white;'>Registrieren</h3>", unsafe_allow_html=True)
-            st.text_input("Dein Name")
-            st.text_input("Username")
-            st.text_input("Passwort", type="password")
-            
-            if st.form_submit_button("Konto erstellen"):
-                # Deine Registrierungs-Logik hier...
-                pass
-        
-        st.markdown('<div class="auth-footer">Bereits ein Konto?</div>', unsafe_allow_html=True)
-        if st.button("Anmelden"):
-            st.session_state['auth_mode'] = 'login'
-            st.rerun()
+else:
+    with st.form("signup_form"):
+        st.markdown("<h3 style='text-align:center; color:white; margin-top:0;'>Konto erstellen</h3>", unsafe_allow_html=True)
+        st.text_input("Dein Name", key="s_name")
+        st.text_input("Benutzername", key="s_user")
+        st.text_input("Passwort", type="password", key="s_pw")
+        if st.form_submit_button("Registrieren"):
+            # Registrierungs-Logik hier
+            pass
+    
+    st.markdown('<div class="auth-footer"><p class="footer-text">Bereits ein Konto?</p></div>', unsafe_allow_html=True)
+    if st.button("Zum Login"):
+        st.session_state['auth_mode'] = 'login'
+        st.rerun()
