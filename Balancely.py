@@ -22,7 +22,7 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (DESIGN & BUGFIX FÜR PASSWORT-AUGE) ---
+# --- 3. CSS ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -43,42 +43,47 @@ st.markdown("""
         border-radius: 24px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
-    
-    /* SEGMENTED CONTROL FARBEN */
-    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:nth-child(1) {
-        background-color: #ef4444 !important;
-        color: white !important;
+
+    /* TYP-BUTTONS */
+    .typ-btn {
+        width: 100%; padding: 10px; border-radius: 10px;
+        border: 2px solid transparent; font-size: 15px;
+        font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-ausgabe-active {
+        background-color: #ef4444 !important; color: white !important;
         border-color: #ef4444 !important;
     }
-    div[data-testid="stSegmentedControl"] button[aria-checked="true"]:has(p, span, div):nth-child(2) {
-        background-color: #10b981 !important;
-        color: white !important;
+    .btn-ausgabe-inactive {
+        background-color: transparent !important; color: #ef4444 !important;
+        border-color: #ef4444 !important;
+    }
+    .btn-einnahme-active {
+        background-color: #10b981 !important; color: white !important;
+        border-color: #10b981 !important;
+    }
+    .btn-einnahme-inactive {
+        background-color: transparent !important; color: #10b981 !important;
         border-color: #10b981 !important;
     }
 
-    /* INPUT STYLING & FIX FÜR DAS AUGE-ICON */
+    /* INPUT STYLING */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
     }
-    
-    /* Dieser Block behebt den Bug neben dem Auge: */
-    div[data-testid="stInputInstructions"] {
-        display: none !important;
-    }
+    div[data-testid="stInputInstructions"] { display: none !important; }
     div[data-baseweb="input"] > div:last-child {
         background-color: transparent !important;
         padding-right: 10px !important;
     }
-    
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
 
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
         border-right: 1px solid #1e293b !important;
     }
-    
     button[kind="primaryFormSubmit"] {
         background: linear-gradient(135deg, #38bdf8, #1d4ed8) !important;
         border: none !important; height: 50px !important;
@@ -91,18 +96,17 @@ st.markdown("""
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
+if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # --- 5. LOGIK ---
-
 if st.session_state['logged_in']:
     with st.sidebar:
         st.markdown(f"<h2 style='color:white;'>Balancely ⚖️</h2>", unsafe_allow_html=True)
         st.markdown(f"👤 Eingeloggt: **{st.session_state['user_name']}**")
         st.markdown("---")
         menu = st.radio("Navigation", ["📈 Dashboard", "💸 Transaktion", "📂 Analysen", "⚙️ Einstellungen"], label_visibility="collapsed")
-        
         st.markdown("<div style='height: 30vh;'></div>", unsafe_allow_html=True)
         if st.button("Logout ➜", use_container_width=True, type="secondary"):
             st.session_state['logged_in'] = False
@@ -133,9 +137,28 @@ if st.session_state['logged_in']:
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
+
+        # TYP-AUSWAHL BUTTONS (außerhalb des Forms!)
+        st.markdown("**Typ wählen**")
+        col_a, col_e = st.columns(2)
+        with col_a:
+            a_class = "btn-ausgabe-active" if st.session_state['t_type'] == "Ausgabe" else "btn-ausgabe-inactive"
+            if st.button("🔴  Ausgabe", use_container_width=True, key="btn_ausgabe"):
+                st.session_state['t_type'] = "Ausgabe"
+                st.rerun()
+        with col_e:
+            if st.button("🟢  Einnahme", use_container_width=True, key="btn_einnahme"):
+                st.session_state['t_type'] = "Einnahme"
+                st.rerun()
+
+        # Farbige Anzeige welcher Typ aktiv ist
+        t_type = st.session_state['t_type']
+        if t_type == "Ausgabe":
+            st.markdown("<p style='color:#ef4444; font-weight:600;'>● Ausgabe ausgewählt</p>", unsafe_allow_html=True)
+        else:
+            st.markdown("<p style='color:#10b981; font-weight:600;'>● Einnahme ausgewählt</p>", unsafe_allow_html=True)
+
         with st.form("t_form", clear_on_submit=True):
-            t_type = st.segmented_control("Typ wählen", ["Ausgabe", "Einnahme"], default="Ausgabe")
-            
             col1, col2 = st.columns(2)
             with col1:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
@@ -144,14 +167,14 @@ if st.session_state['logged_in']:
                 cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                 t_cat = st.selectbox("Kategorie", cats)
                 t_note = st.text_input("Notiz")
-            
+
             if st.form_submit_button("Speichern"):
                 new_row = pd.DataFrame([{
-                    "user": st.session_state['user_name'], 
-                    "datum": str(t_date), 
-                    "typ": t_type, 
-                    "kategorie": t_cat, 
-                    "betrag": t_amount if t_type == "Einnahme" else -t_amount, 
+                    "user": st.session_state['user_name'],
+                    "datum": str(t_date),
+                    "typ": t_type,
+                    "kategorie": t_cat,
+                    "betrag": t_amount if t_type == "Einnahme" else -t_amount,
                     "notiz": t_note
                 }])
                 df_old = conn.read(worksheet="transactions", ttl="0")
@@ -165,9 +188,9 @@ else:
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
-    
+
     _, center_col, _ = st.columns([1, 1.2, 1])
-    
+
     with center_col:
         if st.session_state['auth_mode'] == 'login':
             with st.form("l_f"):
@@ -183,11 +206,11 @@ else:
                         st.rerun()
                     else:
                         st.error("Login ungültig.")
-            
+
             if st.button("Konto erstellen", use_container_width=True):
                 st.session_state['auth_mode'] = 'signup'
                 st.rerun()
-        
+
         else:
             with st.form("s_f"):
                 st.markdown("<h3 style='text-align:center; color:white;'>Registrierung</h3>", unsafe_allow_html=True)
@@ -195,7 +218,7 @@ else:
                 s_user = st.text_input("Username", placeholder="max123")
                 s_pass = st.text_input("Passwort", type="password")
                 c_pass = st.text_input("Passwort wiederholen", type="password")
-                
+
                 if st.form_submit_button("Konto erstellen"):
                     if not s_name or not s_user or not s_pass:
                         st.error("❌ Bitte fülle alle Felder aus!")
@@ -214,16 +237,14 @@ else:
                             else:
                                 new_u = pd.DataFrame([{
                                     "name": make_hashes(s_name.strip()),
-                                    "username": s_user, 
+                                    "username": s_user,
                                     "password": make_hashes(s_pass)
                                 }])
                                 conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
                                 st.success("✅ Konto erstellt! Bitte logge dich ein.")
                                 st.balloons()
                                 st.session_state['auth_mode'] = 'login'
-            
+
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-
-
