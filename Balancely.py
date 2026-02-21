@@ -22,7 +22,7 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
-# --- 3. CSS (DESIGN & BUGFIX FÜR PASSWORT-AUGE) ---
+# --- 3. CSS (DESIGN & ULTIMATIVER ENTER-TEXT FIX) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -56,20 +56,21 @@ st.markdown("""
         border-color: #10b981 !important;
     }
 
-    /* INPUT STYLING & FIX FÜR DAS AUGE-ICON */
+    /* INPUT STYLING */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
     }
     
-    /* Dieser Block behebt den Bug neben dem Auge: */
-    div[data-testid="stInputInstructions"] {
+    /* FIX FÜR "PRESS ENTER" */
+    div[data-testid="stInputInstructions"], 
+    .st-emotion-cache-1pxm63p, 
+    small {
         display: none !important;
-    }
-    div[data-baseweb="input"] > div:last-child {
-        background-color: transparent !important;
-        padding-right: 10px !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        padding: 0px !important;
     }
     
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
@@ -122,10 +123,6 @@ if st.session_state['logged_in']:
                     c1.metric("Kontostand", f"{bal:,.2f} €")
                     c2.metric("Einnahmen", f"{ein:,.2f} €")
                     c3.metric("Ausgaben", f"{aus:,.2f} €", delta_color="inverse")
-                    st.subheader("Ausgaben nach Kategorie")
-                    ausg_df = user_df[user_df['typ'] == "Ausgabe"].copy()
-                    ausg_df['betrag'] = abs(pd.to_numeric(ausg_df['betrag']))
-                    st.bar_chart(data=ausg_df, x="kategorie", y="betrag", color="kategorie")
                 else:
                     st.info("Noch keine Daten vorhanden.")
         except:
@@ -135,7 +132,6 @@ if st.session_state['logged_in']:
         st.title("Buchung hinzufügen ✍️")
         with st.form("t_form", clear_on_submit=True):
             t_type = st.segmented_control("Typ wählen", ["Ausgabe", "Einnahme"], default="Ausgabe")
-            
             col1, col2 = st.columns(2)
             with col1:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01)
@@ -158,7 +154,6 @@ if st.session_state['logged_in']:
                 df_new = pd.concat([df_old, new_row], ignore_index=True)
                 conn.update(worksheet="transactions", data=df_new)
                 st.success(f"{t_type} erfolgreich gespeichert!")
-                st.balloons()
 
 else:
     # --- LOGIN / SIGNUP ---
@@ -212,17 +207,17 @@ else:
                             if s_user in df_u['username'].values:
                                 st.error("⚠️ Dieser Username ist bereits vergeben.")
                             else:
+                                # HIER: Name wird jetzt auch verschlüsselt (gehasht) gespeichert
                                 new_u = pd.DataFrame([{
-                                    "name": s_name.strip(), 
+                                    "name": make_hashes(s_name.strip()), 
                                     "username": s_user, 
                                     "password": make_hashes(s_pass)
                                 }])
                                 conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
                                 st.success("✅ Konto erstellt! Bitte logge dich ein.")
-                                st.balloons()
                                 st.session_state['auth_mode'] = 'login'
+                                st.rerun()
             
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-
