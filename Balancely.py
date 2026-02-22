@@ -4,6 +4,7 @@ import pandas as pd
 import hashlib
 import datetime
 import re
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
@@ -102,13 +103,10 @@ st.markdown("""
         border: none !important; height: 50px !important;
         border-radius: 12px !important; font-weight: 700 !important;
     }
-    /* Standard-Stil für Toggle-Buttons */
-    [data-testid="stButton"] button {
-        border-radius: 10px !important;
-        height: 42px !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        transition: all 0.2s ease !important;
+    /* iframe für Toggle-Buttons rahmenlos */
+    iframe[title="toggle_buttons"] {
+        border: none !important;
+        margin-bottom: -1rem !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -119,6 +117,61 @@ if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
 if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
 
 conn = st.connection("gsheets", type=GSheetsConnection)
+
+def render_toggle(current_type):
+    """Rendert die Toggle-Buttons als HTML-Komponente mit postMessage-Callback."""
+    ausgabe_active = current_type == "Ausgabe"
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ background: transparent; display: flex; gap: 10px; padding: 4px 2px; }}
+        .btn {{
+            flex: 0 0 160px;
+            height: 42px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #334155;
+            background: transparent;
+            color: #94a3b8;
+            font-family: "Source Sans 3 Variable", sans-serif;
+            transition: all 0.15s ease;
+        }}
+        .btn:hover {{ filter: brightness(1.2); }}
+        .btn-ausgabe-active {{
+            background: rgba(239,68,68,0.25);
+            border: 2px solid #ef4444;
+            color: #fca5a5;
+        }}
+        .btn-einnahme-active {{
+            background: rgba(16,185,129,0.25);
+            border: 2px solid #10b981;
+            color: #6ee7b7;
+        }}
+    </style>
+    </head>
+    <body>
+        <button
+            class="btn {'btn-ausgabe-active' if ausgabe_active else ''}"
+            onclick="window.parent.postMessage({{type:'toggle', value:'Ausgabe'}}, '*')">
+            ↗ Ausgabe {'✓' if ausgabe_active else ''}
+        </button>
+        <button
+            class="btn {'btn-einnahme-active' if not ausgabe_active else ''}"
+            onclick="window.parent.postMessage({{type:'toggle', value:'Einnahme'}}, '*')">
+            ↙ Einnahme {'✓' if not ausgabe_active else ''}
+        </button>
+    </body>
+    </html>
+    """
+    # components.html gibt den Rückgabewert via postMessage nicht direkt zurück,
+    # daher nutzen wir einen Query-Parameter-Trick über st.query_params
+    clicked = components.html(html, height=52, scrolling=False)
+    return clicked
 
 if st.session_state['logged_in']:
     with st.sidebar:
@@ -158,51 +211,51 @@ if st.session_state['logged_in']:
         st.title("Buchung hinzufügen ✍️")
         t_type = st.session_state['t_type']
 
-        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:2px;'>Typ wählen</p>", unsafe_allow_html=True)
 
-        col_a, col_e, _ = st.columns([1, 1, 3])
-        with col_a:
-            if st.button("↗ Ausgabe" + (" ✓" if t_type == "Ausgabe" else ""), key="btn_ausgabe", use_container_width=True):
-                st.session_state['t_type'] = "Ausgabe"
-                st.rerun()
-        with col_e:
-            if st.button("↙ Einnahme" + (" ✓" if t_type == "Einnahme" else ""), key="btn_einnahme", use_container_width=True):
-                st.session_state['t_type'] = "Einnahme"
-                st.rerun()
+        # Toggle via bidirektionaler HTML-Komponente
+        ausgabe_active = t_type == "Ausgabe"
+        toggle_html = f"""
+        <!DOCTYPE html><html><head>
+        <style>
+            * {{ margin:0; padding:0; box-sizing:border-box; }}
+            body {{ background:transparent; display:flex; gap:10px; padding:4px 2px; }}
+            .btn {{
+                flex: 0 0 160px; height:42px; border-radius:10px;
+                font-size:14px; font-weight:600; cursor:pointer;
+                border:1px solid #334155; background:transparent; color:#94a3b8;
+                font-family:"Source Sans 3 Variable",sans-serif;
+                transition: all 0.15s ease;
+            }}
+            .btn:hover {{ filter:brightness(1.2); }}
+            .a {{ background:rgba(239,68,68,0.25); border:2px solid #ef4444; color:#fca5a5; }}
+            .e {{ background:rgba(16,185,129,0.25); border:2px solid #10b981; color:#6ee7b7; }}
+        </style>
+        </head><body>
+        <button class="btn {'a' if ausgabe_active else ''}"
+            onclick="window.parent.postMessage({{type:'streamlit:setComponentValue',value:'Ausgabe'}},'*')">
+            ↗ Ausgabe {'✓' if ausgabe_active else ''}
+        </button>
+        <button class="btn {'e' if not ausgabe_active else ''}"
+            onclick="window.parent.postMessage({{type:'streamlit:setComponentValue',value:'Einnahme'}},'*')">
+            ↙ Einnahme {'✓' if not ausgabe_active else ''}
+        </button>
+        <script>
+            window.addEventListener('message', function(e) {{
+                if (e.data.type === 'streamlit:render') {{}}
+            }});
+            window.parent.postMessage({{type:'streamlit:componentReady',apiVersion:1}},'*');
+        </script>
+        </body></html>
+        """
 
-        # JS stylt die Buttons nach dem Rendern direkt im DOM
-        active_ausgabe = t_type == "Ausgabe"
-        st.markdown(f"""
-            <script>
-            (function() {{
-                function styleToggleButtons() {{
-                    const buttons = window.parent.document.querySelectorAll('[data-testid="stButton"] button');
-                    buttons.forEach(btn => {{
-                        const text = btn.innerText;
-                        if (text.includes('Ausgabe')) {{
-                            if ({'true' if active_ausgabe else 'false'}) {{
-                                btn.style.cssText = 'background: rgba(239,68,68,0.25) !important; border: 2px solid #ef4444 !important; color: #fca5a5 !important; font-weight: 700 !important;';
-                            }} else {{
-                                btn.style.cssText = 'background: transparent !important; border: 1px solid #334155 !important; color: #94a3b8 !important;';
-                            }}
-                        }} else if (text.includes('Einnahme')) {{
-                            if ({'false' if active_ausgabe else 'true'}) {{
-                                btn.style.cssText = 'background: rgba(16,185,129,0.25) !important; border: 2px solid #10b981 !important; color: #6ee7b7 !important; font-weight: 700 !important;';
-                            }} else {{
-                                btn.style.cssText = 'background: transparent !important; border: 1px solid #334155 !important; color: #94a3b8 !important;';
-                            }}
-                        }}
-                    }});
-                }}
-                // Mehrfach versuchen da Streamlit async rendert
-                setTimeout(styleToggleButtons, 50);
-                setTimeout(styleToggleButtons, 200);
-                setTimeout(styleToggleButtons, 500);
-            }})();
-            </script>
-        """, unsafe_allow_html=True)
+        clicked = components.html(toggle_html, height=54, scrolling=False)
 
-        st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+        if clicked is not None and clicked != t_type:
+            st.session_state['t_type'] = clicked
+            st.rerun()
+
+        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
