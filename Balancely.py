@@ -551,10 +551,16 @@ if st.session_state['logged_in']:
             st.session_state['logged_in'] = False
             st.rerun()
 
-    # FIX: Wenn der Tab gewechselt wurde → show_new_cat zurücksetzen
-    if menu != st.session_state.get('_last_menu', ''):
-        st.session_state['show_new_cat'] = False
-        st.session_state['_last_menu'] = menu
+    # FIX: Dialog-States nur beibehalten wenn explizit geöffnet (_dialog_just_opened).
+    # Bei jedem anderen Render (Tab-Wechsel, Typ-Wechsel, normaler Reload) alles zurücksetzen.
+    if st.session_state.pop('_dialog_just_opened', False):
+        pass  # Dialog wurde gerade explizit geöffnet → States stehen lassen
+    else:
+        # Kein explizites Öffnen → alle Dialog-States zurücksetzen
+        st.session_state['show_new_cat']    = False
+        st.session_state['edit_cat_data']   = None
+        st.session_state['delete_cat_data'] = None
+    st.session_state['_last_menu'] = menu
 
     # ── Dashboard ────────────────────────────────────────────
     if menu == "📈 Dashboard":
@@ -627,7 +633,6 @@ if st.session_state['logged_in']:
                 type="primary" if t_type == "Ausgabe" else "secondary"
             ):
                 # FIX: show_new_cat beim Typ-Wechsel zurücksetzen
-                st.session_state['show_new_cat'] = False
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
         with te:
@@ -637,7 +642,6 @@ if st.session_state['logged_in']:
                 type="primary" if t_type == "Einnahme" else "secondary"
             ):
                 # FIX: show_new_cat beim Typ-Wechsel zurücksetzen
-                st.session_state['show_new_cat'] = False
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
 
@@ -682,8 +686,9 @@ if st.session_state['logged_in']:
         with cat_btn_col:
             if st.button("➕ Neue Kategorie erstellen", use_container_width=True, type="secondary"):
                 # FIX: Nur hier wird show_new_cat auf True gesetzt
-                st.session_state['show_new_cat'] = True
-                st.session_state['new_cat_typ']  = t_type
+                st.session_state['show_new_cat']      = True
+                st.session_state['new_cat_typ']       = t_type
+                st.session_state['_dialog_just_opened'] = True
                 st.rerun()
         if custom_cats:
             with manage_col:
@@ -703,6 +708,7 @@ if st.session_state['logged_in']:
                                         'typ':       t_type,
                                         'old_label': cat,
                                     }
+                                    st.session_state['_dialog_just_opened'] = True
                                     st.rerun()
                                 if st.button("🗑️ Löschen", key=f"delcat_btn_{cat}",
                                              use_container_width=True):
@@ -711,6 +717,7 @@ if st.session_state['logged_in']:
                                         'typ':   t_type,
                                         'label': cat,
                                     }
+                                    st.session_state['_dialog_just_opened'] = True
                                     st.rerun()
 
         # ── Buchungstabelle ──────────────────────────────────
