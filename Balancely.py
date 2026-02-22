@@ -57,20 +57,6 @@ st.markdown("""
         border-color: #38bdf8 !important;
         box-shadow: none !important;
     }
-    /* Alle roten Ränder/Schatten entfernen */
-    div[data-baseweb="input"],
-    div[data-baseweb="base-input"],
-    div[data-baseweb="input"] *,
-    div[data-baseweb="base-input"] * {
-        box-shadow: none !important;
-        outline: none !important;
-    }
-    input, input:focus, input:focus-visible {
-        padding-left: 15px !important;
-        color: #f1f5f9 !important;
-        box-shadow: none !important;
-        outline: none !important;
-    }
     div[data-testid="stDateInput"] > div {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
@@ -104,6 +90,7 @@ st.markdown("""
         overflow: hidden !important;
         position: absolute !important;
     }
+    input { padding-left: 15px !important; color: #f1f5f9 !important; }
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
         border-right: 1px solid #1e293b !important;
@@ -114,51 +101,34 @@ st.markdown("""
         border-radius: 12px !important; font-weight: 700 !important;
     }
 
-    /* ===== TOGGLE RADIO STYLING ===== */
-    /* Label komplett ausblenden */
-    div[data-testid="stRadio"] > label {
-        display: none !important;
-    }
-    /* Radio-Container horizontal */
-    div[data-testid="stRadio"] > div {
-        display: flex !important;
-        flex-direction: row !important;
-        gap: 10px !important;
-    }
-    /* Jede Radio-Option als Button stylen */
-    div[data-testid="stRadio"] > div > label {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 160px !important;
-        height: 42px !important;
+    /* ===== SIDEBAR RADIO ===== */
+    [data-testid="stSidebar"] [data-testid="stRadio"] > div > label {
+        border: 1px solid #1e293b !important;
         border-radius: 10px !important;
-        border: 1px solid #334155 !important;
-        background: transparent !important;
+        padding: 8px 12px !important;
+        margin-bottom: 4px !important;
         color: #94a3b8 !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        cursor: pointer !important;
         transition: all 0.15s ease !important;
-        padding: 0 !important;
     }
-    /* Den echten Radio-Kreis verstecken */
-    div[data-testid="stRadio"] > div > label > div:first-child {
+    [data-testid="stSidebar"] [data-testid="stRadio"] > div > label:hover {
+        border-color: #38bdf8 !important;
+        color: #f1f5f9 !important;
+        background: rgba(56,189,248,0.08) !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stRadio"] > div > label:has(input:checked) {
+        border-color: #38bdf8 !important;
+        background: rgba(56,189,248,0.15) !important;
+        color: #f1f5f9 !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:first-child {
         display: none !important;
     }
-    /* Aktive Option - Ausgabe (erste) */
-    div[data-testid="stRadio"] > div > label:has(input:checked):first-of-type {
-        background: rgba(239,68,68,0.25) !important;
-        border: 2px solid #ef4444 !important;
-        color: #fca5a5 !important;
-        font-weight: 700 !important;
-    }
-    /* Aktive Option - Einnahme (zweite) */
-    div[data-testid="stRadio"] > div > label:has(input:checked):last-of-type {
-        background: rgba(16,185,129,0.25) !important;
-        border: 2px solid #10b981 !important;
-        color: #6ee7b7 !important;
-        font-weight: 700 !important;
+
+    /* ===== TOGGLE BUTTONS (Ausgabe/Einnahme) ===== */
+    div[data-testid="stHorizontalBlock"]:has(button[key="btn_ausgabe"]) {
+        gap: 10px !important;
+        margin-bottom: 16px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -206,22 +176,29 @@ if st.session_state['logged_in']:
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
+        t_type = st.session_state['t_type']
 
-        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:2px;'>Typ wählen</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
 
-        # st.radio als Toggle - nativ, kein JS, kein Hack
-        t_type = st.radio(
-            "Typ",
-            ["↗ Ausgabe", "↙ Einnahme"],
-            index=0 if st.session_state['t_type'] == 'Ausgabe' else 1,
-            horizontal=True,
-            label_visibility="collapsed"
-        )
-        # Wert normalisieren
-        t_type_clean = "Ausgabe" if "Ausgabe" in t_type else "Einnahme"
-        if st.session_state['t_type'] != t_type_clean:
-            st.session_state['t_type'] = t_type_clean
-            st.rerun()
+        col_a, col_e, _ = st.columns([1, 1, 3])
+        with col_a:
+            if st.button(
+                "↗ Ausgabe ✓" if t_type == "Ausgabe" else "↗ Ausgabe",
+                key="btn_ausgabe",
+                use_container_width=True,
+                type="primary" if t_type == "Ausgabe" else "secondary"
+            ):
+                st.session_state['t_type'] = "Ausgabe"
+                st.rerun()
+        with col_e:
+            if st.button(
+                "↙ Einnahme ✓" if t_type == "Einnahme" else "↙ Einnahme",
+                key="btn_einnahme",
+                use_container_width=True,
+                type="primary" if t_type == "Einnahme" else "secondary"
+            ):
+                st.session_state['t_type'] = "Einnahme"
+                st.rerun()
 
         st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
@@ -231,7 +208,7 @@ if st.session_state['logged_in']:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01, format="%.2f")
                 t_date = st.date_input("Datum", datetime.date.today())
             with col2:
-                cats = ["Gehalt", "Bonus", "Verkauf"] if t_type_clean == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
+                cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                 t_cat = st.selectbox("Kategorie", cats)
                 t_note = st.text_input("Notiz")
 
@@ -239,15 +216,15 @@ if st.session_state['logged_in']:
                 new_row = pd.DataFrame([{
                     "user": st.session_state['user_name'],
                     "datum": str(t_date),
-                    "typ": t_type_clean,
+                    "typ": t_type,
                     "kategorie": t_cat,
-                    "betrag": t_amount if t_type_clean == "Einnahme" else -t_amount,
+                    "betrag": t_amount if t_type == "Einnahme" else -t_amount,
                     "notiz": t_note
                 }])
                 df_old = conn.read(worksheet="transactions", ttl="0")
                 df_new = pd.concat([df_old, new_row], ignore_index=True)
                 conn.update(worksheet="transactions", data=df_new)
-                st.success(f"✅ {t_type_clean} über {t_amount:.2f} € gespeichert!")
+                st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
 
 else:
