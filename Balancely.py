@@ -43,29 +43,14 @@ st.markdown("""
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid #334155 !important;
         border-radius: 12px !important;
+        padding-right: 0 !important;
+        gap: 0 !important;
+    }
+    /* Leerer Spacer-div neben dem Auge ausblenden */
+    div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
+        display: none !important;
     }
     div[data-testid="stInputInstructions"] { display: none !important; }
-
-/* Leerer Space neben dem Auge-Icon fixen */
-div[data-baseweb="input"] > div:not(:first-child):empty {
-    display: none !important;
-}
-div[data-testid="stPasswordInput"] > div {
-    gap: 0 !important;
-}
-[data-testid="stPasswordInput"] input {
-    border-right: none !important;
-}
-/* Der Wrapper um das Auge */
-[data-testid="stPasswordInput"] div[data-baseweb="input"] {
-    padding-right: 0 !important;
-    gap: 0 !important;
-}
-/* Leeres Element direkt nach dem Input-Feld */
-div[data-baseweb="input"] > div[class]:not([data-testid]) + div:empty {
-    display: none !important;
-    width: 0 !important;
-}
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
@@ -127,18 +112,16 @@ if st.session_state['logged_in']:
         st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
 
         col_a, col_e, _ = st.columns([1, 1, 3])
-
         with col_a:
             if t_type == "Ausgabe":
-                st.markdown('<div style="background:rgba(239,68,68,0.25);border:2px solid #ef4444;border-radius:10px;padding:8px 16px;color:#fca5a5;font-weight:700;font-size:14px;text-align:center;margin-bottom:4px;">↗ Ausgabe ✓</div>', unsafe_allow_html=True)
+                st.markdown('<div style="background:rgba(239,68,68,0.25);border:2px solid #ef4444;border-radius:10px;padding:8px 16px;color:#fca5a5;font-weight:700;font-size:14px;text-align:center;">↗ Ausgabe ✓</div>', unsafe_allow_html=True)
             else:
                 if st.button("↗ Ausgabe", key="btn_ausgabe", use_container_width=True):
                     st.session_state['t_type'] = "Ausgabe"
                     st.rerun()
-
         with col_e:
             if t_type == "Einnahme":
-                st.markdown('<div style="background:rgba(16,185,129,0.25);border:2px solid #10b981;border-radius:10px;padding:8px 16px;color:#6ee7b7;font-weight:700;font-size:14px;text-align:center;margin-bottom:4px;">↙ Einnahme ✓</div>', unsafe_allow_html=True)
+                st.markdown('<div style="background:rgba(16,185,129,0.25);border:2px solid #10b981;border-radius:10px;padding:8px 16px;color:#6ee7b7;font-weight:700;font-size:14px;text-align:center;">↙ Einnahme ✓</div>', unsafe_allow_html=True)
             else:
                 if st.button("↙ Einnahme", key="btn_einnahme", use_container_width=True):
                     st.session_state['t_type'] = "Einnahme"
@@ -234,4 +217,3 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-
