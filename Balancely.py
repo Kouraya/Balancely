@@ -445,63 +445,72 @@ if st.session_state['logged_in']:
         except Exception:
             st.warning("Verbindung wird hergestellt...")
 
-    # ── Transaktion ──────────────────────────────────────────
+    # ── Transaktionen ────────────────────────────────────────
     elif menu == "💸 Transaktionen":
-        st.title("Transaktionen ✍️")
-        t_type = st.session_state['t_type']
+        user_name   = st.session_state['user_name']
+        t_type      = st.session_state['t_type']
+        std_cats    = DEFAULT_CATS[t_type]
+        custom_cats = load_custom_cats(user_name, t_type)
+        all_cats    = std_cats + custom_cats
 
+        # Dialog VOR allem rendern
+        if st.session_state.get('show_new_cat'):
+            new_category_dialog()
+
+        # ── Header ──────────────────────────────────────────
         st.markdown(
-            "<p style='color:#94a3b8;font-size:13px;margin-bottom:4px;'>Typ wählen</p>",
+            "<h1 style='margin-bottom:4px;'>Neue Buchung</h1>"
+            "<p style='color:#64748b;font-size:14px;margin-bottom:24px;'>"
+            "Erfasse Einnahmen und Ausgaben</p>",
             unsafe_allow_html=True
         )
-        col_a, col_e, _ = st.columns([1, 1, 3])
-        with col_a:
+
+        # ── Typ-Toggle als schicke Card-Buttons ─────────────
+        st.markdown(
+            "<p style='color:#64748b;font-size:12px;font-weight:600;"
+            "letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;'>"
+            "Typ</p>",
+            unsafe_allow_html=True
+        )
+        ta, te, _ = st.columns([1, 1, 3])
+        with ta:
             if st.button(
-                "↗ Ausgabe ✓" if t_type == "Ausgabe" else "↗ Ausgabe",
+                "↗ Ausgabe" + (" ✓" if t_type == "Ausgabe" else ""),
                 key="btn_ausgabe", use_container_width=True,
                 type="primary" if t_type == "Ausgabe" else "secondary"
             ):
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
-        with col_e:
+        with te:
             if st.button(
-                "↙ Einnahme ✓" if t_type == "Einnahme" else "↙ Einnahme",
+                "↙ Einnahme" + (" ✓" if t_type == "Einnahme" else ""),
                 key="btn_einnahme", use_container_width=True,
                 type="primary" if t_type == "Einnahme" else "secondary"
             ):
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
 
-        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-        # Kategorien zusammenbauen (Standard + eigene)
-        user_name   = st.session_state['user_name']
-        std_cats    = DEFAULT_CATS[t_type]
-        custom_cats = load_custom_cats(user_name, t_type)
-        all_cats    = std_cats + custom_cats
-
-        # Dialog VOR dem Formular aufrufen (genau wie Löschen-Dialog)
-        if st.session_state.get('show_new_cat'):
-            new_category_dialog()
-
-        # Neue Kategorie Button AUSSERHALB des Formulars
-        btn_col, _ = st.columns([1, 4])
-        with btn_col:
-            if st.button("➕ Neue Kategorie", use_container_width=True, type="secondary"):
-                st.session_state['show_new_cat'] = True
-                st.session_state['new_cat_typ']  = t_type
-                st.rerun()
-
+        # ── Buchungsformular ─────────────────────────────────
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01, format="%.2f")
                 t_date   = st.date_input("Datum", datetime.date.today())
             with col2:
-                t_cat  = st.selectbox("Kategorie", all_cats)
+                # Kategorie-Label mit "+ Neue" Link daneben
+                st.markdown(
+                    "<div style='display:flex;justify-content:space-between;"
+                    "align-items:center;margin-bottom:4px;'>"
+                    "<span style='font-size:14px;color:#f1f5f9;'>Kategorie</span>"
+                    "</div>",
+                    unsafe_allow_html=True
+                )
+                t_cat  = st.selectbox("Kategorie", all_cats, label_visibility="collapsed")
                 t_note = st.text_input("Notiz (optional)", placeholder="z.B. Supermarkt, Tankstelle...")
 
-            saved = st.form_submit_button("Speichern", use_container_width=True)
+            saved = st.form_submit_button("💾 Speichern", use_container_width=True)
             if saved:
                 new_row = pd.DataFrame([{
                     "user":      user_name,
@@ -517,6 +526,26 @@ if st.session_state['logged_in']:
                             data=pd.concat([df_old, new_row], ignore_index=True))
                 st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
+
+        # ── Neue Kategorie + Verwaltung ──────────────────────
+        cat_btn_col, manage_col = st.columns([1, 1])
+        with cat_btn_col:
+            if st.button("➕ Neue Kategorie erstellen", use_container_width=True, type="secondary"):
+                st.session_state['show_new_cat'] = True
+                st.session_state['new_cat_typ']  = t_type
+                st.rerun()
+        if custom_cats:
+            with manage_col:
+                with st.expander(f"🗂️ Eigene {t_type}-Kategorien"):
+                    for cat in custom_cats:
+                        cc1, cc2 = st.columns([5, 1])
+                        cc1.markdown(
+                            f"<span style='color:#cbd5e1;font-size:14px;'>{cat}</span>",
+                            unsafe_allow_html=True
+                        )
+                        if cc2.button("🗑️", key=f"delcat_{cat}", use_container_width=True):
+                            delete_custom_cat(user_name, t_type, cat)
+                            st.rerun()
 
         # ── Neue Kategorie erstellen ─────────────────────────
         if t_cat == "➕ Neue Kategorie erstellen" or st.session_state['show_new_cat']:
