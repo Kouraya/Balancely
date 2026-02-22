@@ -423,6 +423,7 @@ defaults = {
     'dash_selected_cat':  None,
     'dash_selected_typ':  None,
     'dash_selected_color': None,
+    'analysen_zeitraum':  'Monatlich',
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -468,6 +469,35 @@ def update_custom_cat(user: str, typ: str, old_label: str, new_label: str):
         conn.update(worksheet="categories", data=df)
     except Exception:
         pass
+
+
+def load_goal(user: str) -> float:
+    try:
+        df_g = conn.read(worksheet="goals", ttl="0")
+        if df_g.empty or 'user' not in df_g.columns:
+            return 0.0
+        row = df_g[df_g['user'] == user]
+        if row.empty:
+            return 0.0
+        return float(row.iloc[-1].get('sparziel', 0) or 0)
+    except Exception:
+        return 0.0
+
+
+def save_goal(user: str, goal: float):
+    try:
+        df_g = conn.read(worksheet="goals", ttl="0")
+    except Exception:
+        df_g = pd.DataFrame(columns=['user', 'sparziel'])
+    if 'user' not in df_g.columns:
+        df_g = pd.DataFrame(columns=['user', 'sparziel'])
+    mask = df_g['user'] == user
+    if mask.any():
+        df_g.loc[mask, 'sparziel'] = goal
+    else:
+        df_g = pd.concat([df_g, pd.DataFrame([{'user': user, 'sparziel': goal}])],
+                         ignore_index=True)
+    conn.update(worksheet="goals", data=df_g)
 
 
 @st.dialog("➕ Neue Kategorie")
@@ -749,33 +779,22 @@ if st.session_state['logged_in']:
                     monat_df["betrag_num"] = pd.to_numeric(monat_df["betrag"], errors="coerce")
                     alle["betrag_num"]     = pd.to_numeric(alle["betrag"],     errors="coerce")
 
-                    # ── Berechnungen ───────────────────────────
                     ein       = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
                     aus       = monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].abs().sum()
                     dep_monat = monat_df[monat_df["typ"] == "Depot"]["betrag_num"].abs().sum()
 
-                    # Bankkontostand diesen Monat:
-                    # Einnahmen − Ausgaben − Depot (Depot wird abgezogen, zählt aber nicht als Ausgabe)
                     bank = ein - aus - dep_monat
-
-                    # Gesamtes Depot kumuliert (alle Monate)
                     dep_gesamt = alle[alle["typ"] == "Depot"]["betrag_num"].abs().sum()
-
-                    # Gesamtvermögen = Bankkontostand DIESEN MONAT + gesamtes Depot kumuliert
                     networth = bank + dep_gesamt
 
                     bank_color = "#e2e8f0" if bank >= 0 else "#f87171"
                     bank_str   = f"{bank:,.2f} €" if bank >= 0 else f"-{abs(bank):,.2f} €"
                     nw_color   = "#4ade80" if networth >= 0 else "#f87171"
                     nw_str     = f"{networth:,.2f} €" if networth >= 0 else f"-{abs(networth):,.2f} €"
-                    # Ausgaben-Anzeige: niemals -0.00
                     aus_str    = f"-{aus:,.2f} €" if aus > 0 else "0.00 €"
 
-                    # ── KPI Cards ─────────────────────────────
-                    # Zeile 1: Bankkontostand + Networth
                     row1 = (
                         f"<div style='display:flex;gap:14px;margin:0 0 12px 0;flex-wrap:wrap;'>"
-                        # Bankkontostand
                         f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
                         f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
@@ -785,7 +804,6 @@ if st.session_state['logged_in']:
                         f"<div style='font-family:DM Sans,sans-serif;color:{bank_color};font-size:24px;"
                         f"font-weight:600;letter-spacing:-0.5px;'>{bank_str}</div>"
                         f"</div>"
-                        # Networth
                         f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
                         f"border:1px solid rgba(56,189,248,0.12);border-radius:16px;padding:20px 22px;'>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;"
@@ -797,7 +815,6 @@ if st.session_state['logged_in']:
                         f"</div>"
                         f"</div>"
                     )
-                    # Zeile 2: Einnahmen + Ausgaben + Depot-Einzahlung diesen Monat
                     dep_html = (
                         f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
                         f"border:1px solid rgba(56,189,248,0.15);border-radius:16px;padding:20px 22px;'>"
@@ -831,7 +848,6 @@ if st.session_state['logged_in']:
                     )
                     st.markdown(row1 + row2, unsafe_allow_html=True)
 
-                    # ── Kategorie-Daten aufbereiten ────────────
                     ausg_df = monat_df[monat_df["typ"] == "Ausgabe"].copy()
                     ausg_df["betrag_num"] = ausg_df["betrag_num"].abs()
                     ausg_grp = (ausg_df.groupby("kategorie")["betrag_num"]
@@ -849,19 +865,16 @@ if st.session_state['logged_in']:
                                .sum().reset_index()
                                .sort_values("betrag_num", ascending=False))
 
-                    # Ausgaben: Rot-Spektrum (#ff0000 → Weiß)
                     PALETTE_AUS = [
                         "#ff0000","#ff5232","#ff7b5a","#ff9e81",
                         "#ffbfaa","#ffdfd4","#dc2626","#b91c1c",
                         "#991b1b","#7f1d1d",
                     ]
-                    # Einnahmen: Grün #008000 → Weiß
                     PALETTE_EIN = [
                         "#008000","#469536","#6eaa5e","#93bf85",
                         "#b7d5ac","#dbead5","#2d7a2d","#4a9e4a",
                         "#5cb85c","#80c780",
                     ]
-                    # Depot: Blau #0000ff → Schwarz
                     PALETTE_DEP = [
                         "#0000ff","#1e0bd0","#2510a3","#241178",
                         "#1f104f","#19092e","#2563eb","#1d4ed8",
@@ -869,7 +882,6 @@ if st.session_state['logged_in']:
                     ]
 
                     all_cats, all_vals, all_colors, all_types = [], [], [], []
-                    # Reihenfolge: Einnahmen → Ausgaben → Depot
                     for i, (_, row) in enumerate(ein_grp.iterrows()):
                         all_cats.append(row["kategorie"])
                         all_vals.append(float(row["betrag_num"]))
@@ -888,13 +900,6 @@ if st.session_state['logged_in']:
 
                     total_sum = sum(all_vals) if sum(all_vals) > 0 else 1
 
-                    # ── FIX: customdata als separate Listen für korrektes Plotly-Mapping ──
-                    # customdata muss ein 2D-Array sein: [[typ, pct], [typ, pct], ...]
-                    customdata_list = [
-                        [typ, val / total_sum * 100]
-                        for typ, val in zip(all_types, all_vals)
-                    ]
-
                     fig = go.Figure(go.Pie(
                         labels=all_cats,
                         values=all_vals,
@@ -904,7 +909,7 @@ if st.session_state['logged_in']:
                             line=dict(color="rgba(5,10,20,0.8)", width=2),
                         ),
                         textinfo="none",
-                        hoverinfo="none",   # Kein Hover-Tooltip
+                        hoverinfo="none",
                         direction="clockwise",
                         sort=False,
                         rotation=90,
@@ -950,18 +955,15 @@ if st.session_state['logged_in']:
                         ],
                     )
 
-                    # ── Layout: Chart + Legende ───────────────
                     chart_col, legend_col = st.columns([2, 2])
 
                     with chart_col:
-                        # Kein on_select — Interaktion läuft über Legende-Buttons
                         st.plotly_chart(
                             fig, use_container_width=True,
                             key="donut_combined",
                         )
 
                     with legend_col:
-                        # Aktive Auswahl aus session_state lesen
                         sel_cat   = st.session_state.get('dash_selected_cat')
                         sel_typ   = st.session_state.get('dash_selected_typ')
                         sel_color = st.session_state.get('dash_selected_color')
@@ -998,7 +1000,6 @@ if st.session_state['logged_in']:
                                     f"{sign}{tr['betrag_num']:,.2f} €</span>"
                                     f"</div>"
                                 )
-                            # Zurück-Button + Detail-Card
                             if st.button("← Alle Kategorien", key="dash_back_btn"):
                                 st.session_state['dash_selected_cat']   = None
                                 st.session_state['dash_selected_typ']   = None
@@ -1024,23 +1025,19 @@ if st.session_state['logged_in']:
                                 unsafe_allow_html=True
                             )
                         else:
-                            # ── Tab-Auswahl: Einnahmen / Ausgaben / Depot ──
                             TYP_CONFIG = {
                                 "Einnahme": ("EINNAHMEN", "#2b961f", "+"),
                                 "Ausgabe":  ("AUSGABEN",  "#ff5232", "−"),
                                 "Depot":    ("DEPOT",     "#2510a3", ""),
                             }
-                            # Welche Typen haben überhaupt Daten?
-                            available_types = list(dict.fromkeys(all_types))  # Reihenfolge erhalten
+                            available_types = list(dict.fromkeys(all_types))
 
-                            # Aktiven Tab aus session_state lesen (oder ersten verfügbaren)
                             if 'dash_legend_tab' not in st.session_state or \
                                st.session_state['dash_legend_tab'] not in available_types:
                                 st.session_state['dash_legend_tab'] = available_types[0] if available_types else "Ausgabe"
 
                             active_tab = st.session_state['dash_legend_tab']
 
-                            # Tab-Buttons nebeneinander
                             tab_cols = st.columns(len(available_types))
                             for i, typ in enumerate(available_types):
                                 lbl, col_active, _ = TYP_CONFIG.get(typ, (typ.upper(), "#64748b", ""))
@@ -1058,7 +1055,6 @@ if st.session_state['logged_in']:
 
                             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-                            # Nur Kategorien des aktiven Tabs anzeigen
                             lbl_active, color_active, sign_active = TYP_CONFIG.get(active_tab, (active_tab, "#64748b", ""))
                             for cat, val, color, typ in zip(all_cats, all_vals, all_colors, all_types):
                                 if typ != active_tab:
@@ -1113,7 +1109,6 @@ if st.session_state['logged_in']:
         if st.session_state.get('delete_cat_data') is not None:
             confirm_delete_cat()
 
-        # Header
         st.markdown(
             "<div style='margin-bottom:28px;'>"
             "<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
@@ -1124,7 +1119,6 @@ if st.session_state['logged_in']:
             unsafe_allow_html=True
         )
 
-        # Typ-Toggle
         st.markdown(
             "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
             "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>"
@@ -1159,7 +1153,6 @@ if st.session_state['logged_in']:
 
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-        # Buchungsformular
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -1176,7 +1169,6 @@ if st.session_state['logged_in']:
 
             saved = st.form_submit_button("Speichern", use_container_width=True)
             if saved:
-                # Depot: Betrag immer positiv (weder Einnahme noch Ausgabe)
                 if t_type == "Depot":
                     betrag_save = t_amount
                 elif t_type == "Einnahme":
@@ -1198,7 +1190,6 @@ if st.session_state['logged_in']:
                 st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
 
-        # Neue Kategorie + Verwaltung
         cat_btn_col, manage_col = st.columns([1, 1])
         with cat_btn_col:
             if st.button("+ Neue Kategorie", use_container_width=True, type="secondary"):
@@ -1237,7 +1228,6 @@ if st.session_state['logged_in']:
                                     st.session_state['_dialog_just_opened'] = True
                                     st.rerun()
 
-        # Buchungstabelle
         st.markdown(
             "<div style='height:8px'></div>"
             "<div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
@@ -1314,7 +1304,6 @@ if st.session_state['logged_in']:
                             with st.popover("⋯", use_container_width=True):
                                 if st.button("✏️ Bearbeiten", key=f"edit_btn_{orig_idx}",
                                              use_container_width=True):
-                                    # Wenn gleicher Eintrag nochmal geklickt → zuklappen
                                     if st.session_state['edit_idx'] == orig_idx:
                                         st.session_state['edit_idx'] = None
                                     else:
@@ -1356,11 +1345,9 @@ if st.session_state['logged_in']:
                                               if row['typ'] in ["Einnahme", "Ausgabe", "Depot"]
                                               else 1
                                     )
-                                    # FIX: Volle Kategorienliste mit Emojis + eigene Kategorien
                                     e_std_cats    = DEFAULT_CATS[e_typ]
                                     e_custom_cats = load_custom_cats(user_name, e_typ)
                                     e_all_cats    = e_std_cats + e_custom_cats
-                                    # Aktuelle Kategorie vorauswählen — auch wenn Typ geändert
                                     curr_cat = row['kategorie']
                                     if curr_cat in e_all_cats:
                                         e_cat_idx = e_all_cats.index(curr_cat)
@@ -1408,6 +1395,494 @@ if st.session_state['logged_in']:
 
         except Exception as e:
             st.warning(f"Fehler beim Laden: {e}")
+
+    # ── Analysen ─────────────────────────────────────────────
+    elif menu == "📂 Analysen":
+        import plotly.graph_objects as go
+
+        user_name = st.session_state['user_name']
+
+        st.markdown(
+            "<div style='margin-bottom:28px;'>"
+            "<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
+            "color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-0.5px;'>Analysen</h1>"
+            "<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;margin:0;'>"
+            "Kaufverhalten, Trends & Sparziele</p>"
+            "</div>",
+            unsafe_allow_html=True
+        )
+
+        try:
+            df_raw = conn.read(worksheet="transactions", ttl="0")
+        except Exception as e:
+            st.warning(f"Verbindung wird hergestellt... ({e})")
+            df_raw = pd.DataFrame()
+
+        if df_raw.empty or 'user' not in df_raw.columns:
+            st.info("Noch keine Buchungen vorhanden. Füge zuerst Transaktionen hinzu.")
+        else:
+            df_all = df_raw[df_raw['user'] == user_name].copy()
+            if 'deleted' in df_all.columns:
+                df_all = df_all[~df_all['deleted'].astype(str).str.strip().str.lower()
+                                .isin(['true', '1', '1.0'])]
+            df_all['datum_dt']   = pd.to_datetime(df_all['datum'], errors='coerce')
+            df_all['betrag_num'] = pd.to_numeric(df_all['betrag'], errors='coerce')
+            df_all = df_all.dropna(subset=['datum_dt'])
+
+            if df_all.empty:
+                st.info("Noch keine Buchungen vorhanden.")
+            else:
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                # SECTION 1 — ZEITRAUM DIAGRAMM
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                st.markdown(
+                    "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+                    "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+                    "margin-bottom:14px;'>Einnahmen & Ausgaben</p>",
+                    unsafe_allow_html=True
+                )
+
+                zt_col1, zt_col2, zt_col3, zt_rest = st.columns([1, 1, 1, 3])
+                zeitraum = st.session_state['analysen_zeitraum']
+
+                with zt_col1:
+                    if st.button(
+                        "Wöchentlich" + (" ✓" if zeitraum == "Wöchentlich" else ""),
+                        key="zt_weekly", use_container_width=True,
+                        type="primary" if zeitraum == "Wöchentlich" else "secondary"
+                    ):
+                        st.session_state['analysen_zeitraum'] = "Wöchentlich"
+                        st.rerun()
+                with zt_col2:
+                    if st.button(
+                        "Monatlich" + (" ✓" if zeitraum == "Monatlich" else ""),
+                        key="zt_monthly", use_container_width=True,
+                        type="primary" if zeitraum == "Monatlich" else "secondary"
+                    ):
+                        st.session_state['analysen_zeitraum'] = "Monatlich"
+                        st.rerun()
+                with zt_col3:
+                    if st.button(
+                        "Jährlich" + (" ✓" if zeitraum == "Jährlich" else ""),
+                        key="zt_yearly", use_container_width=True,
+                        type="primary" if zeitraum == "Jährlich" else "secondary"
+                    ):
+                        st.session_state['analysen_zeitraum'] = "Jährlich"
+                        st.rerun()
+
+                st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+
+                df_ein = df_all[df_all['typ'] == 'Einnahme'].copy()
+                df_aus = df_all[df_all['typ'] == 'Ausgabe'].copy()
+                df_aus['betrag_num'] = df_aus['betrag_num'].abs()
+
+                def get_periode_label(dt, z):
+                    if z == "Wöchentlich":
+                        return dt.to_period('W').start_time.strftime('KW %V %y')
+                    elif z == "Monatlich":
+                        return dt.to_period('M').start_time.strftime('%b %Y')
+                    else:
+                        return str(dt.year)
+
+                def get_sort_key(dt, z):
+                    if z == "Wöchentlich":
+                        return dt.to_period('W').start_time
+                    elif z == "Monatlich":
+                        return dt.to_period('M').start_time
+                    else:
+                        return datetime.datetime(dt.year, 1, 1)
+
+                if not df_ein.empty:
+                    df_ein['periode']  = df_ein['datum_dt'].apply(lambda d: get_periode_label(d, zeitraum))
+                    df_ein['sort_key'] = df_ein['datum_dt'].apply(lambda d: get_sort_key(d, zeitraum))
+                    df_ein_g = df_ein.groupby('periode').agg(
+                        betrag_num=('betrag_num', 'sum'),
+                        sort_key=('sort_key', 'min')
+                    ).reset_index().sort_values('sort_key')
+                else:
+                    df_ein_g = pd.DataFrame(columns=['periode', 'betrag_num', 'sort_key'])
+
+                if not df_aus.empty:
+                    df_aus['periode']  = df_aus['datum_dt'].apply(lambda d: get_periode_label(d, zeitraum))
+                    df_aus['sort_key'] = df_aus['datum_dt'].apply(lambda d: get_sort_key(d, zeitraum))
+                    df_aus_g = df_aus.groupby('periode').agg(
+                        betrag_num=('betrag_num', 'sum'),
+                        sort_key=('sort_key', 'min')
+                    ).reset_index().sort_values('sort_key')
+                else:
+                    df_aus_g = pd.DataFrame(columns=['periode', 'betrag_num', 'sort_key'])
+
+                # Alle Perioden sortiert
+                all_period_data = {}
+                for _, r in df_ein_g.iterrows():
+                    all_period_data[r['periode']] = r['sort_key']
+                for _, r in df_aus_g.iterrows():
+                    if r['periode'] not in all_period_data:
+                        all_period_data[r['periode']] = r['sort_key']
+                all_periods = sorted(all_period_data.keys(), key=lambda p: all_period_data[p])
+
+                ein_map = dict(zip(df_ein_g['periode'], df_ein_g['betrag_num'])) if not df_ein_g.empty else {}
+                aus_map = dict(zip(df_aus_g['periode'], df_aus_g['betrag_num'])) if not df_aus_g.empty else {}
+                ein_vals = [ein_map.get(p, 0) for p in all_periods]
+                aus_vals = [aus_map.get(p, 0) for p in all_periods]
+                spar_vals = [e - a for e, a in zip(ein_vals, aus_vals)]
+
+                fig_trend = go.Figure()
+                fig_trend.add_trace(go.Bar(
+                    x=all_periods, y=ein_vals, name='Einnahmen',
+                    marker_color='rgba(74,222,128,0.7)',
+                    marker_line=dict(color='rgba(74,222,128,0.2)', width=1),
+                    hovertemplate='<b>%{x}</b><br>Einnahmen: %{y:,.2f} €<extra></extra>',
+                ))
+                fig_trend.add_trace(go.Bar(
+                    x=all_periods, y=[-v for v in aus_vals], name='Ausgaben',
+                    marker_color='rgba(248,113,113,0.7)',
+                    marker_line=dict(color='rgba(248,113,113,0.2)', width=1),
+                    hovertemplate='<b>%{x}</b><br>Ausgaben: %{customdata:,.2f} €<extra></extra>',
+                    customdata=aus_vals,
+                ))
+                fig_trend.add_trace(go.Scatter(
+                    x=all_periods, y=spar_vals, name='Sparrate',
+                    mode='lines+markers',
+                    line=dict(color='#38bdf8', width=2, dash='dot'),
+                    marker=dict(size=5, color='#38bdf8'),
+                    hovertemplate='<b>%{x}</b><br>Sparrate: %{y:,.2f} €<extra></extra>',
+                ))
+                fig_trend.update_layout(
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(family='DM Sans, sans-serif', color='#64748b'),
+                    barmode='overlay',
+                    bargap=0.25,
+                    height=300,
+                    margin=dict(t=10, b=10, l=0, r=0),
+                    legend=dict(
+                        orientation='h', y=1.1, x=0,
+                        font=dict(size=12, color='#475569'),
+                        bgcolor='rgba(0,0,0,0)',
+                    ),
+                    xaxis=dict(showgrid=False, showline=False,
+                               tickfont=dict(size=11, color='#475569')),
+                    yaxis=dict(
+                        showgrid=True, gridcolor='rgba(148,163,184,0.06)',
+                        showline=False, tickfont=dict(size=11, color='#475569'),
+                        zeroline=True, zerolinecolor='rgba(148,163,184,0.15)',
+                        zerolinewidth=1, tickformat=',.0f', ticksuffix=' €',
+                    ),
+                    hoverlabel=dict(
+                        bgcolor='#0d1729', bordercolor='rgba(56,189,248,0.4)',
+                        font=dict(color='#e2e8f0', size=13, family='DM Sans, sans-serif'),
+                    ),
+                )
+                st.plotly_chart(fig_trend, use_container_width=True, key="trend_chart")
+
+                st.markdown("<hr>", unsafe_allow_html=True)
+
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                # SECTION 2 — KAUFVERHALTEN
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                st.markdown(
+                    "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+                    "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+                    "margin-bottom:14px;'>Kaufverhalten</p>",
+                    unsafe_allow_html=True
+                )
+
+                kv_col_l, kv_col_r = st.columns(2)
+
+                with kv_col_l:
+                    aus_all = df_all[df_all['typ'] == 'Ausgabe'].copy()
+                    aus_all['betrag_num'] = aus_all['betrag_num'].abs()
+                    kat_grp = (aus_all.groupby('kategorie')['betrag_num']
+                               .sum().reset_index()
+                               .sort_values('betrag_num', ascending=True)
+                               .tail(8))
+
+                    if not kat_grp.empty:
+                        REDS = ['#7f1d1d','#991b1b','#b91c1c','#dc2626',
+                                '#ef4444','#f87171','#fca5a5','#fecaca']
+                        colors_bar = REDS[:len(kat_grp)]
+
+                        fig_kat = go.Figure(go.Bar(
+                            x=kat_grp['betrag_num'],
+                            y=kat_grp['kategorie'],
+                            orientation='h',
+                            marker=dict(color=colors_bar, cornerradius=6),
+                            text=[f"{v:,.0f} €" for v in kat_grp['betrag_num']],
+                            textposition='outside',
+                            textfont=dict(size=11, color='#64748b', family='DM Mono, monospace'),
+                            hovertemplate='<b>%{y}</b><br>%{x:,.2f} €<extra></extra>',
+                        ))
+                        fig_kat.update_layout(
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            height=280,
+                            margin=dict(t=0, b=0, l=0, r=60),
+                            xaxis=dict(showgrid=False, showticklabels=False, showline=False),
+                            yaxis=dict(tickfont=dict(size=12, color='#94a3b8',
+                                       family='DM Sans, sans-serif'),
+                                       showgrid=False, showline=False),
+                            hoverlabel=dict(bgcolor='#0d1729',
+                                            bordercolor='rgba(248,113,113,0.4)',
+                                            font=dict(color='#e2e8f0', size=13)),
+                        )
+                        st.markdown(
+                            "<p style='font-family:DM Sans,sans-serif;color:#475569;"
+                            "font-size:13px;margin-bottom:8px;'>Top Ausgabe-Kategorien (gesamt)</p>",
+                            unsafe_allow_html=True
+                        )
+                        st.plotly_chart(fig_kat, use_container_width=True, key="kat_chart")
+                    else:
+                        st.info("Keine Ausgaben vorhanden.")
+
+                with kv_col_r:
+                    aus_all2 = df_all[df_all['typ'] == 'Ausgabe'].copy()
+                    aus_all2['betrag_num'] = aus_all2['betrag_num'].abs()
+                    aus_all2['wochentag'] = aus_all2['datum_dt'].dt.day_name()
+
+                    wt_order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+                    wt_de    = {'Monday':'Mo','Tuesday':'Di','Wednesday':'Mi',
+                                'Thursday':'Do','Friday':'Fr','Saturday':'Sa','Sunday':'So'}
+
+                    if not aus_all2.empty:
+                        heat = aus_all2.groupby('wochentag')['betrag_num'].mean().reindex(wt_order).fillna(0)
+                        heat_labels = [wt_de.get(d, d) for d in heat.index]
+
+                        fig_heat = go.Figure(go.Bar(
+                            x=heat_labels,
+                            y=heat.values,
+                            marker=dict(
+                                color=heat.values,
+                                colorscale=[[0, '#1a0505'], [0.5, '#dc2626'], [1, '#ff5232']],
+                                showscale=False,
+                                cornerradius=6,
+                            ),
+                            text=[f"{v:,.0f} €" for v in heat.values],
+                            textposition='outside',
+                            textfont=dict(size=11, color='#64748b', family='DM Mono, monospace'),
+                            hovertemplate='<b>%{x}</b><br>Ø %{y:,.2f} €<extra></extra>',
+                        ))
+                        fig_heat.update_layout(
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            height=280,
+                            margin=dict(t=0, b=0, l=0, r=20),
+                            xaxis=dict(tickfont=dict(size=12, color='#94a3b8',
+                                       family='DM Sans, sans-serif'),
+                                       showgrid=False, showline=False),
+                            yaxis=dict(showgrid=False, showticklabels=False, showline=False),
+                            hoverlabel=dict(bgcolor='#0d1729',
+                                            bordercolor='rgba(248,113,113,0.4)',
+                                            font=dict(color='#e2e8f0', size=13)),
+                        )
+                        st.markdown(
+                            "<p style='font-family:DM Sans,sans-serif;color:#475569;"
+                            "font-size:13px;margin-bottom:8px;'>Ø Ausgaben nach Wochentag</p>",
+                            unsafe_allow_html=True
+                        )
+                        st.plotly_chart(fig_heat, use_container_width=True, key="heat_chart")
+                    else:
+                        st.info("Keine Ausgaben vorhanden.")
+
+                st.markdown("<hr>", unsafe_allow_html=True)
+
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                # SECTION 3 — SPARZIEL
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                st.markdown(
+                    "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+                    "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+                    "margin-bottom:14px;'>Sparziel</p>",
+                    unsafe_allow_html=True
+                )
+
+                current_goal = load_goal(user_name)
+
+                now      = datetime.datetime.now()
+                df_month = df_all[
+                    (df_all['datum_dt'].dt.year  == now.year) &
+                    (df_all['datum_dt'].dt.month == now.month)
+                ].copy()
+                df_month['betrag_num'] = pd.to_numeric(df_month['betrag'], errors='coerce')
+
+                monat_ein = df_month[df_month['typ'] == 'Einnahme']['betrag_num'].sum()
+                monat_aus = df_month[df_month['typ'] == 'Ausgabe']['betrag_num'].abs().sum()
+                monat_dep = df_month[df_month['typ'] == 'Depot']['betrag_num'].abs().sum()
+                akt_spar  = monat_ein - monat_aus - monat_dep
+
+                sg_col_l, sg_col_r = st.columns([1, 1])
+
+                with sg_col_l:
+                    with st.form("sparziel_form"):
+                        goal_input = st.number_input(
+                            "Monatliches Sparziel (€)",
+                            min_value=0.0,
+                            value=float(current_goal),
+                            step=50.0,
+                            format="%.2f",
+                            help="Wie viel möchtest du pro Monat zurücklegen?"
+                        )
+                        if st.form_submit_button("Sparziel speichern",
+                                                  use_container_width=True, type="primary"):
+                            save_goal(user_name, goal_input)
+                            st.success("✅ Sparziel gespeichert!")
+                            st.rerun()
+
+                    # Info-Box aktueller Monat
+                    monat_name = now.strftime("%B %Y")
+                    spar_color = '#4ade80' if akt_spar >= 0 else '#f87171'
+                    spar_str   = f"{akt_spar:,.2f} €" if akt_spar >= 0 else f"-{abs(akt_spar):,.2f} €"
+                    st.markdown(
+                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.8),"
+                        f"rgba(10,16,30,0.9));border:1px solid rgba(148,163,184,0.06);"
+                        f"border-radius:12px;padding:16px 18px;margin-top:10px;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;'>"
+                        f"{monat_name}</div>"
+                        f"<div style='display:flex;justify-content:space-between;'>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Einnahmen</div>"
+                        f"<div style='font-family:DM Mono,monospace;color:#4ade80;font-size:12px;'>+{monat_ein:,.2f} €</div>"
+                        f"</div>"
+                        f"<div style='display:flex;justify-content:space-between;'>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Ausgaben</div>"
+                        f"<div style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>-{monat_aus:,.2f} €</div>"
+                        f"</div>"
+                        + (
+                            f"<div style='display:flex;justify-content:space-between;'>"
+                            f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Depot</div>"
+                            f"<div style='font-family:DM Mono,monospace;color:#38bdf8;font-size:12px;'>-{monat_dep:,.2f} €</div>"
+                            f"</div>" if monat_dep > 0 else ""
+                        )
+                        + f"<div style='border-top:1px solid rgba(148,163,184,0.08);margin-top:8px;padding-top:8px;"
+                        f"display:flex;justify-content:space-between;'>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:12px;font-weight:500;'>Verfügbar</div>"
+                        f"<div style='font-family:DM Mono,monospace;color:{spar_color};font-size:13px;font-weight:600;'>{spar_str}</div>"
+                        f"</div></div>",
+                        unsafe_allow_html=True
+                    )
+
+                with sg_col_r:
+                    goal = current_goal
+                    if goal > 0:
+                        fehlbetrag  = goal - akt_spar
+                        erreicht    = akt_spar >= goal
+                        pct         = min(akt_spar / goal * 100, 100) if goal > 0 else 0
+                        pct_display = max(0, pct)
+                        bar_color   = '#4ade80' if erreicht else ('#facc15' if pct >= 60 else '#f87171')
+                        spar_color2 = '#4ade80' if akt_spar >= 0 else '#f87171'
+                        spar_str2   = f"{akt_spar:,.2f} €" if akt_spar >= 0 else f"-{abs(akt_spar):,.2f} €"
+
+                        st.markdown(
+                            f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                            f"rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);"
+                            f"border-radius:16px;padding:20px 22px;'>"
+                            f"<div style='display:flex;justify-content:space-between;"
+                            f"align-items:baseline;margin-bottom:8px;'>"
+                            f"<span style='font-family:DM Mono,monospace;font-size:10px;"
+                            f"color:#334155;letter-spacing:1.5px;text-transform:uppercase;'>"
+                            f"Fortschritt</span>"
+                            f"<span style='font-family:DM Mono,monospace;font-size:13px;"
+                            f"color:{bar_color};font-weight:600;'>{pct_display:.0f}%</span>"
+                            f"</div>"
+                            f"<div style='background:rgba(30,41,59,0.8);border-radius:99px;"
+                            f"height:6px;overflow:hidden;margin-bottom:16px;'>"
+                            f"<div style='height:100%;width:{pct_display}%;background:{bar_color};"
+                            f"border-radius:99px;'></div>"
+                            f"</div>"
+                            f"<div style='display:flex;justify-content:space-between;'>"
+                            f"<div>"
+                            f"<div style='font-family:DM Mono,monospace;font-size:9px;"
+                            f"color:#334155;letter-spacing:1px;text-transform:uppercase;"
+                            f"margin-bottom:3px;'>Aktuell gespart</div>"
+                            f"<div style='font-family:DM Sans,sans-serif;color:{spar_color2};"
+                            f"font-size:18px;font-weight:600;'>{spar_str2}</div>"
+                            f"</div>"
+                            f"<div style='text-align:right;'>"
+                            f"<div style='font-family:DM Mono,monospace;font-size:9px;"
+                            f"color:#334155;letter-spacing:1px;text-transform:uppercase;"
+                            f"margin-bottom:3px;'>Ziel</div>"
+                            f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;"
+                            f"font-size:18px;font-weight:600;'>{goal:,.2f} €</div>"
+                            f"</div></div></div>",
+                            unsafe_allow_html=True
+                        )
+
+                        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+                        if not erreicht and fehlbetrag > 0:
+                            aus_monat = df_month[df_month['typ'] == 'Ausgabe'].copy()
+                            aus_monat['betrag_num'] = aus_monat['betrag_num'].abs()
+                            kat_monat = (aus_monat.groupby('kategorie')['betrag_num']
+                                         .sum().reset_index()
+                                         .sort_values('betrag_num', ascending=False))
+
+                            if not kat_monat.empty:
+                                remaining = fehlbetrag
+                                rows_html = ""
+                                for _, kr in kat_monat.iterrows():
+                                    if remaining <= 0:
+                                        break
+                                    cut     = min(kr['betrag_num'], remaining)
+                                    pct_cut = cut / kr['betrag_num'] * 100 if kr['betrag_num'] > 0 else 0
+                                    remaining -= cut
+                                    rows_html += (
+                                        f"<div style='display:flex;justify-content:space-between;"
+                                        f"align-items:center;padding:9px 0;"
+                                        f"border-bottom:1px solid rgba(255,255,255,0.04);'>"
+                                        f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;"
+                                        f"font-size:13px;'>{kr['kategorie']}</span>"
+                                        f"<div style='display:flex;align-items:center;gap:10px;'>"
+                                        f"<span style='font-family:DM Mono,monospace;color:#f87171;"
+                                        f"font-size:12px;'>−{cut:,.2f} €</span>"
+                                        f"<span style='font-family:DM Mono,monospace;color:#334155;"
+                                        f"font-size:11px;'>({pct_cut:.0f}%)</span>"
+                                        f"</div></div>"
+                                    )
+                                st.markdown(
+                                    f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                                    f"rgba(10,16,30,0.95));border:1px solid rgba(248,113,113,0.1);"
+                                    f"border-left:3px solid #f87171;border-radius:16px;"
+                                    f"padding:18px 20px;'>"
+                                    f"<div style='font-family:DM Mono,monospace;font-size:9px;"
+                                    f"color:#ef4444;letter-spacing:1.5px;text-transform:uppercase;"
+                                    f"margin-bottom:10px;'>Noch {fehlbetrag:,.2f} € bis zum Ziel</div>"
+                                    f"<div style='font-family:DM Sans,sans-serif;color:#64748b;"
+                                    f"font-size:13px;margin-bottom:12px;'>"
+                                    f"Diese Kategorien könntest du reduzieren:</div>"
+                                    f"{rows_html}</div>",
+                                    unsafe_allow_html=True
+                                )
+                            else:
+                                st.markdown(
+                                    f"<div style='background:rgba(15,23,42,0.5);border:1px solid "
+                                    f"rgba(248,113,113,0.1);border-radius:12px;padding:16px 18px;"
+                                    f"color:#475569;font-family:DM Sans,sans-serif;font-size:14px;'>"
+                                    f"Noch {fehlbetrag:,.2f} € fehlen – buche Ausgaben für Empfehlungen."
+                                    f"</div>",
+                                    unsafe_allow_html=True
+                                )
+                        elif erreicht:
+                            st.markdown(
+                                f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                                f"rgba(10,16,30,0.95));border:1px solid rgba(74,222,128,0.15);"
+                                f"border-left:3px solid #4ade80;border-radius:16px;padding:18px 20px;'>"
+                                f"<div style='font-family:DM Sans,sans-serif;color:#4ade80;"
+                                f"font-size:14px;font-weight:500;'>🎉 Sparziel diesen Monat erreicht!</div>"
+                                f"<div style='font-family:DM Sans,sans-serif;color:#475569;"
+                                f"font-size:13px;margin-top:6px;'>"
+                                f"Du hast {akt_spar - goal:,.2f} € mehr gespart als geplant.</div>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                    else:
+                        st.markdown(
+                            "<div style='background:rgba(15,23,42,0.5);border:1px solid "
+                            "rgba(148,163,184,0.06);border-radius:12px;padding:20px 22px;"
+                            "color:#334155;font-family:DM Sans,sans-serif;font-size:14px;'>"
+                            "Trage links ein Sparziel ein, um Empfehlungen zu erhalten."
+                            "</div>",
+                            unsafe_allow_html=True
+                        )
 
     # ── Einstellungen ────────────────────────────────────────
     elif menu == "⚙️ Einstellungen":
@@ -1704,5 +2179,3 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-
-
