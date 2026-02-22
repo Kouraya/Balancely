@@ -60,6 +60,33 @@ def is_verified(value) -> bool:
         return str(value).strip().lower() in ('true', '1', 'yes')
 
 
+def format_timestamp(ts_str, datum_str) -> str:
+    """Zeigt 'heute HH:MM', 'gestern HH:MM' oder 'DD.MM.YYYY HH:MM'."""
+    now   = datetime.datetime.now()
+    today = now.date()
+    try:
+        ts = datetime.datetime.strptime(str(ts_str).strip(), "%Y-%m-%d %H:%M")
+        uhr = ts.strftime("%H:%M")
+        if ts.date() == today:
+            return f"heute {uhr}"
+        elif ts.date() == today - datetime.timedelta(days=1):
+            return f"gestern {uhr}"
+        else:
+            return ts.strftime("%d.%m.%Y %H:%M")
+    except Exception:
+        # Kein Timestamp vorhanden — nur Datum anzeigen
+        try:
+            d = datetime.date.fromisoformat(str(datum_str))
+            if d == today:
+                return "heute"
+            elif d == today - datetime.timedelta(days=1):
+                return "gestern"
+            else:
+                return d.strftime("%d.%m.%Y")
+        except Exception:
+            return str(datum_str)
+
+
 def find_row_mask(df: pd.DataFrame, row: pd.Series) -> pd.Series:
     """Findet die passende (nicht-gelöschte) Zeile im DataFrame anhand von Inhalt."""
     return (
@@ -479,6 +506,7 @@ if st.session_state['logged_in']:
                 new_row = pd.DataFrame([{
                     "user":      user_name,
                     "datum":     str(t_date),
+                    "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "typ":       t_type,
                     "kategorie": t_cat,
                     "betrag":    t_amount if t_type == "Einnahme" else -t_amount,
@@ -553,16 +581,24 @@ if st.session_state['logged_in']:
                     user_df['betrag_anzeige'] = pd.to_numeric(user_df['betrag']).apply(
                         lambda x: f"+{x:.2f} €" if x > 0 else f"{x:.2f} €"
                     )
+                    # Neueste zuerst — nach Timestamp, dann nach Datum
+                    if 'timestamp' in user_df.columns:
+                        user_df = user_df.sort_values('timestamp', ascending=False)
+                    else:
+                        user_df = user_df.sort_values('datum', ascending=False)
 
                     for orig_idx, row in user_df.iterrows():
                         notiz      = str(row.get('notiz', ''))
                         notiz      = '' if notiz.lower() == 'nan' else notiz
                         betrag_num = pd.to_numeric(row['betrag'], errors='coerce')
                         farbe      = '#4ade80' if row['typ'] == 'Einnahme' else '#f87171'
+                        zeit_label = format_timestamp(
+                            row.get('timestamp', ''), row.get('datum', '')
+                        )
 
                         c1, c2, c3, c4, c5 = st.columns([2.5, 2, 2, 3, 1.5])
                         c1.markdown(
-                            f"<span style='color:#94a3b8'>{row['datum']}</span>",
+                            f"<span style='color:#94a3b8'>{zeit_label}</span>",
                             unsafe_allow_html=True
                         )
                         c2.markdown(
