@@ -403,29 +403,30 @@ if st.session_state['logged_in']:
                             unsafe_allow_html=True
                         )
 
-                        c5.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-                        btn1, btn2 = c5.columns(2)
-                        if btn1.button("✏️", key=f"edit_btn_{orig_idx}",
-                                       help="Eintrag bearbeiten", use_container_width=True):
-                            st.session_state['edit_idx'] = (
-                                None if st.session_state['edit_idx'] == orig_idx else orig_idx
-                            )
-                            st.rerun()
-
-                        if btn2.button("🗑️", key=f"del_{orig_idx}",
-                                       help="Eintrag löschen", use_container_width=True):
-                            df_all = conn.read(worksheet="transactions", ttl="0")
-                            if 'deleted' not in df_all.columns:
-                                df_all['deleted'] = ''
-                            match_idx = df_all[find_row_mask(df_all, row)].index
-                            if len(match_idx) > 0:
-                                df_all.loc[match_idx[0], 'deleted'] = 'True'
-                                conn.update(worksheet="transactions", data=df_all)
-                                st.session_state['edit_idx'] = None
-                                st.success("🗑️ Eintrag gelöscht!")
+                        with c5:
+                            # Unsichtbares Label erzeugt gleiche Höhe wie Markdown-Text in anderen Spalten
+                            st.markdown("&nbsp;", unsafe_allow_html=True)
+                            btn1, btn2 = st.columns(2)
+                            if btn1.button("✏️", key=f"edit_btn_{orig_idx}",
+                                           help="Eintrag bearbeiten", use_container_width=True):
+                                st.session_state['edit_idx'] = (
+                                    None if st.session_state['edit_idx'] == orig_idx else orig_idx
+                                )
                                 st.rerun()
-                            else:
-                                st.error("❌ Eintrag nicht gefunden.")
+                            if btn2.button("🗑️", key=f"del_{orig_idx}",
+                                           help="Eintrag löschen", use_container_width=True):
+                                df_all = conn.read(worksheet="transactions", ttl="0")
+                                if 'deleted' not in df_all.columns:
+                                    df_all['deleted'] = ''
+                                match_idx = df_all[find_row_mask(df_all, row)].index
+                                if len(match_idx) > 0:
+                                    df_all.loc[match_idx[0], 'deleted'] = 'True'
+                                    conn.update(worksheet="transactions", data=df_all)
+                                    st.session_state['edit_idx'] = None
+                                    st.success("🗑️ Eintrag gelöscht!")
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Eintrag nicht gefunden.")
 
                         # Bearbeitungsformular
                         if st.session_state['edit_idx'] == orig_idx:
