@@ -40,14 +40,30 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    /* Alle Input-Felder transparent */
+    /* Äußerer Container */
+    div[data-testid="stTextInputRootElement"] {
+        background-color: transparent !important;
+    }
+    /* Innerer BaseWeb Container */
     div[data-baseweb="input"],
-    div[data-testid="stDateInput"] > div {
+    div[data-baseweb="base-input"] {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
         padding-right: 0 !important;
         gap: 0 !important;
+    }
+    /* Fokus-State */
+    div[data-baseweb="input"]:focus-within,
+    div[data-baseweb="base-input"]:focus-within {
+        background-color: transparent !important;
+        border-color: #38bdf8 !important;
+    }
+    /* Datum-Feld */
+    div[data-testid="stDateInput"] > div {
+        background-color: transparent !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 8px !important;
     }
     /* Leerer Spacer neben Auge */
     div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
@@ -236,4 +252,3 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-            
