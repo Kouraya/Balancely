@@ -3,3 +3,4 @@ pandas
 plotly
 streamlit-authenticator
 st-gsheets-connection
+openpyxl>=3.1.0
