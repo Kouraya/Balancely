@@ -376,7 +376,7 @@ hr {
     background: #0d1729 !important;
     border: 1px solid rgba(148,163,184,0.1) !important;
     border-radius: 12px !important;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
+    box-shadow: none !important;
 }
 
 /* ── Expander ─────────────────────────────────────────────── */
@@ -397,6 +397,7 @@ DEFAULT_CATS = {
     "Einnahme": ["💼 Gehalt", "🎁 Bonus", "🛒 Verkauf", "📈 Investitionen", "🏠 Miete (Einnahme)"],
     "Ausgabe":  ["🍔 Essen", "🏠 Miete", "🎮 Freizeit", "🚗 Transport", "🛍️ Shopping",
                  "💊 Gesundheit", "📚 Bildung", "⚡ Strom & Gas"],
+    "Depot":    ["📦 ETF", "📊 Aktien", "🪙 Krypto", "🏦 Tagesgeld", "💎 Sonstiges"],
 }
 
 defaults = {
@@ -741,43 +742,52 @@ if st.session_state['logged_in']:
                     )
                 else:
                     monat_df["betrag_num"] = pd.to_numeric(monat_df["betrag"], errors="coerce")
-                    ein = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
-                    aus = abs(monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].sum())
-                    bal = ein - aus
+                    ein  = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
+                    aus  = abs(monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].sum())
+                    dep  = monat_df[monat_df["typ"] == "Depot"]["betrag_num"].sum()
+                    bal  = ein - aus  # Depot zählt als Teil des Kontostands (neutral)
                     bal_color = "#4ade80" if bal >= 0 else "#f87171"
                     bal_sign  = "+" if bal >= 0 else ""
+                    dep_sign  = "+" if dep >= 0 else ""
 
                     # ── KPI Cards ─────────────────────────────
                     st.markdown(
-                        f"<div style='display:flex;gap:14px;margin:0 0 28px 0;'>"
+                        f"<div style='display:flex;gap:14px;margin:0 0 28px 0;flex-wrap:wrap;'>"
                         # Kontostand
-                        f"<div style='flex:1;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
-                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;"
-                        f"box-shadow:0 4px 20px rgba(0,0,0,0.2);'>"
+                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
                         f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Kontostand</div>"
                         f"<div style='font-family:DM Sans,sans-serif;color:{bal_color};font-size:24px;"
                         f"font-weight:600;letter-spacing:-0.5px;'>{bal_sign}{bal:,.2f} €</div>"
                         f"</div>"
                         # Einnahmen
-                        f"<div style='flex:1;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
-                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;"
-                        f"box-shadow:0 4px 20px rgba(0,0,0,0.2);'>"
+                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
                         f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Einnahmen</div>"
                         f"<div style='font-family:DM Sans,sans-serif;color:#4ade80;font-size:24px;"
                         f"font-weight:600;letter-spacing:-0.5px;'>+{ein:,.2f} €</div>"
                         f"</div>"
                         # Ausgaben
-                        f"<div style='flex:1;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
-                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;"
-                        f"box-shadow:0 4px 20px rgba(0,0,0,0.2);'>"
+                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
                         f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Ausgaben</div>"
                         f"<div style='font-family:DM Sans,sans-serif;color:#f87171;font-size:24px;"
                         f"font-weight:600;letter-spacing:-0.5px;'>-{aus:,.2f} €</div>"
                         f"</div>"
-                        f"</div>",
+                        # Depot (nur anzeigen wenn Depot-Buchungen vorhanden)
+                        + (
+                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(56,189,248,0.15);border-radius:16px;padding:20px 22px;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Depot</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#38bdf8;font-size:24px;"
+                        f"font-weight:600;letter-spacing:-0.5px;'>{dep_sign}{dep:,.2f} €</div>"
+                        f"</div>"
+                        if dep != 0 else "")
+                        + f"</div>",
                         unsafe_allow_html=True
                     )
 
@@ -793,12 +803,21 @@ if st.session_state['logged_in']:
                                .sum().reset_index()
                                .sort_values("betrag_num", ascending=False))
 
+                    dep_df  = monat_df[monat_df["typ"] == "Depot"].copy()
+                    dep_df["betrag_num"] = pd.to_numeric(dep_df["betrag_num"], errors="coerce").abs()
+                    dep_grp = (dep_df.groupby("kategorie")["betrag_num"]
+                               .sum().reset_index()
+                               .sort_values("betrag_num", ascending=False))
+
                     PALETTE_AUS = ["#ef4444","#f97316","#f59e0b","#dc2626",
                                    "#ea580c","#d97706","#b91c1c","#c2410c",
                                    "#92400e","#e11d48"]
-                    PALETTE_EIN = ["#22c55e","#34d399","#86efac","#16a34a",
-                                   "#6ee7b7","#4ade80","#bbf7d0","#10b981",
-                                   "#a7f3d0","#059669"]
+                    PALETTE_EIN = ["#166534","#86efac","#14532d","#bbf7d0",
+                                   "#15803d","#dcfce7","#16a34a","#4ade80",
+                                   "#065f46","#a7f3d0"]
+                    PALETTE_DEP = ["#38bdf8","#0ea5e9","#7dd3fc","#0284c7",
+                                   "#bae6fd","#0369a1","#e0f2fe","#2563eb",
+                                   "#93c5fd","#1d4ed8"]
 
                     all_cats, all_vals, all_colors, all_types = [], [], [], []
                     for i, (_, row) in enumerate(ausg_grp.iterrows()):
@@ -811,6 +830,11 @@ if st.session_state['logged_in']:
                         all_vals.append(float(row["betrag_num"]))
                         all_colors.append(PALETTE_EIN[i % len(PALETTE_EIN)])
                         all_types.append("Einnahme")
+                    for i, (_, row) in enumerate(dep_grp.iterrows()):
+                        all_cats.append(row["kategorie"])
+                        all_vals.append(float(row["betrag_num"]))
+                        all_colors.append(PALETTE_DEP[i % len(PALETTE_DEP)])
+                        all_types.append("Depot")
 
                     total_sum = sum(all_vals) if sum(all_vals) > 0 else 1
 
@@ -895,7 +919,12 @@ if st.session_state['logged_in']:
                         sel_color = st.session_state.get('dash_selected_color')
 
                         if sel_cat and sel_typ:
-                            src_df  = ausg_df if sel_typ == "Ausgabe" else ein_df
+                            if sel_typ == "Ausgabe":
+                                src_df = ausg_df
+                            elif sel_typ == "Einnahme":
+                                src_df = ein_df
+                            else:
+                                src_df = dep_df
                             detail  = src_df[src_df["kategorie"] == sel_cat]
                             total_d = detail["betrag_num"].sum()
                             sign    = "−" if sel_typ == "Ausgabe" else "+"
@@ -1028,7 +1057,7 @@ if st.session_state['logged_in']:
             "Typ</p>",
             unsafe_allow_html=True
         )
-        ta, te, _ = st.columns([1, 1, 3])
+        ta, te, td, _ = st.columns([1, 1, 1, 2])
         with ta:
             if st.button(
                 "↗ Ausgabe" + (" ✓" if t_type == "Ausgabe" else ""),
@@ -1044,6 +1073,14 @@ if st.session_state['logged_in']:
                 type="primary" if t_type == "Einnahme" else "secondary"
             ):
                 st.session_state['t_type'] = "Einnahme"
+                st.rerun()
+        with td:
+            if st.button(
+                "📦 Depot" + (" ✓" if t_type == "Depot" else ""),
+                key="btn_depot", use_container_width=True,
+                type="primary" if t_type == "Depot" else "secondary"
+            ):
+                st.session_state['t_type'] = "Depot"
                 st.rerun()
 
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
@@ -1065,13 +1102,20 @@ if st.session_state['logged_in']:
 
             saved = st.form_submit_button("Speichern", use_container_width=True)
             if saved:
+                # Depot: Betrag immer positiv (weder Einnahme noch Ausgabe)
+                if t_type == "Depot":
+                    betrag_save = t_amount
+                elif t_type == "Einnahme":
+                    betrag_save = t_amount
+                else:
+                    betrag_save = -t_amount
                 new_row = pd.DataFrame([{
                     "user":      user_name,
                     "datum":     str(t_date),
                     "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "typ":       t_type,
                     "kategorie": t_cat,
-                    "betrag":    t_amount if t_type == "Einnahme" else -t_amount,
+                    "betrag":    betrag_save,
                     "notiz":     t_note,
                 }])
                 df_old = conn.read(worksheet="transactions", ttl="0")
@@ -1144,9 +1188,12 @@ if st.session_state['logged_in']:
                 if user_df.empty:
                     st.info("Noch keine Buchungen vorhanden.")
                 else:
-                    user_df['betrag_anzeige'] = pd.to_numeric(user_df['betrag']).apply(
-                        lambda x: f"+{x:.2f} €" if x > 0 else f"{x:.2f} €"
-                    )
+                    def betrag_anzeige(row):
+                        x = pd.to_numeric(row['betrag'], errors='coerce')
+                        if row.get('typ') == 'Depot':
+                            return f"📦 {abs(x):.2f} €"
+                        return f"+{x:.2f} €" if x > 0 else f"{x:.2f} €"
+                    user_df['betrag_anzeige'] = user_df.apply(betrag_anzeige, axis=1)
                     if 'timestamp' in user_df.columns:
                         user_df = user_df.sort_values('timestamp', ascending=False)
                     else:
@@ -1156,7 +1203,12 @@ if st.session_state['logged_in']:
                         notiz      = str(row.get('notiz', ''))
                         notiz      = '' if notiz.lower() == 'nan' else notiz
                         betrag_num = pd.to_numeric(row['betrag'], errors='coerce')
-                        farbe      = '#4ade80' if row['typ'] == 'Einnahme' else '#f87171'
+                        if row['typ'] == 'Einnahme':
+                            farbe = '#4ade80'
+                        elif row['typ'] == 'Depot':
+                            farbe = '#38bdf8'
+                        else:
+                            farbe = '#f87171'
                         zeit_label = format_timestamp(
                             row.get('timestamp', ''), row.get('datum', '')
                         )
@@ -1225,8 +1277,10 @@ if st.session_state['logged_in']:
                                     )
                                 with ec2:
                                     e_typ  = st.selectbox(
-                                        "Typ", ["Einnahme", "Ausgabe"],
-                                        index=0 if row['typ'] == "Einnahme" else 1
+                                        "Typ", ["Einnahme", "Ausgabe", "Depot"],
+                                        index=["Einnahme", "Ausgabe", "Depot"].index(row['typ'])
+                                              if row['typ'] in ["Einnahme", "Ausgabe", "Depot"]
+                                              else 1
                                     )
                                     # FIX: Volle Kategorienliste mit Emojis + eigene Kategorien
                                     e_std_cats    = DEFAULT_CATS[e_typ]
