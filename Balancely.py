@@ -745,23 +745,25 @@ if st.session_state['logged_in']:
                     alle["betrag_num"]     = pd.to_numeric(alle["betrag"],     errors="coerce")
 
                     # ── Berechnungen ───────────────────────────
-                    # Bankkontostand diesen Monat: nur Einnahmen − Ausgaben
-                    ein     = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
-                    aus     = abs(monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].sum())
-                    bank    = ein - aus  # Depot zählt NICHT
-
-                    # Depot diesen Monat eingezahlt (kein Vorzeichen, neutral)
+                    ein       = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
+                    aus       = monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].abs().sum()
                     dep_monat = monat_df[monat_df["typ"] == "Depot"]["betrag_num"].abs().sum()
 
-                    # Gesamtes Depot (kumuliert über alle Monate)
+                    # Bankkontostand diesen Monat:
+                    # Einnahmen − Ausgaben − Depot (Depot wird abgezogen, zählt aber nicht als Ausgabe)
+                    bank = ein - aus - dep_monat
+
+                    # Gesamtes Depot kumuliert (alle Monate)
                     dep_gesamt = alle[alle["typ"] == "Depot"]["betrag_num"].abs().sum()
 
-                    # Networth = Bankkontostand (kumuliert alle Monate) + Gesamtdepot
-                    bank_gesamt = (
-                        alle[alle["typ"] == "Einnahme"]["betrag_num"].sum()
-                        - alle[alle["typ"] == "Ausgabe"]["betrag_num"].abs().sum()
-                    )
-                    networth = bank_gesamt + dep_gesamt
+                    # Kumulierter Bankkontostand (alle Monate, Depot abgezogen)
+                    ein_ges  = alle[alle["typ"] == "Einnahme"]["betrag_num"].sum()
+                    aus_ges  = alle[alle["typ"] == "Ausgabe"]["betrag_num"].abs().sum()
+                    dep_ges2 = alle[alle["typ"] == "Depot"]["betrag_num"].abs().sum()
+                    bank_ges = ein_ges - aus_ges - dep_ges2
+
+                    # Gesamtvermögen = kumulierter Bankkontostand + gesamtes Depot
+                    networth = bank_ges + dep_gesamt  # = bank_ges + dep_ges2
 
                     bank_color = "#e2e8f0" if bank >= 0 else "#f87171"
                     bank_str   = f"{bank:,.2f} €" if bank >= 0 else f"-{abs(bank):,.2f} €"
@@ -846,19 +848,19 @@ if st.session_state['logged_in']:
                                .sum().reset_index()
                                .sort_values("betrag_num", ascending=False))
 
-                    # Ausgaben: Rot-Spektrum aus Screenshot (#ff0000 → Schwarz / Weiß)
+                    # Ausgaben: Rot-Spektrum (#ff0000 → Weiß)
                     PALETTE_AUS = [
                         "#ff0000","#ff5232","#ff7b5a","#ff9e81",
                         "#ffbfaa","#ffdfd4","#dc2626","#b91c1c",
                         "#991b1b","#7f1d1d",
                     ]
-                    # Einnahmen: Grün-Spektrum aus Screenshot (monochrom #006b00–#2b961f)
+                    # Einnahmen: Grün #008000 → Weiß
                     PALETTE_EIN = [
-                        "#006b00","#007200","#007900","#008000",
-                        "#14870c","#218e16","#2b961f","#38a82b",
-                        "#45bb37","#53ce44",
+                        "#008000","#469536","#6eaa5e","#93bf85",
+                        "#b7d5ac","#dbead5","#2d7a2d","#4a9e4a",
+                        "#5cb85c","#80c780",
                     ]
-                    # Depot: Blau-Spektrum aus Screenshot (#0000ff → Schwarz)
+                    # Depot: Blau #0000ff → Schwarz
                     PALETTE_DEP = [
                         "#0000ff","#1e0bd0","#2510a3","#241178",
                         "#1f104f","#19092e","#2563eb","#1d4ed8",
