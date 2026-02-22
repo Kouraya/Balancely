@@ -182,6 +182,7 @@ if 'verify_expiry' not in st.session_state: st.session_state['verify_expiry'] = 
 if 'reset_email' not in st.session_state: st.session_state['reset_email'] = ""
 if 'reset_code' not in st.session_state: st.session_state['reset_code'] = ""
 if 'reset_expiry' not in st.session_state: st.session_state['reset_expiry'] = None
+if 'edit_idx' not in st.session_state: st.session_state['edit_idx'] = None
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -267,21 +268,31 @@ if st.session_state['logged_in']:
                 if not user_df.empty:
                     user_df['betrag_anzeige'] = pd.to_numeric(user_df['betrag']).apply(lambda x: f"+{x:.2f} €" if x > 0 else f"{x:.2f} €")
                     for orig_idx, row in user_df.iterrows():
-                        c1, c2, c3, c4, c5 = st.columns([2, 2, 2, 3, 1])
+                        notiz = str(row.get('notiz', ''))
+                        notiz = '' if notiz.lower() == 'nan' else notiz
+                        betrag_num = pd.to_numeric(row['betrag'], errors='coerce')
+
+                        # Zeile anzeigen
+                        c1, c2, c3, c4, c5, c6 = st.columns([2, 2, 2, 3, 1, 1])
                         c1.markdown(f"<span style='color:#94a3b8'>{row['datum']}</span>", unsafe_allow_html=True)
                         farbe = '#4ade80' if row['typ'] == 'Einnahme' else '#f87171'
                         c2.markdown(f"<span style='color:{farbe}; font-weight:700'>{row['betrag_anzeige']}</span>", unsafe_allow_html=True)
                         c3.markdown(f"<span style='color:#cbd5e1'>{row['kategorie']}</span>", unsafe_allow_html=True)
-                        # FIX: nan abfangen
-                        notiz = str(row.get('notiz', ''))
-                        notiz = '' if notiz.lower() == 'nan' else notiz
                         c4.markdown(f"<span style='color:#64748b'>{notiz}</span>", unsafe_allow_html=True)
-                        # FIX: Löschen über Datum+Betrag+Kategorie Kombination (eindeutige Identifikation)
-                        if c5.button("🗑️", key=f"del_{orig_idx}", help="Eintrag löschen"):
+
+                        # Bearbeiten Button
+                        if c5.button("✏️", key=f"edit_btn_{orig_idx}", help="Eintrag bearbeiten"):
+                            if st.session_state['edit_idx'] == orig_idx:
+                                st.session_state['edit_idx'] = None
+                            else:
+                                st.session_state['edit_idx'] = orig_idx
+                            st.rerun()
+
+                        # Löschen Button
+                        if c6.button("🗑️", key=f"del_{orig_idx}", help="Eintrag löschen"):
                             df_all = conn.read(worksheet="transactions", ttl="0")
                             if 'deleted' not in df_all.columns:
                                 df_all['deleted'] = ''
-                            # Finde die Zeile anhand von user+datum+betrag+kategorie
                             mask = (
                                 (df_all['user'] == row['user']) &
                                 (df_all['datum'].astype(str) == str(row['datum'])) &
@@ -293,10 +304,59 @@ if st.session_state['logged_in']:
                             if len(match_idx) > 0:
                                 df_all.loc[match_idx[0], 'deleted'] = 'True'
                                 conn.update(worksheet="transactions", data=df_all)
+                                st.session_state['edit_idx'] = None
                                 st.success("🗑️ Eintrag gelöscht!")
                                 st.rerun()
                             else:
                                 st.error("❌ Eintrag nicht gefunden.")
+
+                        # Bearbeitungsmaske aufklappen
+                        if st.session_state['edit_idx'] == orig_idx:
+                            with st.form(key=f"edit_form_{orig_idx}"):
+                                st.markdown("<p style='color:#38bdf8; font-weight:600; margin-bottom:8px;'>✏️ Eintrag bearbeiten</p>", unsafe_allow_html=True)
+                                ec1, ec2 = st.columns(2)
+                                with ec1:
+                                    e_betrag = st.number_input("Betrag in €", value=abs(float(betrag_num)), min_value=0.01, step=0.01, format="%.2f")
+                                    e_datum = st.date_input("Datum", value=datetime.date.fromisoformat(str(row['datum'])))
+                                with ec2:
+                                    e_typ = st.selectbox("Typ", ["Einnahme", "Ausgabe"], index=0 if row['typ'] == "Einnahme" else 1)
+                                    cats_e = ["Gehalt", "Bonus", "Verkauf"] if e_typ == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
+                                    current_cat = row['kategorie'] if row['kategorie'] in cats_e else cats_e[0]
+                                    e_cat = st.selectbox("Kategorie", cats_e, index=cats_e.index(current_cat))
+                                    e_notiz = st.text_input("Notiz", value=notiz)
+                                col_save, col_cancel = st.columns(2)
+                                with col_save:
+                                    saved = st.form_submit_button("💾 Speichern", use_container_width=True, type="primary")
+                                with col_cancel:
+                                    cancelled = st.form_submit_button("Abbrechen", use_container_width=True)
+                                if saved:
+                                    df_all = conn.read(worksheet="transactions", ttl="0")
+                                    if 'deleted' not in df_all.columns:
+                                        df_all['deleted'] = ''
+                                    mask = (
+                                        (df_all['user'] == row['user']) &
+                                        (df_all['datum'].astype(str) == str(row['datum'])) &
+                                        (pd.to_numeric(df_all['betrag'], errors='coerce') == pd.to_numeric(row['betrag'], errors='coerce')) &
+                                        (df_all['kategorie'] == row['kategorie']) &
+                                        (~df_all['deleted'].astype(str).str.strip().str.lower().isin(['true', '1', '1.0']))
+                                    )
+                                    match_idx = df_all[mask].index
+                                    if len(match_idx) > 0:
+                                        neuer_betrag = e_betrag if e_typ == "Einnahme" else -e_betrag
+                                        df_all.loc[match_idx[0], 'datum'] = str(e_datum)
+                                        df_all.loc[match_idx[0], 'typ'] = e_typ
+                                        df_all.loc[match_idx[0], 'kategorie'] = e_cat
+                                        df_all.loc[match_idx[0], 'betrag'] = neuer_betrag
+                                        df_all.loc[match_idx[0], 'notiz'] = e_notiz
+                                        conn.update(worksheet="transactions", data=df_all)
+                                        st.session_state['edit_idx'] = None
+                                        st.success("✅ Eintrag gespeichert!")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Eintrag nicht gefunden.")
+                                if cancelled:
+                                    st.session_state['edit_idx'] = None
+                                    st.rerun()
                 else:
                     st.info("Noch keine Buchungen vorhanden.")
         except Exception as e:
@@ -523,4 +583,3 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-                
