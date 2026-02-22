@@ -796,9 +796,9 @@ if st.session_state['logged_in']:
                     PALETTE_AUS = ["#ef4444","#f97316","#f59e0b","#dc2626",
                                    "#ea580c","#d97706","#b91c1c","#c2410c",
                                    "#92400e","#e11d48"]
-                    PALETTE_EIN = ["#22c55e","#16a34a","#15803d","#4ade80",
-                                   "#059669","#10b981","#34d399","#047857",
-                                   "#065f46","#86efac"]
+                    PALETTE_EIN = ["#22c55e","#34d399","#86efac","#16a34a",
+                                   "#6ee7b7","#4ade80","#bbf7d0","#10b981",
+                                   "#a7f3d0","#059669"]
 
                     all_cats, all_vals, all_colors, all_types = [], [], [], []
                     for i, (_, row) in enumerate(ausg_grp.iterrows()):
@@ -905,13 +905,14 @@ if st.session_state['logged_in']:
                                 notiz_tr = "" if notiz_tr.lower() == "nan" else notiz_tr
                                 rows_html += (
                                     f"<div style='display:flex;justify-content:space-between;"
-                                    f"align-items:center;padding:9px 0;"
-                                    f"border-bottom:1px solid rgba(148,163,184,0.06);'>"
-                                    f"<div style='min-width:0;'>"
-                                    f"<span style='font-family:DM Mono,monospace;color:#475569;"
-                                    f"font-size:12px;'>{tr['datum_dt'].strftime('%d.%m.')}</span>"
-                                    + (f"<span style='color:#334155;font-size:12px;"
-                                       f"margin-left:10px;font-family:DM Sans,sans-serif;'>"
+                                    f"align-items:center;padding:10px 0;"
+                                    f"border-bottom:1px solid rgba(255,255,255,0.05);'>"
+                                    f"<div style='min-width:0;display:flex;align-items:center;gap:10px;'>"
+                                    f"<span style='font-family:DM Mono,monospace;color:#64748b;"
+                                    f"font-size:12px;flex-shrink:0;'>{tr['datum_dt'].strftime('%d.%m.')}</span>"
+                                    + (f"<span style='color:#94a3b8;font-size:13px;"
+                                       f"font-family:DM Sans,sans-serif;overflow:hidden;"
+                                       f"text-overflow:ellipsis;white-space:nowrap;'>"
                                        f"{notiz_tr}</span>" if notiz_tr else "")
                                     + f"</div>"
                                     f"<span style='color:{sel_color};font-weight:600;"
