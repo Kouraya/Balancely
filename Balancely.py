@@ -453,13 +453,23 @@ if st.session_state['logged_in']:
         custom_cats = load_custom_cats(user_name, t_type)
         all_cats    = std_cats + custom_cats + ["➕ Neue Kategorie erstellen"]
 
+        # Dialog öffnen wenn Kategorie-Erstellen gewählt wurde
+        if st.session_state.get('show_new_cat'):
+            new_category_dialog()
+
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01, format="%.2f")
                 t_date   = st.date_input("Datum", datetime.date.today())
             with col2:
-                t_cat  = st.selectbox("Kategorie", all_cats)
+                t_cat  = st.selectbox(
+                    "Kategorie", all_cats,
+                    key="t_cat_select"
+                )
+                if t_cat == "➕ Neue Kategorie erstellen":
+                    st.session_state['show_new_cat'] = True
+                    st.session_state['new_cat_typ']  = t_type
                 t_note = st.text_input("Notiz (optional)", placeholder="z.B. Supermarkt, Tankstelle...")
 
             saved = st.form_submit_button("Speichern", use_container_width=True)
@@ -506,12 +516,7 @@ if st.session_state['logged_in']:
                             st.success(f"✅ Kategorie '{label}' gespeichert!")
                             st.rerun()
 
-        # ── Neue Kategorie / Auswahl-Trigger ────────────────
-        if t_cat == "➕ Neue Kategorie erstellen":
-            st.session_state['show_new_cat'] = True
-            st.session_state['new_cat_typ']  = t_type
-            st.rerun()
-
+        # ── Neue Kategorie Dialog ────────────────────────────
         if st.session_state.get('show_new_cat'):
             new_category_dialog()
 
