@@ -45,6 +45,27 @@ st.markdown("""
         border-radius: 12px !important;
     }
     div[data-testid="stInputInstructions"] { display: none !important; }
+
+/* Leerer Space neben dem Auge-Icon fixen */
+div[data-baseweb="input"] > div:not(:first-child):empty {
+    display: none !important;
+}
+div[data-testid="stPasswordInput"] > div {
+    gap: 0 !important;
+}
+[data-testid="stPasswordInput"] input {
+    border-right: none !important;
+}
+/* Der Wrapper um das Auge */
+[data-testid="stPasswordInput"] div[data-baseweb="input"] {
+    padding-right: 0 !important;
+    gap: 0 !important;
+}
+/* Leeres Element direkt nach dem Input-Feld */
+div[data-baseweb="input"] > div[class]:not([data-testid]) + div:empty {
+    display: none !important;
+    width: 0 !important;
+}
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
@@ -213,3 +234,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
