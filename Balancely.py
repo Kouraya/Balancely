@@ -342,8 +342,8 @@ if st.session_state['logged_in']:
         except Exception:
             st.warning("Verbindung wird hergestellt...")
 
-    # ── Transaktion ──────────────────────────────────────────
-    elif menu == "💸 Transaktion":
+    # ── Transaktionen ──────────────────────────────────────────
+    elif menu == "💸 Transaktionen":
         st.title("Buchung hinzufügen ✍️")
         t_type = st.session_state['t_type']
 
@@ -804,4 +804,5 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
 
