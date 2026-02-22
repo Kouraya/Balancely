@@ -549,21 +549,32 @@ def load_toepfe(user: str) -> list:
         return []
 
 
-def save_topf(user: str, name: str, ziel: float, emoji: str, farbe: str):
+TOPF_PALETTE = [
+    "#38bdf8", "#4ade80", "#a78bfa", "#fb923c",
+    "#f472b6", "#34d399", "#facc15", "#60a5fa",
+]
+
+def save_topf(user: str, name: str, ziel: float, emoji: str):
     try:
         df = conn.read(worksheet="toepfe", ttl="0")
     except Exception:
         df = pd.DataFrame(columns=['user', 'id', 'name', 'ziel', 'gespart', 'emoji', 'farbe', 'deleted'])
+    # Auto-Farbe basierend auf Anzahl vorhandener Töpfe
+    existing_count = len(df[df['user'] == user]) if not df.empty and 'user' in df.columns else 0
+    auto_farbe = TOPF_PALETTE[existing_count % len(TOPF_PALETTE)]
     topf_id = f"{user}_{int(time.time())}"
     new_row = pd.DataFrame([{
         'user': user, 'id': topf_id, 'name': name,
         'ziel': ziel, 'gespart': 0, 'emoji': emoji,
-        'farbe': farbe, 'deleted': '',
+        'farbe': auto_farbe, 'deleted': '',
     }])
     conn.update(worksheet="toepfe", data=pd.concat([df, new_row], ignore_index=True))
+    return topf_id
 
 
-def update_topf_gespart(user: str, topf_id: str, delta: float):
+def update_topf_gespart(user: str, topf_id: str, topf_name: str, delta: float):
+    """Update gespart in toepfe AND write a Spartopf transaction."""
+    # 1. Topf-Guthaben aktualisieren
     try:
         df = conn.read(worksheet="toepfe", ttl="0")
         mask = (df['user'] == user) & (df['id'] == topf_id)
@@ -571,6 +582,23 @@ def update_topf_gespart(user: str, topf_id: str, delta: float):
             current = float(df.loc[mask, 'gespart'].values[0] or 0)
             df.loc[mask, 'gespart'] = max(0, current + delta)
             conn.update(worksheet="toepfe", data=df)
+    except Exception:
+        pass
+    # 2. Transaktion schreiben (Spartopf-Typ, negativ = Geld geht weg vom Konto)
+    try:
+        df_t = conn.read(worksheet="transactions", ttl="0")
+        sign = -1 if delta > 0 else 1  # Einzahlung = vom Konto weg; Auszahlung = zurück aufs Konto
+        notiz = f"{'↓' if delta > 0 else '↑'} {topf_name}"
+        new_row = pd.DataFrame([{
+            "user":      user,
+            "datum":     str(datetime.date.today()),
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "typ":       "Spartopf",
+            "kategorie": f"🪣 {topf_name}",
+            "betrag":    sign * abs(delta),
+            "notiz":     notiz,
+        }])
+        conn.update(worksheet="transactions", data=pd.concat([df_t, new_row], ignore_index=True))
     except Exception:
         pass
 
@@ -585,7 +613,7 @@ def delete_topf(user: str, topf_id: str):
         pass
 
 
-def update_topf_meta(user: str, topf_id: str, name: str, ziel: float, emoji: str, farbe: str):
+def update_topf_meta(user: str, topf_id: str, name: str, ziel: float, emoji: str):
     try:
         df = conn.read(worksheet="toepfe", ttl="0")
         mask = (df['user'] == user) & (df['id'] == topf_id)
@@ -593,7 +621,6 @@ def update_topf_meta(user: str, topf_id: str, name: str, ziel: float, emoji: str
             df.loc[mask, 'name']  = name
             df.loc[mask, 'ziel']  = ziel
             df.loc[mask, 'emoji'] = emoji
-            df.loc[mask, 'farbe'] = farbe
             conn.update(worksheet="toepfe", data=df)
     except Exception:
         pass
@@ -882,10 +909,15 @@ if st.session_state['logged_in']:
                     ein       = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
                     aus       = monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].abs().sum()
                     dep_monat = monat_df[monat_df["typ"] == "Depot"]["betrag_num"].abs().sum()
+                    # Spartopf: negativ = Einzahlung (Konto ↓), positiv = Auszahlung (Konto ↑)
+                    spartopf_netto = monat_df[monat_df["typ"] == "Spartopf"]["betrag_num"].sum()
 
-                    bank = ein - aus - dep_monat
+                    bank = ein - aus - dep_monat + spartopf_netto  # spartopf_netto ist bereits negativ bei Einzahlung
                     dep_gesamt = alle[alle["typ"] == "Depot"]["betrag_num"].abs().sum()
-                    networth = bank + dep_gesamt
+                    # Spartöpfe gesamt (alle Töpfe des Users)
+                    toepfe_gesamt = load_toepfe(st.session_state["user_name"])
+                    topf_gesamt_val = sum(t['gespart'] for t in toepfe_gesamt)
+                    networth = bank + dep_gesamt + topf_gesamt_val
 
                     bank_color = "#e2e8f0" if bank >= 0 else "#f87171"
                     bank_str   = f"{bank:,.2f} €" if bank >= 0 else f"-{abs(bank):,.2f} €"
@@ -897,20 +929,16 @@ if st.session_state['logged_in']:
                     if offset == 0:
                         current_goal_dash = load_goal(st.session_state["user_name"])
                         if current_goal_dash > 0:
-                            # End-of-Month Forecast berechnen
-                            today_day  = now.day
-                            days_in_m  = (datetime.date(t_year, t_month % 12 + 1, 1)
-                                          - datetime.timedelta(days=1)).day \
-                                         if t_month < 12 else 31
-                            # Hochrechnung basierend auf bisherigen Ausgaben
-                            if today_day > 0:
-                                forecast_aus = aus / today_day * days_in_m
-                                forecast_bank = ein - forecast_aus - dep_monat
-                            else:
-                                forecast_bank = bank
+                            # Spartopf-Einzahlungen diesen Monat zählen als gespartes Geld
+                            spartopf_einzahl_monat = abs(monat_df[
+                                (monat_df["typ"] == "Spartopf") & (monat_df["betrag_num"] < 0)
+                            ]["betrag_num"].sum())
+                            # "Effektiv gespart" = verfügbares Bankgeld + was in Töpfe geflossen ist
+                            effektiv_gespart = bank + spartopf_einzahl_monat
 
-                            if bank < current_goal_dash:
-                                fehl = current_goal_dash - bank
+                            if effektiv_gespart < current_goal_dash:
+                                fehl = current_goal_dash - effektiv_gespart
+                                topf_hint = f" · davon {spartopf_einzahl_monat:,.2f} € in Töpfen" if spartopf_einzahl_monat > 0 else ""
                                 st.markdown(
                                     f"<div style='background:linear-gradient(135deg,rgba(251,113,133,0.08),rgba(239,68,68,0.05));"
                                     f"border:1px solid rgba(248,113,113,0.25);border-left:3px solid #f87171;"
@@ -923,7 +951,26 @@ if st.session_state['logged_in']:
                                     f"Du liegst {fehl:,.2f} € unter deinem Sparziel</div>"
                                     f"<div style='font-family:DM Sans,sans-serif;color:#64748b;"
                                     f"font-size:13px;'>Ziel: {current_goal_dash:,.2f} € · "
-                                    f"Aktuell verfügbar: {bank:,.2f} €</div>"
+                                    f"Gespart: {effektiv_gespart:,.2f} €{topf_hint}</div>"
+                                    f"</div>"
+                                    f"</div>",
+                                    unsafe_allow_html=True
+                                )
+                            else:
+                                ueber = effektiv_gespart - current_goal_dash
+                                topf_hint = f" · {spartopf_einzahl_monat:,.2f} € davon in Töpfen" if spartopf_einzahl_monat > 0 else ""
+                                st.markdown(
+                                    f"<div style='background:linear-gradient(135deg,rgba(74,222,128,0.05),rgba(34,197,94,0.03));"
+                                    f"border:1px solid rgba(74,222,128,0.2);border-left:3px solid #4ade80;"
+                                    f"border-radius:14px;padding:14px 18px;margin-bottom:20px;"
+                                    f"display:flex;align-items:center;gap:14px;'>"
+                                    f"<span style='font-size:22px;'>✅</span>"
+                                    f"<div>"
+                                    f"<div style='font-family:DM Sans,sans-serif;color:#86efac;"
+                                    f"font-weight:600;font-size:14px;margin-bottom:2px;'>"
+                                    f"Sparziel erreicht! +{ueber:,.2f} € Puffer</div>"
+                                    f"<div style='font-family:DM Sans,sans-serif;color:#64748b;"
+                                    f"font-size:13px;'>Gespart: {effektiv_gespart:,.2f} €{topf_hint}</div>"
                                     f"</div>"
                                     f"</div>",
                                     unsafe_allow_html=True
@@ -945,12 +992,15 @@ if st.session_state['logged_in']:
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;"
                         f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Gesamtvermögen</div>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>"
-                        f"Bank + Depot kumuliert</div>"
+                        f"Bank + Depot + Töpfe</div>"
                         f"<div style='font-family:DM Sans,sans-serif;color:{nw_color};font-size:24px;"
                         f"font-weight:600;letter-spacing:-0.5px;'>{nw_str}</div>"
                         f"</div>"
                         f"</div>"
                     )
+                    spartopf_einzahl_monat = abs(monat_df[
+                        (monat_df["typ"] == "Spartopf") & (monat_df["betrag_num"] < 0)
+                    ]["betrag_num"].sum())
                     dep_html = (
                         f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
                         f"border:1px solid rgba(56,189,248,0.15);border-radius:16px;padding:20px 22px;'>"
@@ -962,6 +1012,18 @@ if st.session_state['logged_in']:
                         f"font-weight:600;letter-spacing:-0.5px;'>{dep_monat:,.2f} €</div>"
                         f"</div>"
                         if dep_monat > 0 else ""
+                    )
+                    topf_html = (
+                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(167,139,250,0.2);border-radius:16px;padding:20px 22px;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#7c3aed;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Spartöpfe</div>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>"
+                        f"diesen Monat eingelegt</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#a78bfa;font-size:24px;"
+                        f"font-weight:600;letter-spacing:-0.5px;'>{spartopf_einzahl_monat:,.2f} €</div>"
+                        f"</div>"
+                        if spartopf_einzahl_monat > 0 else ""
                     )
                     row2 = (
                         f"<div style='display:flex;gap:14px;margin:0 0 28px 0;flex-wrap:wrap;'>"
@@ -980,6 +1042,7 @@ if st.session_state['logged_in']:
                         f"font-weight:600;letter-spacing:-0.5px;'>-{aus:,.2f} €</div>"
                         f"</div>"
                         + dep_html
+                        + topf_html
                         + f"</div>"
                     )
                     st.markdown(row1 + row2, unsafe_allow_html=True)
@@ -1372,6 +1435,8 @@ if st.session_state['logged_in']:
                         x = pd.to_numeric(row['betrag'], errors='coerce')
                         if row.get('typ') == 'Depot':
                             return f"📦 {abs(x):.2f} €"
+                        if row.get('typ') == 'Spartopf':
+                            return f"🪣 {abs(x):.2f} €" if x < 0 else f"🪣 +{abs(x):.2f} €"
                         return f"+{x:.2f} €" if x > 0 else f"{x:.2f} €"
                     user_df['betrag_anzeige'] = user_df.apply(betrag_anzeige, axis=1)
                     if 'timestamp' in user_df.columns:
@@ -1387,6 +1452,8 @@ if st.session_state['logged_in']:
                             farbe = '#4ade80'
                         elif row['typ'] == 'Depot':
                             farbe = '#38bdf8'
+                        elif row['typ'] == 'Spartopf':
+                            farbe = '#a78bfa'
                         else:
                             farbe = '#f87171'
                         zeit_label = format_timestamp(row.get('timestamp', ''), row.get('datum', ''))
@@ -1954,13 +2021,18 @@ if st.session_state['logged_in']:
                 curr_ein = curr_month_df[curr_month_df['typ'] == 'Einnahme']['betrag_num'].sum()
                 curr_aus = curr_month_df[curr_month_df['typ'] == 'Ausgabe']['betrag_num'].abs().sum()
                 curr_dep = curr_month_df[curr_month_df['typ'] == 'Depot']['betrag_num'].abs().sum()
+                # Spartopf-Netto (negativ = eingezahlt, positiv = ausgezahlt)
+                curr_spartopf_netto = curr_month_df[curr_month_df['typ'] == 'Spartopf']['betrag_num'].sum()
+                curr_spartopf_einzahl = abs(curr_month_df[
+                    (curr_month_df['typ'] == 'Spartopf') & (curr_month_df['betrag_num'] < 0)
+                ]['betrag_num'].sum())
 
-                # Tägliche Ausgaben-Rate hochrechnen
+                # Tägliche Ausgaben-Rate hochrechnen (nur echte Ausgaben, nicht Spartopf)
                 daily_rate = curr_aus / today_day if today_day > 0 else 0
                 forecast_aus_total = daily_rate * days_in_cur
                 forecast_remaining = daily_rate * days_left
-                forecast_bank = curr_ein - forecast_aus_total - curr_dep
-                current_bank  = curr_ein - curr_aus - curr_dep
+                forecast_bank = curr_ein - forecast_aus_total - curr_dep + curr_spartopf_netto
+                current_bank  = curr_ein - curr_aus - curr_dep + curr_spartopf_netto
 
                 fc_col_l, fc_col_r = st.columns([1, 1])
 
@@ -2195,7 +2267,15 @@ if st.session_state['logged_in']:
                 monat_ein = df_month[df_month['typ'] == 'Einnahme']['betrag_num'].sum()
                 monat_aus = df_month[df_month['typ'] == 'Ausgabe']['betrag_num'].abs().sum()
                 monat_dep = df_month[df_month['typ'] == 'Depot']['betrag_num'].abs().sum()
-                akt_spar  = monat_ein - monat_aus - monat_dep
+                # Spartopf-Einzahlungen zählen als "gespartes Geld" (nicht als Ausgabe)
+                monat_spartopf_einzahl = abs(df_month[
+                    (df_month['typ'] == 'Spartopf') & (df_month['betrag_num'] < 0)
+                ]['betrag_num'].sum())
+                monat_spartopf_netto = df_month[df_month['typ'] == 'Spartopf']['betrag_num'].sum()
+                # Verfügbares Geld auf dem Konto (Spartopf geht weg vom Konto)
+                bank_aktuell = monat_ein - monat_aus - monat_dep + monat_spartopf_netto
+                # "Effektiv gespart" = Bankkonto + was in Töpfe geflossen ist (Geld ist noch da)
+                akt_spar = bank_aktuell + monat_spartopf_einzahl
 
                 sg_col_l, sg_col_r = st.columns([1, 1])
 
@@ -2215,6 +2295,7 @@ if st.session_state['logged_in']:
                     monat_name = now.strftime("%B %Y")
                     spar_color = '#4ade80' if akt_spar >= 0 else '#f87171'
                     spar_str   = f"{akt_spar:,.2f} €" if akt_spar >= 0 else f"-{abs(akt_spar):,.2f} €"
+                    bank_str_small = f"{bank_aktuell:,.2f} €" if bank_aktuell >= 0 else f"-{abs(bank_aktuell):,.2f} €"
                     st.markdown(
                         f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.8),"
                         f"rgba(10,16,30,0.9));border:1px solid rgba(148,163,184,0.06);"
@@ -2236,9 +2317,15 @@ if st.session_state['logged_in']:
                             f"<div style='font-family:DM Mono,monospace;color:#38bdf8;font-size:12px;'>-{monat_dep:,.2f} €</div>"
                             f"</div>" if monat_dep > 0 else ""
                         )
+                        + (
+                            f"<div style='display:flex;justify-content:space-between;'>"
+                            f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Spartöpfe</div>"
+                            f"<div style='font-family:DM Mono,monospace;color:#a78bfa;font-size:12px;'>🪣 {monat_spartopf_einzahl:,.2f} €</div>"
+                            f"</div>" if monat_spartopf_einzahl > 0 else ""
+                        )
                         + f"<div style='border-top:1px solid rgba(148,163,184,0.08);margin-top:8px;padding-top:8px;"
                         f"display:flex;justify-content:space-between;'>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:12px;font-weight:500;'>Verfügbar</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:12px;font-weight:500;'>Gespart (inkl. Töpfe)</div>"
                         f"<div style='font-family:DM Mono,monospace;color:{spar_color};font-size:13px;font-weight:600;'>{spar_str}</div>"
                         f"</div></div>",
                         unsafe_allow_html=True
@@ -2374,11 +2461,6 @@ if st.session_state['logged_in']:
         toepfe = load_toepfe(user_name)
 
         # ── Übersicht ────────────────────────────────────────
-        TOPF_FARBEN = [
-            "#38bdf8", "#4ade80", "#f87171", "#facc15",
-            "#a78bfa", "#fb923c", "#34d399", "#f472b6",
-        ]
-
         if toepfe:
             # Gesamtübersicht
             total_gespart = sum(t['gespart'] for t in toepfe)
@@ -2482,6 +2564,12 @@ if st.session_state['logged_in']:
 
                     # Einzahlen / Auszahlen
                     with st.expander(f"💰 Ein/Auszahlen — {topf['name']}"):
+                        st.markdown(
+                            f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;"
+                            f"margin-bottom:10px;'>Geld wird als <span style='color:#a78bfa;'>Spartopf-Buchung</span> "
+                            f"erfasst und vom Kontostand abgezogen — zählt aber als gespartes Geld.</div>",
+                            unsafe_allow_html=True
+                        )
                         tz1, tz2 = st.columns(2)
                         with tz1:
                             einzahl_key = f"einzahl_{topf_id}"
@@ -2491,7 +2579,7 @@ if st.session_state['logged_in']:
                             )
                             if st.button("+ Einzahlen", key=f"do_einzahl_{topf_id}",
                                          use_container_width=True, type="primary"):
-                                update_topf_gespart(user_name, topf_id, einzahl_val)
+                                update_topf_gespart(user_name, topf_id, topf['name'], einzahl_val)
                                 st.rerun()
                         with tz2:
                             auszahl_key = f"auszahl_{topf_id}"
@@ -2501,7 +2589,7 @@ if st.session_state['logged_in']:
                             )
                             if st.button("− Auszahlen", key=f"do_auszahl_{topf_id}",
                                          use_container_width=True, type="secondary"):
-                                update_topf_gespart(user_name, topf_id, -auszahl_val)
+                                update_topf_gespart(user_name, topf_id, topf['name'], -auszahl_val)
                                 st.rerun()
 
                     # Bearbeiten / Löschen
@@ -2548,23 +2636,6 @@ if st.session_state['logged_in']:
             with nt3:
                 nt_ziel = st.number_input("Sparziel (€, optional)", min_value=0.0,
                                           step=50.0, format="%.2f", value=0.0)
-            nt_farbe = st.selectbox(
-                "Farbe",
-                ["🔵 Blau (#38bdf8)", "🟢 Grün (#4ade80)", "🔴 Rot (#f87171)",
-                 "🟡 Gelb (#facc15)", "🟣 Lila (#a78bfa)", "🟠 Orange (#fb923c)",
-                 "💚 Smaragd (#34d399)", "🩷 Pink (#f472b6)"],
-                index=0
-            )
-            farbe_map = {
-                "🔵 Blau (#38bdf8)": "#38bdf8",
-                "🟢 Grün (#4ade80)": "#4ade80",
-                "🔴 Rot (#f87171)":  "#f87171",
-                "🟡 Gelb (#facc15)": "#facc15",
-                "🟣 Lila (#a78bfa)": "#a78bfa",
-                "🟠 Orange (#fb923c)": "#fb923c",
-                "💚 Smaragd (#34d399)": "#34d399",
-                "🩷 Pink (#f472b6)": "#f472b6",
-            }
             if st.form_submit_button("Topf erstellen", use_container_width=True, type="primary"):
                 if not nt_name.strip():
                     st.error("Bitte einen Namen eingeben.")
@@ -2574,7 +2645,6 @@ if st.session_state['logged_in']:
                         name=nt_name.strip(),
                         ziel=nt_ziel,
                         emoji=nt_emoji.strip() if nt_emoji.strip() else "🪣",
-                        farbe=farbe_map.get(nt_farbe, "#38bdf8")
                     )
                     st.success(f"✅ Topf '{nt_name.strip()}' erstellt!")
                     st.rerun()
@@ -2584,21 +2654,6 @@ if st.session_state['logged_in']:
             @st.dialog("✏️ Topf bearbeiten")
             def topf_edit_dialog():
                 t = st.session_state['topf_edit_data']
-                farbe_labels = [
-                    "🔵 Blau (#38bdf8)", "🟢 Grün (#4ade80)", "🔴 Rot (#f87171)",
-                    "🟡 Gelb (#facc15)", "🟣 Lila (#a78bfa)", "🟠 Orange (#fb923c)",
-                    "💚 Smaragd (#34d399)", "🩷 Pink (#f472b6)"
-                ]
-                farbe_map_edit = {
-                    "#38bdf8": "🔵 Blau (#38bdf8)", "#4ade80": "🟢 Grün (#4ade80)",
-                    "#f87171": "🔴 Rot (#f87171)",  "#facc15": "🟡 Gelb (#facc15)",
-                    "#a78bfa": "🟣 Lila (#a78bfa)", "#fb923c": "🟠 Orange (#fb923c)",
-                    "#34d399": "💚 Smaragd (#34d399)", "#f472b6": "🩷 Pink (#f472b6)",
-                }
-                farbe_rev = {v: k for k, v in farbe_map_edit.items()}
-                curr_farbe_label = farbe_map_edit.get(t['farbe'], farbe_labels[0])
-                curr_farbe_idx = farbe_labels.index(curr_farbe_label) if curr_farbe_label in farbe_labels else 0
-
                 e1, e2 = st.columns([1, 3])
                 with e1:
                     new_emoji = st.text_input("Emoji", value=t['emoji'], max_chars=4)
@@ -2606,7 +2661,6 @@ if st.session_state['logged_in']:
                     new_name = st.text_input("Name", value=t['name'])
                 new_ziel  = st.number_input("Sparziel (€)", min_value=0.0,
                                              value=float(t['ziel']), step=50.0, format="%.2f")
-                new_farbe_label = st.selectbox("Farbe", farbe_labels, index=curr_farbe_idx)
 
                 cs, cc = st.columns(2)
                 with cs:
@@ -2616,7 +2670,6 @@ if st.session_state['logged_in']:
                             name=new_name.strip() or t['name'],
                             ziel=new_ziel,
                             emoji=new_emoji.strip() if new_emoji.strip() else t['emoji'],
-                            farbe=farbe_rev.get(new_farbe_label, t['farbe'])
                         )
                         st.session_state['topf_edit_data'] = None
                         st.rerun()
