@@ -26,32 +26,15 @@ def check_password_strength(password):
 def is_valid_email(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
-def send_reset_email(to_email, token, app_url):
+def send_email(to_email, subject, html_content):
     try:
         sender = st.secrets["email"]["sender"]
         password = st.secrets["email"]["password"]
-        reset_link = f"{app_url}?token={token}"
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Balancely – Passwort zurücksetzen"
-        msg["From"] = sender
+        msg["Subject"] = subject
+        msg["From"] = f"Balancely ⚖️ <{sender}>"
         msg["To"] = to_email
-        html = f"""
-        <html><body style="font-family:sans-serif;background:#020617;color:#f1f5f9;padding:40px;">
-            <div style="max-width:480px;margin:auto;background:#0f172a;border-radius:16px;padding:40px;border:1px solid #1e293b;">
-                <h2 style="color:#38bdf8;">Balancely ⚖️</h2>
-                <p>Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.</p>
-                <p>Klicke auf den folgenden Button um ein neues Passwort zu vergeben:</p>
-                <a href="{reset_link}" style="display:inline-block;margin:20px 0;padding:14px 28px;
-                    background:linear-gradient(135deg,#38bdf8,#1d4ed8);color:white;
-                    border-radius:10px;text-decoration:none;font-weight:700;">
-                    Passwort zurücksetzen
-                </a>
-                <p style="color:#94a3b8;font-size:13px;">Dieser Link ist 30 Minuten gültig.<br>
-                Falls du diese Anfrage nicht gestellt hast, ignoriere diese Email.</p>
-            </div>
-        </body></html>
-        """
-        msg.attach(MIMEText(html, "html"))
+        msg.attach(MIMEText(html_content, "html"))
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender, password)
             server.sendmail(sender, to_email, msg.as_string())
@@ -59,6 +42,28 @@ def send_reset_email(to_email, token, app_url):
     except Exception as e:
         st.error(f"Email-Fehler: {e}")
         return False
+
+def email_html(title, text, btn_label, btn_link):
+    return f"""
+    <html><body style="font-family:sans-serif;background:#020617;color:#f1f5f9;padding:40px;">
+        <div style="max-width:480px;margin:auto;background:#0f172a;border-radius:16px;
+             padding:40px;border:1px solid #1e293b;">
+            <h2 style="color:#38bdf8;">Balancely ⚖️</h2>
+            <p>{text}</p>
+            <a href="{btn_link}" style="display:inline-block;margin:20px 0;padding:14px 28px;
+                background:linear-gradient(135deg,#38bdf8,#1d4ed8);color:white;
+                border-radius:10px;text-decoration:none;font-weight:700;">
+                {btn_label}
+            </a>
+            <p style="color:#94a3b8;font-size:13px;">
+                Dieser Link ist 30 Minuten gültig.<br>
+                Falls du diese Anfrage nicht gestellt hast, ignoriere diese Email.
+            </p>
+        </div>
+    </body></html>
+    """
+
+APP_URL = "https://balancely.streamlit.app"  # ← deine URL hier
 
 st.markdown("""
     <style>
@@ -177,6 +182,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 qp = st.query_params
 if 'token' in qp and not st.session_state['logged_in']:
     token = qp['token']
+    token_type = qp.get('type', 'reset')
     df_u = conn.read(worksheet="users", ttl="0")
     match = df_u[df_u['token'] == token]
     if not match.empty:
@@ -184,9 +190,21 @@ if 'token' in qp and not st.session_state['logged_in']:
         try:
             expiry = datetime.datetime.fromisoformat(expiry_str)
             if datetime.datetime.now() < expiry:
-                st.session_state['auth_mode'] = 'reset_password'
-                st.session_state['reset_token'] = token
-                st.query_params.clear()
+                if token_type == 'verify':
+                    # Email verifizieren
+                    idx = match.index[0]
+                    df_u.loc[idx, 'verified'] = 'True'
+                    df_u.loc[idx, 'token'] = ""
+                    df_u.loc[idx, 'token_expiry'] = ""
+                    conn.update(worksheet="users", data=df_u)
+                    st.query_params.clear()
+                    st.session_state['auth_mode'] = 'login'
+                    st.success("✅ E-Mail erfolgreich verifiziert! Du kannst dich jetzt einloggen.")
+                else:
+                    # Passwort zurücksetzen
+                    st.session_state['auth_mode'] = 'reset_password'
+                    st.session_state['reset_token'] = token
+                    st.query_params.clear()
             else:
                 st.error("⏰ Dieser Link ist abgelaufen. Bitte fordere einen neuen an.")
                 st.query_params.clear()
@@ -291,7 +309,6 @@ if st.session_state['logged_in']:
             pw_alt = st.text_input("Aktuelles Passwort", type="password")
             pw_neu = st.text_input("Neues Passwort", type="password")
             pw_neu2 = st.text_input("Neues Passwort wiederholen", type="password")
-
             if st.form_submit_button("Passwort ändern", use_container_width=True):
                 df_u = conn.read(worksheet="users", ttl="0")
                 idx = df_u[df_u['username'] == st.session_state['user_name']].index
@@ -313,7 +330,7 @@ if st.session_state['logged_in']:
                         st.success("✅ Passwort erfolgreich geändert!")
 
 else:
-    # ===== PASSWORT ZURÜCKSETZEN via Token =====
+    # ===== PASSWORT ZURÜCKSETZEN =====
     if st.session_state.get('auth_mode') == 'reset_password':
         st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
         st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
@@ -338,7 +355,7 @@ else:
                             df_u.loc[idx[0], 'token'] = ""
                             df_u.loc[idx[0], 'token_expiry'] = ""
                             conn.update(worksheet="users", data=df_u)
-                            st.success("✅ Passwort erfolgreich geändert! Du kannst dich jetzt einloggen.")
+                            st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen.")
                             st.session_state['auth_mode'] = 'login'
                             st.session_state.pop('reset_token', None)
                             st.rerun()
@@ -362,9 +379,13 @@ else:
                         df_u = conn.read(worksheet="users", ttl="0")
                         user_row = df_u[df_u['username'] == u_in]
                         if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
-                            st.session_state['logged_in'] = True
-                            st.session_state['user_name'] = u_in
-                            st.rerun()
+                            verified = str(user_row.iloc[0].get('verified', 'True'))
+                            if verified != 'True':
+                                st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
+                            else:
+                                st.session_state['logged_in'] = True
+                                st.session_state['user_name'] = u_in
+                                st.rerun()
                         else:
                             st.error("Login ungültig.")
 
@@ -381,7 +402,7 @@ else:
             elif st.session_state['auth_mode'] == 'forgot':
                 with st.form("forgot_form"):
                     st.markdown("<h3 style='text-align:center; color:white;'>Passwort vergessen</h3>", unsafe_allow_html=True)
-                    st.markdown("<p style='text-align:center; color:#94a3b8;'>Gib deine E-Mail-Adresse ein. Du erhältst einen Link zum Zurücksetzen.</p>", unsafe_allow_html=True)
+                    st.markdown("<p style='text-align:center; color:#94a3b8;'>Gib deine E-Mail-Adresse ein.</p>", unsafe_allow_html=True)
                     forgot_email = st.text_input("E-Mail", placeholder="deine@email.de")
                     if st.form_submit_button("Link senden", use_container_width=True):
                         if not is_valid_email(forgot_email):
@@ -390,7 +411,6 @@ else:
                             df_u = conn.read(worksheet="users", ttl="0")
                             idx = df_u[df_u['email'] == forgot_email.strip().lower()].index
                             if idx.empty:
-                                # Aus Sicherheitsgründen gleiche Meldung
                                 st.success("✅ Falls diese E-Mail registriert ist, wurde ein Link gesendet.")
                             else:
                                 token = secrets.token_urlsafe(32)
@@ -398,8 +418,14 @@ else:
                                 df_u.loc[idx[0], 'token'] = token
                                 df_u.loc[idx[0], 'token_expiry'] = expiry.isoformat()
                                 conn.update(worksheet="users", data=df_u)
-                                app_url = "https://balancely.streamlit.app"  # ← deine URL hier eintragen
-                                if send_reset_email(forgot_email.strip().lower(), token, app_url):
+                                link = f"{APP_URL}?token={token}&type=reset"
+                                html = email_html(
+                                    "Passwort zurücksetzen",
+                                    "Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.",
+                                    "Passwort zurücksetzen",
+                                    link
+                                )
+                                if send_email(forgot_email.strip().lower(), "Balancely – Passwort zurücksetzen", html):
                                     st.success("✅ Ein Reset-Link wurde an deine E-Mail gesendet!")
                 if st.button("Zurück zum Login", use_container_width=True):
                     st.session_state['auth_mode'] = 'login'
@@ -434,18 +460,29 @@ else:
                                 elif s_email.strip().lower() in df_u['email'].values:
                                     st.error("⚠️ Diese E-Mail ist bereits registriert.")
                                 else:
+                                    token = secrets.token_urlsafe(32)
+                                    expiry = datetime.datetime.now() + datetime.timedelta(minutes=30)
                                     new_u = pd.DataFrame([{
                                         "name": make_hashes(s_name.strip()),
                                         "username": s_user,
                                         "email": s_email.strip().lower(),
                                         "password": make_hashes(s_pass),
-                                        "token": "",
-                                        "token_expiry": ""
+                                        "token": token,
+                                        "token_expiry": expiry.isoformat(),
+                                        "verified": "False"
                                     }])
                                     conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
-                                    st.success("✅ Konto erstellt! Bitte logge dich ein.")
-                                    st.balloons()
-                                    st.session_state['auth_mode'] = 'login'
+                                    link = f"{APP_URL}?token={token}&type=verify"
+                                    html = email_html(
+                                        "E-Mail verifizieren",
+                                        "Willkommen bei Balancely! Bitte verifiziere deine E-Mail-Adresse um dein Konto zu aktivieren.",
+                                        "E-Mail verifizieren",
+                                        link
+                                    )
+                                    if send_email(s_email.strip().lower(), "Balancely – E-Mail verifizieren", html):
+                                        st.success("✅ Konto erstellt! Bitte prüfe deine E-Mails und verifiziere deine Adresse.")
+                                    else:
+                                        st.warning("⚠️ Konto erstellt, aber E-Mail konnte nicht gesendet werden.")
 
                 if st.button("Zurück zum Login", use_container_width=True):
                     st.session_state['auth_mode'] = 'login'
