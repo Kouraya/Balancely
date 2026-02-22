@@ -355,7 +355,7 @@ else:
                                 html = email_html("Willkommen bei Balancely! Dein Verifizierungscode lautet:", code)
                                 if send_email(s_email.strip().lower(), "Balancely – E-Mail verifizieren", html):
                                     st.session_state['pending_user'] = {
-                                        "name": s_name.strip(),  # FIX: Name nicht hashen!
+                                        "name": make_hashes(s_name.strip()),
                                         "username": s_user,
                                         "email": s_email.strip().lower(),
                                         "password": make_hashes(s_pass)
