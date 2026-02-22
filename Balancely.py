@@ -291,14 +291,16 @@ else:
                 u_in = st.text_input("Username", placeholder="Benutzername")
                 p_in = st.text_input("Passwort", type="password")
                 if st.form_submit_button("Anmelden"):
-                    # FIX: Kurze Pause damit Google Sheets Daten sicher aktuell sind
                     time.sleep(1)
                     df_u = conn.read(worksheet="users", ttl="0")
-                    user_row = df_u[df_u['username'] == u_in]
+                    matching_rows = df_u[df_u['username'] == u_in]
+                    user_row = matching_rows.iloc[[-1]] if not matching_rows.empty else matching_rows
+
                     if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
-                        # FIX: Robusterer verified-Check — alle möglichen Werte abdecken
                         raw_verified = user_row.iloc[0].get('verified', 'True')
                         verified = str(raw_verified).strip().lower()
+                        # DEBUG — zeigt genau was aus der DB gelesen wird
+                        st.info(f"🔍 Debug: raw='{raw_verified}' | type={type(raw_verified).__name__} | lower='{verified}'")
                         if verified not in ('true', '1', 'yes'):
                             st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
                         else:
