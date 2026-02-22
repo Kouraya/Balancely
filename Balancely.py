@@ -233,24 +233,61 @@ button[kind="primaryFormSubmit"] {
 #  Session State initialisieren
 # ============================================================
 
+# Standard-Kategorien mit Emojis
+DEFAULT_CATS = {
+    "Einnahme": ["💼 Gehalt", "🎁 Bonus", "🛒 Verkauf", "📈 Investitionen", "🏠 Miete (Einnahme)"],
+    "Ausgabe":  ["🍔 Essen", "🏠 Miete", "🎮 Freizeit", "🚗 Transport", "🛍️ Shopping",
+                 "💊 Gesundheit", "📚 Bildung", "⚡ Strom & Gas"],
+}
+
 defaults = {
-    'logged_in':     False,
-    'user_name':     "",
-    'auth_mode':     'login',
-    't_type':        'Ausgabe',
-    'pending_user':  {},
-    'verify_code':   "",
-    'verify_expiry': None,
-    'reset_email':   "",
-    'reset_code':    "",
-    'reset_expiry':  None,
-    'edit_idx':      None,
+    'logged_in':       False,
+    'user_name':       "",
+    'auth_mode':       'login',
+    't_type':          'Ausgabe',
+    'pending_user':    {},
+    'verify_code':     "",
+    'verify_expiry':   None,
+    'reset_email':     "",
+    'reset_code':      "",
+    'reset_expiry':    None,
+    'edit_idx':        None,
+    'show_new_cat':    False,
 }
 for key, val in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
 conn = st.connection("gsheets", type=GSheetsConnection)
+
+def load_custom_cats(user: str, typ: str) -> list:
+    """Lädt eigene Kategorien des Users aus Google Sheets."""
+    try:
+        df = conn.read(worksheet="categories", ttl="0")
+        if df.empty or 'user' not in df.columns:
+            return []
+        rows = df[(df['user'] == user) & (df['typ'] == typ)]
+        return rows['kategorie'].tolist()
+    except Exception:
+        return []
+
+def save_custom_cat(user: str, typ: str, kategorie: str):
+    """Speichert eine neue Kategorie in Google Sheets."""
+    try:
+        df = conn.read(worksheet="categories", ttl="0")
+    except Exception:
+        df = pd.DataFrame(columns=['user', 'typ', 'kategorie'])
+    new_row = pd.DataFrame([{'user': user, 'typ': typ, 'kategorie': kategorie}])
+    conn.update(worksheet="categories", data=pd.concat([df, new_row], ignore_index=True))
+
+def delete_custom_cat(user: str, typ: str, kategorie: str):
+    """Löscht eine eigene Kategorie aus Google Sheets."""
+    try:
+        df = conn.read(worksheet="categories", ttl="0")
+        df = df[~((df['user'] == user) & (df['typ'] == typ) & (df['kategorie'] == kategorie))]
+        conn.update(worksheet="categories", data=df)
+    except Exception:
+        pass
 
 @st.dialog("Eintrag löschen")
 def confirm_delete(row_data):
@@ -304,7 +341,7 @@ if st.session_state['logged_in']:
         st.markdown("---")
         menu = st.radio(
             "Navigation",
-            ["📈 Dashboard", "💸 Transaktionen", "📂 Analysen", "⚙️ Einstellungen"],
+            ["📈 Dashboard", "💸 Transaktion", "📂 Analysen", "⚙️ Einstellungen"],
             label_visibility="collapsed"
         )
         st.markdown("<div style='height:30vh;'></div>", unsafe_allow_html=True)
@@ -342,8 +379,8 @@ if st.session_state['logged_in']:
         except Exception:
             st.warning("Verbindung wird hergestellt...")
 
-    # ── Transaktionen ──────────────────────────────────────────
-    elif menu == "💸 Transaktionen":
+    # ── Transaktion ──────────────────────────────────────────
+    elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
         t_type = st.session_state['t_type']
 
@@ -371,31 +408,75 @@ if st.session_state['logged_in']:
 
         st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
+        # Kategorien zusammenbauen (Standard + eigene)
+        user_name = st.session_state['user_name']
+        std_cats    = DEFAULT_CATS[t_type]
+        custom_cats = load_custom_cats(user_name, t_type)
+        all_cats    = std_cats + custom_cats + ["➕ Neue Kategorie erstellen"]
+
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01, format="%.2f")
                 t_date   = st.date_input("Datum", datetime.date.today())
             with col2:
-                cats   = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" \
-                         else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
-                t_cat  = st.selectbox("Kategorie", cats)
+                t_cat  = st.selectbox("Kategorie", all_cats)
                 t_note = st.text_input("Notiz (optional)", placeholder="z.B. Supermarkt, Tankstelle...")
 
-            if st.form_submit_button("Speichern", use_container_width=True):
-                new_row = pd.DataFrame([{
-                    "user":      st.session_state['user_name'],
-                    "datum":     str(t_date),
-                    "typ":       t_type,
-                    "kategorie": t_cat,
-                    "betrag":    t_amount if t_type == "Einnahme" else -t_amount,
-                    "notiz":     t_note,
-                }])
-                df_old = conn.read(worksheet="transactions", ttl="0")
-                conn.update(worksheet="transactions",
-                            data=pd.concat([df_old, new_row], ignore_index=True))
-                st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
-                st.balloons()
+            saved = st.form_submit_button("Speichern", use_container_width=True)
+            if saved:
+                if t_cat == "➕ Neue Kategorie erstellen":
+                    st.warning("⚠️ Bitte zuerst eine Kategorie erstellen oder eine bestehende wählen.")
+                else:
+                    new_row = pd.DataFrame([{
+                        "user":      user_name,
+                        "datum":     str(t_date),
+                        "typ":       t_type,
+                        "kategorie": t_cat,
+                        "betrag":    t_amount if t_type == "Einnahme" else -t_amount,
+                        "notiz":     t_note,
+                    }])
+                    df_old = conn.read(worksheet="transactions", ttl="0")
+                    conn.update(worksheet="transactions",
+                                data=pd.concat([df_old, new_row], ignore_index=True))
+                    st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
+                    st.balloons()
+
+        # ── Neue Kategorie erstellen ─────────────────────────
+        if t_cat == "➕ Neue Kategorie erstellen" or st.session_state['show_new_cat']:
+            st.markdown("---")
+            st.subheader("➕ Neue Kategorie erstellen")
+            with st.form("new_cat_form", clear_on_submit=True):
+                nc1, nc2 = st.columns([1, 3])
+                with nc1:
+                    new_emoji = st.text_input("Emoji", placeholder="z.B. 🎵", max_chars=4)
+                with nc2:
+                    new_name  = st.text_input("Name", placeholder="z.B. Musik")
+                nc_typ = st.selectbox("Für welchen Typ?", ["Ausgabe", "Einnahme"])
+                if st.form_submit_button("Kategorie speichern", use_container_width=True, type="primary"):
+                    if not new_name.strip():
+                        st.error("❌ Bitte einen Namen eingeben.")
+                    else:
+                        label = f"{new_emoji.strip()} {new_name.strip()}" if new_emoji.strip()                                 else new_name.strip()
+                        existing = load_custom_cats(user_name, nc_typ) + DEFAULT_CATS[nc_typ]
+                        if label in existing:
+                            st.error("⚠️ Diese Kategorie existiert bereits.")
+                        else:
+                            save_custom_cat(user_name, nc_typ, label)
+                            st.session_state['show_new_cat'] = False
+                            st.success(f"✅ Kategorie '{label}' gespeichert!")
+                            st.rerun()
+
+            # Eigene Kategorien anzeigen + löschen
+            if custom_cats:
+                st.markdown(f"**Eigene {t_type}-Kategorien:**")
+                for cat in custom_cats:
+                    cc1, cc2 = st.columns([4, 1])
+                    cc1.markdown(f"<span style='color:#cbd5e1'>{cat}</span>", unsafe_allow_html=True)
+                    if cc2.button("🗑️", key=f"delcat_{cat}", help="Kategorie löschen",
+                                  use_container_width=True):
+                        delete_custom_cat(user_name, t_type, cat)
+                        st.rerun()
 
         # ── Buchungstabelle ──────────────────────────────────
         st.markdown("---")
@@ -804,5 +885,3 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-
-
