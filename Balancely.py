@@ -184,10 +184,15 @@ div[class*="stInputInstructions"] {
     background-color: #0b0f1a !important;
     border-right: 1px solid #1e293b !important;
 }
+button[kind="primaryFormSubmit"],
+button[kind="secondaryFormSubmit"] {
+    height: 50px !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+}
 button[kind="primaryFormSubmit"] {
     background: linear-gradient(135deg, #38bdf8, #1d4ed8) !important;
-    border: none !important; height: 50px !important;
-    border-radius: 12px !important; font-weight: 700 !important;
+    border: none !important;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label {
     border: 1px solid #1e293b !important; border-radius: 10px !important;
@@ -389,13 +394,15 @@ if st.session_state['logged_in']:
                         )
 
                         btn1, btn2 = c5.columns(2)
-                        if btn1.button("✏️", key=f"edit_btn_{orig_idx}", help="Eintrag bearbeiten"):
+                        if btn1.button("✏️", key=f"edit_btn_{orig_idx}",
+                                       help="Eintrag bearbeiten", use_container_width=True):
                             st.session_state['edit_idx'] = (
                                 None if st.session_state['edit_idx'] == orig_idx else orig_idx
                             )
                             st.rerun()
 
-                        if btn2.button("🗑️", key=f"del_{orig_idx}", help="Eintrag löschen"):
+                        if btn2.button("🗑️", key=f"del_{orig_idx}",
+                                       help="Eintrag löschen", use_container_width=True):
                             df_all = conn.read(worksheet="transactions", ttl="0")
                             if 'deleted' not in df_all.columns:
                                 df_all['deleted'] = ''
