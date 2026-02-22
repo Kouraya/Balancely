@@ -40,10 +40,8 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    /* Alle Input-Felder — gleiche Optik wie Datum */
-    div[data-baseweb="input"],
-    div[data-testid="stDateInput"] > div,
-    div[data-baseweb="select"] > div:first-child {
+    /* Alle Input-Felder */
+    div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.6) !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
@@ -54,10 +52,26 @@ st.markdown("""
     div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
         display: none !important;
     }
-    /* "Press Enter" Text ausblenden */
-    div[data-testid="stInputInstructions"] { display: none !important; }
-    small[data-testid="stInputInstructions"] { display: none !important; }
-    [class*="instructions"] { display: none !important; }
+    /* "Press Enter" Text — immer ausblenden, auch bei Fokus */
+    [data-testid="stInputInstructions"],
+    div[data-testid="stInputInstructions"],
+    small[data-testid="stInputInstructions"],
+    div[class*="InputInstructions"],
+    div[class*="input-instructions"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Datum-Input gleiche Optik wie Text-Inputs */
+    div[data-testid="stDateInput"] > div {
+        background-color: rgba(15, 23, 42, 0.6) !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 8px !important;
+    }
 
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
 
