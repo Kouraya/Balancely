@@ -159,15 +159,7 @@ div[data-testid="stDateInput"] > div {
     box-shadow: none !important;
     min-height: 42px !important;
 }
-/* Alle Inputs, Selects und Date-Picker gleich hoch */
-div[data-baseweb="input"],
-div[data-baseweb="base-input"],
-div[data-baseweb="select"] > div:first-child,
-div[data-testid="stDateInput"] > div,
-div[data-testid="stNumberInput"] > div {
-    min-height: 42px !important;
-    height: 42px !important;
-}
+
 div[data-baseweb="select"] > div:first-child {
     background-color: transparent !important;
     border: 1px solid #1e293b !important;
@@ -193,6 +185,19 @@ div[class*="stInputInstructions"] {
 [data-testid="stSidebar"] {
     background-color: #0b0f1a !important;
     border-right: 1px solid #1e293b !important;
+}
+/* Cursor pointer auf allen klickbaren Elementen */
+button, [data-testid="stPopover"] button,
+div[data-baseweb="select"],
+div[data-testid="stDateInput"] {
+    cursor: pointer !important;
+}
+/* Verhindert dass Date-Input Hitbox über andere Elemente ragt */
+div[data-testid="stDateInput"] {
+    overflow: hidden !important;
+}
+div[data-testid="stDateInput"] > div {
+    overflow: hidden !important;
 }
 button[kind="primaryFormSubmit"],
 button[kind="secondaryFormSubmit"] {
@@ -404,30 +409,36 @@ if st.session_state['logged_in']:
                         )
 
                         with c5:
-                            aktion = st.selectbox(
-                                ".",
-                                ["⋯", "✏️ Bearbeiten", "🗑️ Löschen"],
-                                key=f"menu_{orig_idx}",
-                                label_visibility="hidden"
-                            )
-                            if aktion == "✏️ Bearbeiten":
-                                st.session_state['edit_idx'] = (
-                                    None if st.session_state['edit_idx'] == orig_idx else orig_idx
-                                )
-                                st.rerun()
-                            if aktion == "🗑️ Löschen":
-                                df_all = conn.read(worksheet="transactions", ttl="0")
-                                if 'deleted' not in df_all.columns:
-                                    df_all['deleted'] = ''
-                                match_idx = df_all[find_row_mask(df_all, row)].index
-                                if len(match_idx) > 0:
-                                    df_all.loc[match_idx[0], 'deleted'] = 'True'
-                                    conn.update(worksheet="transactions", data=df_all)
-                                    st.session_state['edit_idx'] = None
-                                    st.success("🗑️ Eintrag gelöscht!")
+                            with st.popover("⋯", use_container_width=True):
+                                if st.button("✏️ Bearbeiten", key=f"edit_btn_{orig_idx}",
+                                             use_container_width=True):
+                                    st.session_state['edit_idx'] = orig_idx
                                     st.rerun()
-                                else:
-                                    st.error("❌ Eintrag nicht gefunden.")
+                                st.markdown("---")
+                                st.markdown(
+                                    "<p style='color:#f87171;font-size:13px;margin-bottom:6px;'>"
+                                    "⚠️ Wirklich löschen?</p>",
+                                    unsafe_allow_html=True
+                                )
+                                col_ja, col_nein = st.columns(2)
+                                with col_ja:
+                                    if st.button("✅ Ja", key=f"del_ja_{orig_idx}",
+                                                 use_container_width=True, type="primary"):
+                                        df_all = conn.read(worksheet="transactions", ttl="0")
+                                        if 'deleted' not in df_all.columns:
+                                            df_all['deleted'] = ''
+                                        match_idx = df_all[find_row_mask(df_all, row)].index
+                                        if len(match_idx) > 0:
+                                            df_all.loc[match_idx[0], 'deleted'] = 'True'
+                                            conn.update(worksheet="transactions", data=df_all)
+                                            st.session_state['edit_idx'] = None
+                                            st.rerun()
+                                        else:
+                                            st.error("❌ Eintrag nicht gefunden.")
+                                with col_nein:
+                                    if st.button("❌ Nein", key=f"del_nein_{orig_idx}",
+                                                 use_container_width=True):
+                                        st.rerun()
 
                         # Bearbeitungsformular
                         if st.session_state['edit_idx'] == orig_idx:
