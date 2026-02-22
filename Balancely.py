@@ -742,26 +742,73 @@ if st.session_state['logged_in']:
                     )
                 else:
                     monat_df["betrag_num"] = pd.to_numeric(monat_df["betrag"], errors="coerce")
-                    ein  = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
-                    aus  = abs(monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].sum())
-                    dep  = monat_df[monat_df["typ"] == "Depot"]["betrag_num"].sum()
-                    bal  = ein - aus  # Depot zählt als Teil des Kontostands (neutral)
-                    bal_color = "#4ade80" if bal >= 0 else "#f87171"
-                    bal_sign  = "+" if bal >= 0 else ""
-                    dep_sign  = "+" if dep >= 0 else ""
+                    alle["betrag_num"]     = pd.to_numeric(alle["betrag"],     errors="coerce")
+
+                    # ── Berechnungen ───────────────────────────
+                    # Bankkontostand diesen Monat: nur Einnahmen − Ausgaben
+                    ein     = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
+                    aus     = abs(monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].sum())
+                    bank    = ein - aus  # Depot zählt NICHT
+
+                    # Depot diesen Monat eingezahlt (kein Vorzeichen, neutral)
+                    dep_monat = monat_df[monat_df["typ"] == "Depot"]["betrag_num"].abs().sum()
+
+                    # Gesamtes Depot (kumuliert über alle Monate)
+                    dep_gesamt = alle[alle["typ"] == "Depot"]["betrag_num"].abs().sum()
+
+                    # Networth = Bankkontostand (kumuliert alle Monate) + Gesamtdepot
+                    bank_gesamt = (
+                        alle[alle["typ"] == "Einnahme"]["betrag_num"].sum()
+                        - alle[alle["typ"] == "Ausgabe"]["betrag_num"].abs().sum()
+                    )
+                    networth = bank_gesamt + dep_gesamt
+
+                    bank_color = "#e2e8f0" if bank >= 0 else "#f87171"
+                    bank_str   = f"{bank:,.2f} €" if bank >= 0 else f"-{abs(bank):,.2f} €"
+                    nw_color   = "#4ade80" if networth >= 0 else "#f87171"
+                    nw_str     = f"{networth:,.2f} €" if networth >= 0 else f"-{abs(networth):,.2f} €"
 
                     # ── KPI Cards ─────────────────────────────
-                    st.markdown(
-                        f"<div style='display:flex;gap:14px;margin:0 0 28px 0;flex-wrap:wrap;'>"
-                        # Kontostand
+                    # Zeile 1: Bankkontostand + Networth
+                    row1 = (
+                        f"<div style='display:flex;gap:14px;margin:0 0 12px 0;flex-wrap:wrap;'>"
+                        # Bankkontostand
                         f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
                         f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
-                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Kontostand</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:{bal_color};font-size:24px;"
-                        f"font-weight:600;letter-spacing:-0.5px;'>{bal_sign}{bal:,.2f} €</div>"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Bankkontostand</div>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>"
+                        f"diesen Monat</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:{bank_color};font-size:24px;"
+                        f"font-weight:600;letter-spacing:-0.5px;'>{bank_str}</div>"
                         f"</div>"
-                        # Einnahmen
+                        # Networth
+                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(56,189,248,0.12);border-radius:16px;padding:20px 22px;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Gesamtvermögen</div>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>"
+                        f"Bank + Depot kumuliert</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:{nw_color};font-size:24px;"
+                        f"font-weight:600;letter-spacing:-0.5px;'>{nw_str}</div>"
+                        f"</div>"
+                        f"</div>"
+                    )
+                    # Zeile 2: Einnahmen + Ausgaben + Depot-Einzahlung diesen Monat
+                    dep_html = (
+                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(56,189,248,0.15);border-radius:16px;padding:20px 22px;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Depot</div>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>"
+                        f"diesen Monat eingezahlt</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#38bdf8;font-size:24px;"
+                        f"font-weight:600;letter-spacing:-0.5px;'>{dep_monat:,.2f} €</div>"
+                        f"</div>"
+                        if dep_monat > 0 else ""
+                    )
+                    row2 = (
+                        f"<div style='display:flex;gap:14px;margin:0 0 28px 0;flex-wrap:wrap;'>"
                         f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
                         f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
@@ -769,7 +816,6 @@ if st.session_state['logged_in']:
                         f"<div style='font-family:DM Sans,sans-serif;color:#4ade80;font-size:24px;"
                         f"font-weight:600;letter-spacing:-0.5px;'>+{ein:,.2f} €</div>"
                         f"</div>"
-                        # Ausgaben
                         f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
                         f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
                         f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
@@ -777,19 +823,10 @@ if st.session_state['logged_in']:
                         f"<div style='font-family:DM Sans,sans-serif;color:#f87171;font-size:24px;"
                         f"font-weight:600;letter-spacing:-0.5px;'>-{aus:,.2f} €</div>"
                         f"</div>"
-                        # Depot (nur anzeigen wenn Depot-Buchungen vorhanden)
-                        + (
-                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
-                        f"border:1px solid rgba(56,189,248,0.15);border-radius:16px;padding:20px 22px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;"
-                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Depot</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#38bdf8;font-size:24px;"
-                        f"font-weight:600;letter-spacing:-0.5px;'>{dep_sign}{dep:,.2f} €</div>"
-                        f"</div>"
-                        if dep != 0 else "")
-                        + f"</div>",
-                        unsafe_allow_html=True
+                        + dep_html
+                        + f"</div>"
                     )
+                    st.markdown(row1 + row2, unsafe_allow_html=True)
 
                     # ── Kategorie-Daten aufbereiten ────────────
                     ausg_df = monat_df[monat_df["typ"] == "Ausgabe"].copy()
@@ -880,23 +917,21 @@ if st.session_state['logged_in']:
                         ),
                         annotations=[
                             dict(
-                                text="<span style='font-size:11px'>KONTOSTAND</span>",
+                                text="BANK",
                                 x=0.5, y=0.62, showarrow=False,
                                 font=dict(size=10, color="#334155", family="DM Mono, monospace"),
                                 xref="paper", yref="paper",
                             ),
                             dict(
-                                text=f"<b>{bal_sign}{bal:,.2f} €</b>",
+                                text=f"<b>{bank_str}</b>",
                                 x=0.5, y=0.50, showarrow=False,
-                                font=dict(size=22, color=bal_color, family="DM Sans, sans-serif"),
+                                font=dict(size=22, color=bank_color, family="DM Sans, sans-serif"),
                                 xref="paper", yref="paper",
                             ),
                             dict(
-                                text=f"<span style='color:#22c55e'>+{ein:,.0f}</span>"
-                                     f"<span style='color:#334155'>  /  </span>"
-                                     f"<span style='color:#f87171'>-{aus:,.0f} €</span>",
+                                text=f"+{ein:,.0f}  /  -{aus:,.0f} €",
                                 x=0.5, y=0.38, showarrow=False,
-                                font=dict(size=11, color="#475569", family="DM Sans, sans-serif"),
+                                font=dict(size=11, color="#334155", family="DM Sans, sans-serif"),
                                 xref="paper", yref="paper",
                             ),
                         ],
