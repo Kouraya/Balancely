@@ -194,6 +194,21 @@ div[class*="stInputInstructions"] {
     background-color: #0b0f1a !important;
     border-right: 1px solid #1e293b !important;
 }
+/* ✏️ 🗑️ Buttons vertikal zentriert in ihrer Spalte */
+div[data-testid="stHorizontalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] {
+    display: flex !important;
+    align-items: center !important;
+}
+div[data-testid="column"]:last-child div[data-testid="stVerticalBlock"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    height: 100% !important;
+}
+div[data-testid="column"]:last-child button {
+    margin-top: auto !important;
+    margin-bottom: auto !important;
+}
 button[kind="primaryFormSubmit"],
 button[kind="secondaryFormSubmit"] {
     height: 50px !important;
