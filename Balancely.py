@@ -328,7 +328,7 @@ if st.session_state['logged_in']:
                                     current_cat = row['kategorie'] if row['kategorie'] in cats_e else cats_e[0]
                                     e_cat = st.selectbox("Kategorie", cats_e, index=cats_e.index(current_cat))
                                 e_notiz = st.text_input("Notiz (optional)", value=notiz, placeholder="z.B. Supermarkt, Tankstelle...")
-                                    col_save, col_cancel = st.columns(2)
+                                col_save, col_cancel = st.columns(2)
                                 with col_save:
                                     saved = st.form_submit_button("💾 Speichern", use_container_width=True, type="primary")
                                 with col_cancel:
