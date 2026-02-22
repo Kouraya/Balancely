@@ -255,25 +255,33 @@ if st.session_state['logged_in']:
         try:
             df_t = conn.read(worksheet="transactions", ttl="0")
             if 'user' in df_t.columns:
-                user_df = df_t[df_t['user'] == st.session_state['user_name']].copy()
-                # Nur nicht-gelöschte anzeigen
-                if 'deleted' in user_df.columns:
-                    user_df = user_df[user_df['deleted'].astype(str).str.lower() != 'true']
+                # Nur Einträge dieses Users
+                user_mask = df_t['user'] == st.session_state['user_name']
+                # Gelöschte ausfiltern
+                if 'deleted' in df_t.columns:
+                    deleted_mask = df_t['deleted'].astype(str).str.lower() != 'true'
+                else:
+                    deleted_mask = pd.Series([True] * len(df_t), index=df_t.index)
+                user_df = df_t[user_mask & deleted_mask].copy()
+
                 if not user_df.empty:
                     user_df['betrag_anzeige'] = pd.to_numeric(user_df['betrag']).apply(lambda x: f"+{x:.2f} €" if x > 0 else f"{x:.2f} €")
-                    anzahl = len(user_df)
-                    for i, (orig_idx, row) in enumerate(user_df.iterrows()):
+                    for orig_idx, row in user_df.iterrows():
                         c1, c2, c3, c4, c5 = st.columns([2, 2, 2, 3, 1])
                         c1.markdown(f"<span style='color:#94a3b8'>{row['datum']}</span>", unsafe_allow_html=True)
                         farbe = '#4ade80' if row['typ'] == 'Einnahme' else '#f87171'
                         c2.markdown(f"<span style='color:{farbe}; font-weight:700'>{row['betrag_anzeige']}</span>", unsafe_allow_html=True)
                         c3.markdown(f"<span style='color:#cbd5e1'>{row['kategorie']}</span>", unsafe_allow_html=True)
-                        c4.markdown(f"<span style='color:#64748b'>{row.get('notiz','')}</span>", unsafe_allow_html=True)
+                        # FIX: nan abfangen
+                        notiz = str(row.get('notiz', ''))
+                        notiz = '' if notiz.lower() == 'nan' else notiz
+                        c4.markdown(f"<span style='color:#64748b'>{notiz}</span>", unsafe_allow_html=True)
+                        # FIX: Löschen über echten DataFrame-Index (entspricht Google Sheets Zeile)
                         if c5.button("🗑️", key=f"del_{orig_idx}", help="Eintrag löschen"):
                             df_all = conn.read(worksheet="transactions", ttl="0")
                             if 'deleted' not in df_all.columns:
                                 df_all['deleted'] = ''
-                            df_all.at[orig_idx, 'deleted'] = 'True'
+                            df_all.loc[orig_idx, 'deleted'] = 'True'
                             conn.update(worksheet="transactions", data=df_all)
                             st.success("🗑️ Eintrag gelöscht!")
                             st.rerun()
