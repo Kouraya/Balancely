@@ -39,19 +39,28 @@ st.markdown("""
         border-radius: 24px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
-    div[data-baseweb="input"] {
-        background-color: rgba(15, 23, 42, 0.8) !important;
-        border: 1px solid #334155 !important;
-        border-radius: 12px !important;
+
+    /* Alle Input-Felder — gleiche Optik wie Datum */
+    div[data-baseweb="input"],
+    div[data-testid="stDateInput"] > div,
+    div[data-baseweb="select"] > div:first-child {
+        background-color: rgba(15, 23, 42, 0.6) !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 8px !important;
         padding-right: 0 !important;
         gap: 0 !important;
     }
-    /* Leerer Spacer-div neben dem Auge ausblenden */
+    /* Leerer Spacer neben Auge */
     div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
         display: none !important;
     }
+    /* "Press Enter" Text ausblenden */
     div[data-testid="stInputInstructions"] { display: none !important; }
+    small[data-testid="stInputInstructions"] { display: none !important; }
+    [class*="instructions"] { display: none !important; }
+
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
+
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
         border-right: 1px solid #1e293b !important;
