@@ -663,6 +663,11 @@ if st.session_state['logged_in']:
         st.session_state['show_new_cat']    = False
         st.session_state['edit_cat_data']   = None
         st.session_state['delete_cat_data'] = None
+
+    # Edit-Formular zurücksetzen wenn Menü gewechselt wird
+    if menu != st.session_state.get('_last_menu', menu):
+        st.session_state['edit_idx'] = None
+
     st.session_state['_last_menu'] = menu
 
     # ── Dashboard ────────────────────────────────────────────
@@ -1699,4 +1704,5 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
 
