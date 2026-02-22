@@ -20,8 +20,7 @@ st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 #  Hilfsfunktionen
 # ============================================================
 
-def make_hashes(text):
-    return hashlib.sha256(str.encode(text)).hexdigest()
+def make_hashes(text): return hashlib.sha256(str.encode(text)).hexdigest()
 
 def check_password_strength(pw):
     if len(pw) < 6: return False, "Mindestens 6 Zeichen erforderlich."
@@ -255,7 +254,6 @@ def delete_dauerauftrag(user, da_id):
     except: pass
 
 def apply_dauerauftraege(user):
-    """Bucht Daueraufträge für aktuellen Monat falls noch nicht gebucht."""
     try:
         das = load_dauerauftraege(user)
         if not das: return 0
@@ -265,7 +263,6 @@ def apply_dauerauftraege(user):
         booked = 0
         for da in das:
             if da['aktiv'] != 'True': continue
-            # Check ob für diesen Monat bereits gebucht
             already = df_t[
                 (df_t['user']==user) &
                 (df_t['notiz']==f"⚙️ Dauerauftrag: {da['name']}") &
@@ -568,7 +565,6 @@ if st.session_state['logged_in']:
     if _user_settings.get('theme') and _user_settings['theme'] != st.session_state.get('theme'):
         st.session_state['theme'] = _user_settings['theme']
 
-    # Daueraufträge am 1. des Monats buchen
     if datetime.date.today().day == 1:
         booked = apply_dauerauftraege(st.session_state['user_name'])
         if booked > 0:
@@ -600,7 +596,6 @@ if st.session_state['logged_in']:
             for k in [k for k in st.session_state if k.startswith("_gs_cache_")]: del st.session_state[k]
             st.session_state['logged_in'] = False; st.rerun()
 
-    # Dialog-State Management
     if not st.session_state.pop('_dialog_just_opened', False):
         st.session_state['show_new_cat'] = False
         st.session_state['edit_cat_data'] = None
@@ -670,7 +665,6 @@ if st.session_state['logged_in']:
                     bank_str   = f"{bank:,.2f} {_currency_sym}" if bank>=0 else f"-{abs(bank):,.2f} {_currency_sym}"
                     nw_str     = f"{networth:,.2f} {_currency_sym}" if networth>=0 else f"-{abs(networth):,.2f} {_currency_sym}"
 
-                    # Budget-Limit
                     if offset==0:
                         _budget = _user_settings.get('budget',0)
                         if _budget>0:
@@ -685,7 +679,6 @@ if st.session_state['logged_in']:
                                 f"</div><div style='background:rgba(30,41,59,0.8);border-radius:99px;height:6px;overflow:hidden;'>"
                                 f"<div style='width:{_bpct:.0f}%;height:100%;background:{_bcol};border-radius:99px;'></div></div></div>", unsafe_allow_html=True)
 
-                    # Sparziel-Warnung
                     if offset==0:
                         _goal = load_goal(st.session_state["user_name"])
                         _sp_einz = abs(monat_df[(monat_df["typ"]=="Spartopf")&(monat_df["betrag_num"]<0)]["betrag_num"].sum())
@@ -708,7 +701,6 @@ if st.session_state['logged_in']:
                                     f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;'>Gespart: {_effektiv:,.2f} {_currency_sym}</div>"
                                     f"</div></div>", unsafe_allow_html=True)
 
-                    # KPI-Karten
                     _sp_einz2 = abs(monat_df[(monat_df["typ"]=="Spartopf")&(monat_df["betrag_num"]<0)]["betrag_num"].sum())
                     dep_html = (f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(56,189,248,0.15);border-radius:16px;padding:20px 22px;'>"
                                 f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Depot</div>"
@@ -738,7 +730,6 @@ if st.session_state['logged_in']:
                         f"<div style='font-family:DM Sans,sans-serif;color:#f87171;font-size:24px;font-weight:600;'>-{aus:,.2f} {_currency_sym}</div></div>"
                         + dep_html + topf_html + "</div>", unsafe_allow_html=True)
 
-                    # Donut-Chart
                     ausg_df = monat_df[monat_df["typ"]=="Ausgabe"].copy(); ausg_df["betrag_num"] = ausg_df["betrag_num"].abs()
                     ein_df  = monat_df[monat_df["typ"]=="Einnahme"].copy()
                     dep_df  = monat_df[monat_df["typ"]=="Depot"].copy(); dep_df["betrag_num"] = pd.to_numeric(dep_df["betrag_num"],errors="coerce").abs()
@@ -848,7 +839,6 @@ if st.session_state['logged_in']:
         if st.session_state.get('edit_cat_data'):   edit_category_dialog()
         if st.session_state.get('delete_cat_data'): confirm_delete_cat()
 
-        # ── Tabs: Buchung / Daueraufträge ──
         tabs = st.tabs(["💸 Neue Buchung", "⚙️ Daueraufträge"])
 
         with tabs[0]:
@@ -899,7 +889,6 @@ if st.session_state['logged_in']:
                                     if st.button("🗑️ Löschen", key=f"delcat_{cat}", use_container_width=True):
                                         st.session_state.update({'delete_cat_data':{'user':user_name,'typ':t_type,'label':cat},'_dialog_just_opened':True}); st.rerun()
 
-            # ── Buchungsliste mit Suche & Pagination ──────────────
             st.markdown("<div style='height:8px'></div><div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin:20px 0 10px 0;'>Meine Buchungen</div>", unsafe_allow_html=True)
 
             search_col, _ = st.columns([2,3])
@@ -928,12 +917,10 @@ if st.session_state['logged_in']:
                         sort_col = 'timestamp' if 'timestamp' in user_df.columns else 'datum'
                         user_df  = user_df.sort_values(sort_col, ascending=False)
 
-                        # Suche — exakte Wort-/Zahl-Treffer (400 ≠ 4000)
                         search_q = st.session_state.get('tx_search','').strip().lower()
                         if search_q:
                             import re as _re
                             _pat = _re.escape(search_q)
-                            # Für Beträge: nur match wenn Zahl exakt steht (nicht Teilstring einer größeren Zahl)
                             betrag_match = user_df['betrag_anzeige'].str.lower().str.contains(
                                 r'(?<!\d)' + _pat + r'(?!\d)', na=False, regex=True)
                             mask_s = (
@@ -1002,7 +989,6 @@ if st.session_state['logged_in']:
                                             else: st.error("❌ Eintrag nicht gefunden.")
                                         if cancelled: st.session_state['edit_idx'] = None; st.rerun()
 
-                        # Pagination
                         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
                         p1,p2,p3 = st.columns([1,4,1])
                         with p1:
@@ -1016,7 +1002,6 @@ if st.session_state['logged_in']:
             except Exception as e:
                 st.warning(f"Fehler beim Laden: {e}")
 
-        # ── Daueraufträge Tab ──
         with tabs[1]:
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             das = load_dauerauftraege(user_name)
@@ -1096,7 +1081,6 @@ if st.session_state['logged_in']:
                 now   = datetime.datetime.now()
                 today = now.date()
 
-                # ── Zeitraum + Monatsselektion ─────────────────
                 zeitraum = st.session_state['analysen_zeitraum']
                 zt1, zt2, zt3, _ = st.columns([1,1,1,3])
                 for (label,key),col in zip([("Wöchentlich","zt_weekly"),("Monatlich","zt_monthly"),("Jährlich","zt_yearly")],[zt1,zt2,zt3]):
@@ -1106,7 +1090,6 @@ if st.session_state['logged_in']:
 
                 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-                # Monatliche Navigation
                 if zeitraum == "Monatlich":
                     an_offset  = st.session_state.get('analysen_month_offset',0)
                     m_total    = now.year*12 + (now.month-1) + an_offset
@@ -1179,7 +1162,6 @@ if st.session_state['logged_in']:
 
                 st.markdown("<hr>", unsafe_allow_html=True)
 
-                # ── Kaufverhalten ─────────────────────────────────
                 st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Kaufverhalten</p>", unsafe_allow_html=True)
                 kv_l, kv_r = st.columns(2)
                 with kv_l:
@@ -1225,7 +1207,6 @@ if st.session_state['logged_in']:
 
                 st.markdown("<hr>", unsafe_allow_html=True)
 
-                # ── Kalender-Heatmap ──────────────────────────────
                 st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Kalender-Heatmap</p>", unsafe_allow_html=True)
                 hm_offset = st.session_state.get('heatmap_month_offset',0)
                 hm_m_total = now.year*12+(now.month-1)+hm_offset
@@ -1273,7 +1254,6 @@ if st.session_state['logged_in']:
 
                 st.markdown("<hr>", unsafe_allow_html=True)
 
-                # ── Monatsende-Prognose ───────────────────────────
                 st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Monatsende-Prognose</p>", unsafe_allow_html=True)
                 curr_month_df = df_all[(df_all['datum_dt'].dt.year==now.year)&(df_all['datum_dt'].dt.month==now.month)].copy()
                 today_day     = now.day
@@ -1349,7 +1329,6 @@ if st.session_state['logged_in']:
 
                 st.markdown("<hr>", unsafe_allow_html=True)
 
-                # ── Spar-Potenzial ────────────────────────────────
                 st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Spar-Potenzial</p>", unsafe_allow_html=True)
                 hist_df = df_all[~((df_all['datum_dt'].dt.year==now.year)&(df_all['datum_dt'].dt.month==now.month))&(df_all['typ']=='Ausgabe')].copy()
                 hist_df['betrag_num'] = hist_df['betrag_num'].abs()
@@ -1401,7 +1380,6 @@ if st.session_state['logged_in']:
 
                 st.markdown("<hr>", unsafe_allow_html=True)
 
-                # ── Sparziel ──────────────────────────────────────
                 st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Sparziel</p>", unsafe_allow_html=True)
                 current_goal = load_goal(user_name)
                 df_month = df_all[(df_all['datum_dt'].dt.year==now.year)&(df_all['datum_dt'].dt.month==now.month)].copy()
@@ -1644,7 +1622,6 @@ if st.session_state['logged_in']:
             section_header("Benutzername ändern", "Kann nur alle 30 Tage geändert werden")
             try:
                 df_u_name = _gs_read("users"); idx_un = df_u_name[df_u_name['username']==user_name].index
-                # Datum aus users-Spalte lesen
                 last_change_raw = str(df_u_name.loc[idx_un[0],'username_changed_at']) if (not idx_un.empty and 'username_changed_at' in df_u_name.columns) else ''
                 last_change = None
                 try: last_change = datetime.date.fromisoformat(last_change_raw.strip()) if last_change_raw.strip() not in ('','nan','None') else None
@@ -1784,76 +1761,98 @@ if st.session_state['logged_in']:
                         if cancel:
                             st.session_state.update({'email_verify_code':"",'email_verify_new':""}); st.rerun()
 
+        # ── Daten Tab — alles untereinander, sauber ──────────────
         elif active_tab == "Daten":
-            col_l, col_r = st.columns(2)
-            with col_l:
-                section_header("Excel-Export")
-                try:
-                    import io
-                    df_export = _gs_read("transactions")
-                    if 'user' in df_export.columns:
-                        df_export = df_export[df_export['user']==user_name]
-                        if 'deleted' in df_export.columns:
-                            df_export = df_export[~df_export['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0'])]
-                        df_export = df_export.drop(columns=['deleted','user'], errors='ignore')
-                    buffer = io.BytesIO()
-                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        df_export.to_excel(writer, index=False, sheet_name='Transaktionen')
-                    excel_bytes = buffer.getvalue()
-                    st.markdown(f"<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin-bottom:12px;'>{len(df_export)} Transaktionen bereit</p>", unsafe_allow_html=True)
-                    st.download_button(label="⬇️ Transaktionen exportieren (Excel)", data=excel_bytes,
-                                       file_name=f"balancely_{user_name}_{datetime.date.today()}.xlsx",
-                                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                       use_container_width=True, type="primary")
-                except Exception as e: st.error(f"Export fehlgeschlagen: {e}")
 
-                st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-                section_header("Daten zurücksetzen")
-                if not st.session_state['confirm_reset']:
+            # ── Excel-Export ──────────────────────────────────────
+            section_header("Excel-Export")
+            try:
+                import io
+                df_export = _gs_read("transactions")
+                if 'user' in df_export.columns:
+                    df_export = df_export[df_export['user']==user_name]
+                    if 'deleted' in df_export.columns:
+                        df_export = df_export[~df_export['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0'])]
+                    df_export = df_export.drop(columns=['deleted','user'], errors='ignore')
+                buffer = io.BytesIO()
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    df_export.to_excel(writer, index=False, sheet_name='Transaktionen')
+                excel_bytes = buffer.getvalue()
+                st.markdown(f"<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin-bottom:12px;'>{len(df_export)} Transaktionen bereit</p>", unsafe_allow_html=True)
+                _, dl_col, _ = st.columns([1, 2, 1])
+                with dl_col:
+                    st.download_button(
+                        label="⬇️ Transaktionen exportieren (Excel)",
+                        data=excel_bytes,
+                        file_name=f"balancely_{user_name}_{datetime.date.today()}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True, type="primary")
+            except Exception as e:
+                st.error(f"Export fehlgeschlagen: {e}")
+
+            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+
+            # ── Daten zurücksetzen ────────────────────────────────
+            section_header("Daten zurücksetzen")
+            if not st.session_state['confirm_reset']:
+                _, rst_col, _ = st.columns([1, 2, 1])
+                with rst_col:
                     if st.button("🔄 Alle Transaktionen löschen", use_container_width=True, type="secondary"):
                         st.session_state['confirm_reset'] = True; st.rerun()
-                else:
-                    st.markdown("<div style='background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:14px;margin-bottom:10px;'><p style='font-family:DM Sans,sans-serif;color:#fca5a5;font-size:14px;font-weight:500;margin:0 0 4px 0;'>⚠️ Wirklich alle Transaktionen löschen?</p><p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin:0;'>Diese Aktion kann nicht rückgängig gemacht werden.</p></div>", unsafe_allow_html=True)
-                    rc1, rc2 = st.columns(2)
-                    with rc1:
-                        if st.button("Ja, löschen", use_container_width=True, type="primary"):
-                            try:
-                                df_all_t = _gs_read("transactions")
-                                if 'deleted' not in df_all_t.columns: df_all_t['deleted'] = ''
-                                df_all_t.loc[df_all_t['user']==user_name,'deleted'] = 'True'
-                                _gs_update("transactions", df_all_t)
-                                st.session_state['confirm_reset'] = False; st.success("✅ Alle Transaktionen gelöscht."); st.rerun()
-                            except Exception as e: st.error(f"Fehler: {e}")
-                    with rc2:
-                        if st.button("Abbrechen", use_container_width=True):
-                            st.session_state['confirm_reset'] = False; st.rerun()
+            else:
+                st.markdown(
+                    "<div style='background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:14px;margin-bottom:10px;'>"
+                    "<p style='font-family:DM Sans,sans-serif;color:#fca5a5;font-size:14px;font-weight:500;margin:0 0 4px 0;'>⚠️ Wirklich alle Transaktionen löschen?</p>"
+                    "<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin:0;'>Diese Aktion kann nicht rückgängig gemacht werden.</p></div>",
+                    unsafe_allow_html=True)
+                _, rc1, rc2, _ = st.columns([1, 1, 1, 1])
+                with rc1:
+                    if st.button("Ja, löschen", use_container_width=True, type="primary"):
+                        try:
+                            df_all_t = _gs_read("transactions")
+                            if 'deleted' not in df_all_t.columns: df_all_t['deleted'] = ''
+                            df_all_t.loc[df_all_t['user']==user_name,'deleted'] = 'True'
+                            _gs_update("transactions", df_all_t)
+                            st.session_state['confirm_reset'] = False; st.success("✅ Alle Transaktionen gelöscht."); st.rerun()
+                        except Exception as e: st.error(f"Fehler: {e}")
+                with rc2:
+                    if st.button("Abbrechen", use_container_width=True):
+                        st.session_state['confirm_reset'] = False; st.rerun()
 
-            with col_r:
-                section_header("Account löschen")
-                if not st.session_state['confirm_delete_account']:
+            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+
+            # ── Account löschen ───────────────────────────────────
+            section_header("Account löschen")
+            if not st.session_state['confirm_delete_account']:
+                _, del_col, _ = st.columns([1, 2, 1])
+                with del_col:
                     if st.button("🗑️ Account und alle Daten löschen", use_container_width=True, type="secondary"):
                         st.session_state['confirm_delete_account'] = True; st.rerun()
-                else:
-                    st.markdown("<div style='background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);border-left:3px solid #f87171;border-radius:10px;padding:14px;margin-bottom:10px;'><p style='font-family:DM Sans,sans-serif;color:#fca5a5;font-size:14px;font-weight:600;margin:0 0 4px 0;'>🔴 Account unwiderruflich löschen?</p><p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin:0;'>Alle Transaktionen, Spartöpfe, Sparziele und Einstellungen werden gelöscht.</p></div>", unsafe_allow_html=True)
-                    da1, da2 = st.columns(2)
-                    with da1:
-                        if st.button("Ja, Account löschen", use_container_width=True, type="primary"):
-                            try:
-                                for ws,col_name in [("transactions","user"),("toepfe","user")]:
-                                    df_ws = _gs_read(ws)
-                                    if 'deleted' not in df_ws.columns: df_ws['deleted'] = ''
-                                    df_ws.loc[df_ws[col_name]==user_name,'deleted'] = 'True'; _gs_update(ws, df_ws)
-                                for ws in ["goals","settings"]:
-                                    df_ws = _gs_read(ws); _gs_update(ws, df_ws[df_ws['user']!=user_name])
-                                df_u3 = _gs_read("users")
-                                if 'deleted' not in df_u3.columns: df_u3['deleted'] = ''
-                                df_u3.loc[df_u3['username']==user_name,'deleted'] = 'True'; _gs_update("users", df_u3)
-                                for k in [k for k in st.session_state if k.startswith("_gs_cache_")]: del st.session_state[k]
-                                st.session_state.update({'logged_in':False,'user_name':"",'confirm_delete_account':False}); st.rerun()
-                            except Exception as e: st.error(f"Fehler beim Löschen: {e}")
-                    with da2:
-                        if st.button("Abbrechen", use_container_width=True, key="cancel_del_acc"):
-                            st.session_state['confirm_delete_account'] = False; st.rerun()
+            else:
+                st.markdown(
+                    "<div style='background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);border-left:3px solid #f87171;border-radius:10px;padding:14px;margin-bottom:10px;'>"
+                    "<p style='font-family:DM Sans,sans-serif;color:#fca5a5;font-size:14px;font-weight:600;margin:0 0 4px 0;'>🔴 Account unwiderruflich löschen?</p>"
+                    "<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin:0;'>Alle Transaktionen, Spartöpfe, Sparziele und Einstellungen werden gelöscht.</p></div>",
+                    unsafe_allow_html=True)
+                _, da1, da2, _ = st.columns([1, 1, 1, 1])
+                with da1:
+                    if st.button("Ja, Account löschen", use_container_width=True, type="primary"):
+                        try:
+                            for ws,col_name in [("transactions","user"),("toepfe","user")]:
+                                df_ws = _gs_read(ws)
+                                if 'deleted' not in df_ws.columns: df_ws['deleted'] = ''
+                                df_ws.loc[df_ws[col_name]==user_name,'deleted'] = 'True'; _gs_update(ws, df_ws)
+                            for ws in ["goals","settings"]:
+                                df_ws = _gs_read(ws); _gs_update(ws, df_ws[df_ws['user']!=user_name])
+                            df_u3 = _gs_read("users")
+                            if 'deleted' not in df_u3.columns: df_u3['deleted'] = ''
+                            df_u3.loc[df_u3['username']==user_name,'deleted'] = 'True'; _gs_update("users", df_u3)
+                            for k in [k for k in st.session_state if k.startswith("_gs_cache_")]: del st.session_state[k]
+                            st.session_state.update({'logged_in':False,'user_name':"",'confirm_delete_account':False}); st.rerun()
+                        except Exception as e: st.error(f"Fehler beim Löschen: {e}")
+                with da2:
+                    if st.button("Abbrechen", use_container_width=True, key="cancel_del_acc"):
+                        st.session_state['confirm_delete_account'] = False; st.rerun()
 
 # ============================================================
 #  AUTH
