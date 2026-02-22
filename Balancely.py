@@ -415,23 +415,21 @@ def edit_category_dialog():
         unsafe_allow_html=True
     )
 
+    # CSS: gleiche Label-Höhe → Inputs auf identischer Pixelhöhe
+    st.markdown("""
+    <style>
+    div[data-testid="stDialog"] div[data-testid="column"] .stTextInput {
+        margin-top: 0 !important;
+    }
+    div[data-testid="stDialog"] div[data-testid="column"] .stTextInput label {
+        min-height: 1.4rem !important;
+        line-height: 1.4rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     nc1, nc2 = st.columns([1, 3])
     with nc1:
-        # JS-Trick: inputmode="none" auf Desktop öffnet nichts, auf Mobile die Emoji-Tastatur
-        st.markdown("""
-        <script>
-        window.addEventListener('load', function() {
-            const inputs = window.parent.document.querySelectorAll('input[aria-label="Emoji"]');
-            inputs.forEach(function(inp) {
-                // Mobile: emoji keyboard; Desktop: trigger native emoji picker via key shortcut hint
-                inp.setAttribute('inputmode', 'text');
-                inp.setAttribute('autocomplete', 'off');
-                // Show emoji picker on focus for desktop via title hint
-                inp.title = 'Windows: Win+. | Mac: Ctrl+Cmd+Space';
-            });
-        });
-        </script>
-        """, unsafe_allow_html=True)
         new_emoji = st.text_input("Emoji", value=init_emoji, max_chars=4,
                                   placeholder="🎵",
                                   help="Windows: **Win + .** | Mac: **Ctrl+Cmd+Space**")
