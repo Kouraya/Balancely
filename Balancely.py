@@ -54,6 +54,25 @@ st.markdown("""
     div[data-baseweb="base-input"]:focus-within {
         background-color: transparent !important;
         border-color: #38bdf8 !important;
+        box-shadow: none !important;
+    }
+    /* Roten Fokus-Ring vom number_input entfernen */
+    div[data-testid="stNumberInput"] div[data-baseweb="input"]:focus-within,
+    div[data-testid="stNumberInput"] div[data-baseweb="base-input"]:focus-within,
+    div[data-testid="stNumberInputContainer"] div[data-baseweb="input"]:focus-within {
+        border-color: #38bdf8 !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    input:focus {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    /* Alle roten Ränder wegmachen */
+    [data-baseweb="input"] [aria-invalid="true"],
+    div[data-baseweb="input"]:has(input[aria-invalid="true"]) {
+        border-color: #1e293b !important;
+        box-shadow: none !important;
     }
     div[data-testid="stDateInput"] > div {
         background-color: transparent !important;
@@ -110,11 +129,13 @@ if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
 if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
 
-# Query-Param auslesen und in session_state übernehmen
+# Query-Param auslesen OHNE Seite neu zu laden
 qp = st.query_params
 if 't' in qp and qp['t'] in ['Ausgabe', 'Einnahme']:
-    st.session_state['t_type'] = qp['t']
+    if st.session_state['t_type'] != qp['t']:
+        st.session_state['t_type'] = qp['t']
     st.query_params.clear()
+    st.rerun()
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -159,33 +180,31 @@ if st.session_state['logged_in']:
 
         st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
 
-        # Toggle als reines HTML mit window.location für Query-Param
+        # Toggle-Buttons: onclick setzt nur den Query-Param im selben Tab via JS
         st.markdown(f"""
             <div style="display:flex; gap:10px; margin-bottom:16px;">
-                <a href="?t=Ausgabe" style="text-decoration:none;">
-                    <div style="
-                        width:160px; height:42px; border-radius:10px;
-                        display:flex; align-items:center; justify-content:center;
-                        font-size:14px; font-weight:{'700' if ausgabe_active else '500'};
-                        cursor:pointer;
-                        background:{'rgba(239,68,68,0.25)' if ausgabe_active else 'transparent'};
-                        border:{'2px solid #ef4444' if ausgabe_active else '1px solid #334155'};
-                        color:{'#fca5a5' if ausgabe_active else '#94a3b8'};
-                        font-family: sans-serif;
-                    ">↗ Ausgabe {'✓' if ausgabe_active else ''}</div>
-                </a>
-                <a href="?t=Einnahme" style="text-decoration:none;">
-                    <div style="
-                        width:160px; height:42px; border-radius:10px;
-                        display:flex; align-items:center; justify-content:center;
-                        font-size:14px; font-weight:{'700' if not ausgabe_active else '500'};
-                        cursor:pointer;
-                        background:{'rgba(16,185,129,0.25)' if not ausgabe_active else 'transparent'};
-                        border:{'2px solid #10b981' if not ausgabe_active else '1px solid #334155'};
-                        color:{'#6ee7b7' if not ausgabe_active else '#94a3b8'};
-                        font-family: sans-serif;
-                    ">↙ Einnahme {'✓' if not ausgabe_active else ''}</div>
-                </a>
+                <div onclick="window.parent.location.href = window.parent.location.pathname + '?t=Ausgabe'" style="
+                    width:160px; height:42px; border-radius:10px;
+                    display:flex; align-items:center; justify-content:center;
+                    font-size:14px; font-weight:{'700' if ausgabe_active else '500'};
+                    cursor:pointer;
+                    background:{'rgba(239,68,68,0.25)' if ausgabe_active else 'transparent'};
+                    border:{'2px solid #ef4444' if ausgabe_active else '1px solid #334155'};
+                    color:{'#fca5a5' if ausgabe_active else '#94a3b8'};
+                    font-family: sans-serif;
+                    user-select:none;
+                ">↗ Ausgabe {'✓' if ausgabe_active else ''}</div>
+                <div onclick="window.parent.location.href = window.parent.location.pathname + '?t=Einnahme'" style="
+                    width:160px; height:42px; border-radius:10px;
+                    display:flex; align-items:center; justify-content:center;
+                    font-size:14px; font-weight:{'700' if not ausgabe_active else '500'};
+                    cursor:pointer;
+                    background:{'rgba(16,185,129,0.25)' if not ausgabe_active else 'transparent'};
+                    border:{'2px solid #10b981' if not ausgabe_active else '1px solid #334155'};
+                    color:{'#6ee7b7' if not ausgabe_active else '#94a3b8'};
+                    font-family: sans-serif;
+                    user-select:none;
+                ">↙ Einnahme {'✓' if not ausgabe_active else ''}</div>
             </div>
         """, unsafe_allow_html=True)
 
