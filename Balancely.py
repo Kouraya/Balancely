@@ -40,11 +40,9 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    /* Äußerer Container */
     div[data-testid="stTextInputRootElement"] {
         background-color: transparent !important;
     }
-    /* Input + BaseWeb Container */
     div[data-baseweb="input"],
     div[data-baseweb="base-input"] {
         background-color: transparent !important;
@@ -53,19 +51,16 @@ st.markdown("""
         padding-right: 0 !important;
         gap: 0 !important;
     }
-    /* Fokus */
     div[data-baseweb="input"]:focus-within,
     div[data-baseweb="base-input"]:focus-within {
         background-color: transparent !important;
         border-color: #38bdf8 !important;
     }
-    /* Datum */
     div[data-testid="stDateInput"] > div {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
     }
-    /* Kategorie Selectbox */
     div[data-baseweb="select"] > div:first-child {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
@@ -75,7 +70,6 @@ st.markdown("""
         border-color: #38bdf8 !important;
     }
 
-    /* + / - Buttons beim Number Input ausblenden */
     button[data-testid="stNumberInputStepDown"],
     button[data-testid="stNumberInputStepUp"] {
         display: none !important;
@@ -84,11 +78,9 @@ st.markdown("""
         border-radius: 8px !important;
     }
 
-    /* Leerer Spacer neben Auge */
     div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
         display: none !important;
     }
-    /* "Press Enter" ausblenden */
     [data-testid="InputInstructions"],
     [data-testid="stInputInstructions"],
     div[class*="InputInstructions"],
@@ -114,6 +106,32 @@ st.markdown("""
         background: linear-gradient(135deg, #38bdf8, #1d4ed8) !important;
         border: none !important; height: 50px !important;
         border-radius: 12px !important; font-weight: 700 !important;
+    }
+
+    /* Toggle Buttons Ausgabe aktiv */
+    [data-testid="stButton"] button[kind="primary"]:has(+ *) {
+        border-radius: 10px !important;
+    }
+    .ausgabe-active > div > button {
+        background: rgba(239,68,68,0.25) !important;
+        border: 2px solid #ef4444 !important;
+        color: #fca5a5 !important;
+        font-weight: 700 !important;
+        border-radius: 10px !important;
+    }
+    .einnahme-active > div > button {
+        background: rgba(16,185,129,0.25) !important;
+        border: 2px solid #10b981 !important;
+        color: #6ee7b7 !important;
+        font-weight: 700 !important;
+        border-radius: 10px !important;
+    }
+    .toggle-inactive > div > button {
+        background: transparent !important;
+        border: 1px solid #334155 !important;
+        color: #94a3b8 !important;
+        font-weight: 400 !important;
+        border-radius: 10px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -166,20 +184,32 @@ if st.session_state['logged_in']:
         st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
 
         col_a, col_e, _ = st.columns([1, 1, 3])
+
         with col_a:
-            if t_type == "Ausgabe":
-                st.markdown('<div style="background:rgba(239,68,68,0.25);border:2px solid #ef4444;border-radius:10px;padding:8px 16px;color:#fca5a5;font-weight:700;font-size:14px;text-align:center;">↗ Ausgabe ✓</div>', unsafe_allow_html=True)
-            else:
-                if st.button("↗ Ausgabe", key="btn_ausgabe", use_container_width=True):
-                    st.session_state['t_type'] = "Ausgabe"
-                    st.rerun()
+            ausgabe_active = t_type == "Ausgabe"
+            css_class = "ausgabe-active" if ausgabe_active else "toggle-inactive"
+            st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
+            if st.button(
+                "↗ Ausgabe" + (" ✓" if ausgabe_active else ""),
+                key="btn_ausgabe",
+                use_container_width=True
+            ):
+                st.session_state['t_type'] = "Ausgabe"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
         with col_e:
-            if t_type == "Einnahme":
-                st.markdown('<div style="background:rgba(16,185,129,0.25);border:2px solid #10b981;border-radius:10px;padding:8px 16px;color:#6ee7b7;font-weight:700;font-size:14px;text-align:center;">↙ Einnahme ✓</div>', unsafe_allow_html=True)
-            else:
-                if st.button("↙ Einnahme", key="btn_einnahme", use_container_width=True):
-                    st.session_state['t_type'] = "Einnahme"
-                    st.rerun()
+            einnahme_active = t_type == "Einnahme"
+            css_class = "einnahme-active" if einnahme_active else "toggle-inactive"
+            st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
+            if st.button(
+                "↙ Einnahme" + (" ✓" if einnahme_active else ""),
+                key="btn_einnahme",
+                use_container_width=True
+            ):
+                st.session_state['t_type'] = "Einnahme"
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
