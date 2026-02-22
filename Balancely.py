@@ -5,7 +5,7 @@ import hashlib
 import datetime
 import re
 import smtplib
-import secrets
+import random
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -26,6 +26,9 @@ def check_password_strength(password):
 def is_valid_email(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
+def generate_code():
+    return str(random.randint(100000, 999999))
+
 def send_email(to_email, subject, html_content):
     try:
         sender = st.secrets["email"]["sender"]
@@ -43,27 +46,24 @@ def send_email(to_email, subject, html_content):
         st.error(f"Email-Fehler: {e}")
         return False
 
-def email_html(text, btn_label, btn_link):
+def email_html(text, code):
     return f"""
     <html><body style="font-family:sans-serif;background:#020617;color:#f1f5f9;padding:40px;">
         <div style="max-width:480px;margin:auto;background:#0f172a;border-radius:16px;
              padding:40px;border:1px solid #1e293b;">
             <h2 style="color:#38bdf8;">Balancely ⚖️</h2>
             <p>{text}</p>
-            <a href="{btn_link}" style="display:inline-block;margin:20px 0;padding:14px 28px;
-                background:linear-gradient(135deg,#38bdf8,#1d4ed8);color:white;
-                border-radius:10px;text-decoration:none;font-weight:700;">
-                {btn_label}
-            </a>
+            <div style="margin:24px 0;padding:20px;background:#1e293b;border-radius:12px;
+                text-align:center;font-size:36px;font-weight:800;letter-spacing:8px;color:#38bdf8;">
+                {code}
+            </div>
             <p style="color:#94a3b8;font-size:13px;">
-                Dieser Link ist 30 Minuten gültig.<br>
+                Dieser Code ist 10 Minuten gültig.<br>
                 Falls du diese Anfrage nicht gestellt hast, ignoriere diese Email.
             </p>
         </div>
     </body></html>
     """
-
-APP_URL = "https://balancely.streamlit.app"  # ← deine URL hier
 
 st.markdown("""
     <style>
@@ -175,55 +175,14 @@ if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
 if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
-if 'verify_success' not in st.session_state: st.session_state['verify_success'] = False
-if 'token_processed' not in st.session_state: st.session_state['token_processed'] = False
+if 'pending_user' not in st.session_state: st.session_state['pending_user'] = {}
+if 'verify_code' not in st.session_state: st.session_state['verify_code'] = ""
+if 'verify_expiry' not in st.session_state: st.session_state['verify_expiry'] = None
+if 'reset_email' not in st.session_state: st.session_state['reset_email'] = ""
+if 'reset_code' not in st.session_state: st.session_state['reset_code'] = ""
+if 'reset_expiry' not in st.session_state: st.session_state['reset_expiry'] = None
 
 conn = st.connection("gsheets", type=GSheetsConnection)
-
-# ===== TOKEN-CHECK beim Seitenaufruf =====
-qp = st.query_params
-if 'token' in qp and not st.session_state['logged_in'] and not st.session_state['token_processed']:
-    st.session_state['token_processed'] = True
-    token = qp['token']
-    token_type = qp.get('type', 'reset')
-    df_u = conn.read(worksheet="users", ttl="0")
-    match = df_u[df_u['token'] == token]
-    if not match.empty:
-        expiry_str = str(match.iloc[0]['token_expiry'])
-        try:
-            expiry = datetime.datetime.fromisoformat(expiry_str)
-            if datetime.datetime.now() < expiry:
-                if token_type == 'verify':
-                    idx = match.index[0]
-                    df_u.loc[idx, 'verified'] = 'True'
-                    df_u.loc[idx, 'token'] = ""
-                    df_u.loc[idx, 'token_expiry'] = ""
-                    conn.update(worksheet="users", data=df_u)
-                    st.query_params.clear()
-                    st.session_state['auth_mode'] = 'login'
-                    st.session_state['verify_success'] = True
-                    st.rerun()
-                else:
-                    st.session_state['auth_mode'] = 'reset_password'
-                    st.session_state['reset_token'] = token
-                    st.query_params.clear()
-                    st.rerun()
-            else:
-                st.query_params.clear()
-                st.session_state['auth_mode'] = 'login'
-                st.session_state['token_error'] = "⏰ Dieser Link ist abgelaufen. Bitte fordere einen neuen an."
-                st.rerun()
-        except:
-            st.query_params.clear()
-            st.session_state['auth_mode'] = 'login'
-            st.session_state['token_error'] = "❌ Ungültiger Link."
-            st.rerun()
-    else:
-        if not st.session_state.get('verify_success'):
-            st.query_params.clear()
-            st.session_state['auth_mode'] = 'login'
-            st.session_state['token_error'] = "❌ Ungültiger Link."
-            st.rerun()
 
 if st.session_state['logged_in']:
     with st.sidebar:
@@ -234,7 +193,6 @@ if st.session_state['logged_in']:
         st.markdown("<div style='height: 30vh;'></div>", unsafe_allow_html=True)
         if st.button("Logout ➜", use_container_width=True, type="secondary"):
             st.session_state['logged_in'] = False
-            st.session_state['token_processed'] = False
             st.rerun()
 
     if menu == "📈 Dashboard":
@@ -263,31 +221,17 @@ if st.session_state['logged_in']:
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
         t_type = st.session_state['t_type']
-
         st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
-
         col_a, col_e, _ = st.columns([1, 1, 3])
         with col_a:
-            if st.button(
-                "↗ Ausgabe ✓" if t_type == "Ausgabe" else "↗ Ausgabe",
-                key="btn_ausgabe",
-                use_container_width=True,
-                type="primary" if t_type == "Ausgabe" else "secondary"
-            ):
+            if st.button("↗ Ausgabe ✓" if t_type == "Ausgabe" else "↗ Ausgabe", key="btn_ausgabe", use_container_width=True, type="primary" if t_type == "Ausgabe" else "secondary"):
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
         with col_e:
-            if st.button(
-                "↙ Einnahme ✓" if t_type == "Einnahme" else "↙ Einnahme",
-                key="btn_einnahme",
-                use_container_width=True,
-                type="primary" if t_type == "Einnahme" else "secondary"
-            ):
+            if st.button("↙ Einnahme ✓" if t_type == "Einnahme" else "↙ Einnahme", key="btn_einnahme", use_container_width=True, type="primary" if t_type == "Einnahme" else "secondary"):
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
-
         st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
-
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -297,19 +241,10 @@ if st.session_state['logged_in']:
                 cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                 t_cat = st.selectbox("Kategorie", cats)
                 t_note = st.text_input("Notiz")
-
             if st.form_submit_button("Speichern", use_container_width=True):
-                new_row = pd.DataFrame([{
-                    "user": st.session_state['user_name'],
-                    "datum": str(t_date),
-                    "typ": t_type,
-                    "kategorie": t_cat,
-                    "betrag": t_amount if t_type == "Einnahme" else -t_amount,
-                    "notiz": t_note
-                }])
+                new_row = pd.DataFrame([{"user": st.session_state['user_name'], "datum": str(t_date), "typ": t_type, "kategorie": t_cat, "betrag": t_amount if t_type == "Einnahme" else -t_amount, "notiz": t_note}])
                 df_old = conn.read(worksheet="transactions", ttl="0")
-                df_new = pd.concat([df_old, new_row], ignore_index=True)
-                conn.update(worksheet="transactions", data=df_new)
+                conn.update(worksheet="transactions", data=pd.concat([df_old, new_row], ignore_index=True))
                 st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
 
@@ -341,167 +276,184 @@ if st.session_state['logged_in']:
                         st.success("✅ Passwort erfolgreich geändert!")
 
 else:
-    if st.session_state.get('auth_mode') == 'reset_password':
-        st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
-        st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
-        _, center_col, _ = st.columns([1, 1.2, 1])
-        with center_col:
-            with st.form("reset_form"):
-                st.markdown("<h3 style='text-align:center; color:white;'>Neues Passwort vergeben</h3>", unsafe_allow_html=True)
-                pw_neu = st.text_input("Neues Passwort", type="password")
-                pw_neu2 = st.text_input("Passwort wiederholen", type="password")
-                if st.form_submit_button("Passwort speichern", use_container_width=True):
-                    is_strong, msg = check_password_strength(pw_neu)
-                    if not is_strong:
-                        st.error(f"❌ {msg}")
-                    elif pw_neu != pw_neu2:
-                        st.error("❌ Die Passwörter stimmen nicht überein.")
-                    else:
-                        df_u = conn.read(worksheet="users", ttl="0")
-                        token = st.session_state.get('reset_token')
-                        idx = df_u[df_u['token'] == token].index
-                        if not idx.empty:
-                            df_u.loc[idx[0], 'password'] = make_hashes(pw_neu)
-                            df_u.loc[idx[0], 'token'] = ""
-                            df_u.loc[idx[0], 'token_expiry'] = ""
-                            conn.update(worksheet="users", data=df_u)
-                            st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen.")
-                            st.session_state['auth_mode'] = 'login'
-                            st.session_state['token_processed'] = False
-                            st.session_state.pop('reset_token', None)
+    st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
+    st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
+
+    _, center_col, _ = st.columns([1, 1.2, 1])
+    with center_col:
+
+        # ===== LOGIN =====
+        if st.session_state['auth_mode'] == 'login':
+            with st.form("l_f"):
+                st.markdown("<h3 style='text-align:center; color:white;'>Anmelden</h3>", unsafe_allow_html=True)
+                u_in = st.text_input("Username", placeholder="Benutzername")
+                p_in = st.text_input("Passwort", type="password")
+                if st.form_submit_button("Anmelden"):
+                    df_u = conn.read(worksheet="users", ttl="0")
+                    user_row = df_u[df_u['username'] == u_in]
+                    if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
+                        verified = str(user_row.iloc[0].get('verified', 'True'))
+                        if verified != 'True':
+                            st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
+                        else:
+                            st.session_state['logged_in'] = True
+                            st.session_state['user_name'] = u_in
                             st.rerun()
-                        else:
-                            st.error("❌ Token ungültig.")
-
-    else:
-        st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
-        st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
-        st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
-
-        _, center_col, _ = st.columns([1, 1.2, 1])
-
-        with center_col:
-            if st.session_state['auth_mode'] == 'login':
-
-                if st.session_state.get('verify_success'):
-                    st.success("✅ E-Mail erfolgreich verifiziert! Du kannst dich jetzt einloggen.")
-                    st.session_state['verify_success'] = False
-                if st.session_state.get('token_error'):
-                    st.error(st.session_state['token_error'])
-                    st.session_state.pop('token_error', None)
-
-                with st.form("l_f"):
-                    st.markdown("<h3 style='text-align:center; color:white;'>Anmelden</h3>", unsafe_allow_html=True)
-                    u_in = st.text_input("Username", placeholder="Benutzername")
-                    p_in = st.text_input("Passwort", type="password")
-                    if st.form_submit_button("Anmelden"):
-                        df_u = conn.read(worksheet="users", ttl="0")
-                        user_row = df_u[df_u['username'] == u_in]
-                        if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
-                            verified = str(user_row.iloc[0].get('verified', 'True'))
-                            if verified != 'True':
-                                st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
-                            else:
-                                st.session_state['logged_in'] = True
-                                st.session_state['user_name'] = u_in
-                                st.session_state['token_processed'] = False
-                                st.rerun()
-                        else:
-                            st.error("Login ungültig.")
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Konto erstellen", use_container_width=True):
-                        st.session_state['auth_mode'] = 'signup'
-                        st.rerun()
-                with col2:
-                    if st.button("Passwort vergessen?", use_container_width=True, type="secondary"):
-                        st.session_state['auth_mode'] = 'forgot'
-                        st.rerun()
-
-            elif st.session_state['auth_mode'] == 'forgot':
-                with st.form("forgot_form"):
-                    st.markdown("<h3 style='text-align:center; color:white;'>Passwort vergessen</h3>", unsafe_allow_html=True)
-                    st.markdown("<p style='text-align:center; color:#94a3b8;'>Gib deine E-Mail-Adresse ein.</p>", unsafe_allow_html=True)
-                    forgot_email = st.text_input("E-Mail", placeholder="deine@email.de")
-                    if st.form_submit_button("Link senden", use_container_width=True):
-                        if not is_valid_email(forgot_email):
-                            st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
-                        else:
-                            df_u = conn.read(worksheet="users", ttl="0")
-                            idx = df_u[df_u['email'] == forgot_email.strip().lower()].index
-                            if idx.empty:
-                                st.success("✅ Falls diese E-Mail registriert ist, wurde ein Link gesendet.")
-                            else:
-                                token = secrets.token_urlsafe(32)
-                                expiry = datetime.datetime.now() + datetime.timedelta(minutes=30)
-                                df_u.loc[idx[0], 'token'] = token
-                                df_u.loc[idx[0], 'token_expiry'] = expiry.isoformat()
-                                conn.update(worksheet="users", data=df_u)
-                                link = f"{APP_URL}?token={token}&type=reset"
-                                html = email_html(
-                                    "Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.",
-                                    "Passwort zurücksetzen",
-                                    link
-                                )
-                                if send_email(forgot_email.strip().lower(), "Balancely – Passwort zurücksetzen", html):
-                                    st.success("✅ Ein Reset-Link wurde an deine E-Mail gesendet!")
-                if st.button("Zurück zum Login", use_container_width=True):
-                    st.session_state['auth_mode'] = 'login'
+                    else:
+                        st.error("Login ungültig.")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Konto erstellen", use_container_width=True):
+                    st.session_state['auth_mode'] = 'signup'
+                    st.rerun()
+            with col2:
+                if st.button("Passwort vergessen?", use_container_width=True, type="secondary"):
+                    st.session_state['auth_mode'] = 'forgot'
                     st.rerun()
 
-            elif st.session_state['auth_mode'] == 'signup':
-                with st.form("s_f"):
-                    st.markdown("<h3 style='text-align:center; color:white;'>Registrierung</h3>", unsafe_allow_html=True)
-                    s_name = st.text_input("Name", placeholder="Max Mustermann")
-                    s_user = st.text_input("Username", placeholder="max123")
-                    s_email = st.text_input("E-Mail", placeholder="max@beispiel.de")
-                    s_pass = st.text_input("Passwort", type="password")
-                    c_pass = st.text_input("Passwort wiederholen", type="password")
-
-                    if st.form_submit_button("Konto erstellen"):
-                        if not s_name or not s_user or not s_email or not s_pass:
-                            st.error("❌ Bitte fülle alle Felder aus!")
-                        elif len(s_name.strip().split()) < 2:
-                            st.error("❌ Bitte gib deinen vollständigen Vor- und Nachnamen an.")
-                        elif not is_valid_email(s_email):
-                            st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
+        # ===== REGISTRIERUNG =====
+        elif st.session_state['auth_mode'] == 'signup':
+            with st.form("s_f"):
+                st.markdown("<h3 style='text-align:center; color:white;'>Registrierung</h3>", unsafe_allow_html=True)
+                s_name = st.text_input("Name", placeholder="Max Mustermann")
+                s_user = st.text_input("Username", placeholder="max123")
+                s_email = st.text_input("E-Mail", placeholder="max@beispiel.de")
+                s_pass = st.text_input("Passwort", type="password")
+                c_pass = st.text_input("Passwort wiederholen", type="password")
+                if st.form_submit_button("Konto erstellen"):
+                    if not s_name or not s_user or not s_email or not s_pass:
+                        st.error("❌ Bitte fülle alle Felder aus!")
+                    elif len(s_name.strip().split()) < 2:
+                        st.error("❌ Bitte gib deinen vollständigen Vor- und Nachnamen an.")
+                    elif not is_valid_email(s_email):
+                        st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
+                    else:
+                        is_strong, msg = check_password_strength(s_pass)
+                        if not is_strong:
+                            st.error(f"❌ {msg}")
+                        elif s_pass != c_pass:
+                            st.error("❌ Die Passwörter stimmen nicht überein.")
                         else:
-                            is_strong, msg = check_password_strength(s_pass)
-                            if not is_strong:
-                                st.error(f"❌ {msg}")
-                            elif s_pass != c_pass:
-                                st.error("❌ Die Passwörter stimmen nicht überein.")
+                            df_u = conn.read(worksheet="users", ttl="0")
+                            if s_user in df_u['username'].values:
+                                st.error("⚠️ Dieser Username ist bereits vergeben.")
+                            elif s_email.strip().lower() in df_u['email'].values:
+                                st.error("⚠️ Diese E-Mail ist bereits registriert.")
                             else:
-                                df_u = conn.read(worksheet="users", ttl="0")
-                                if s_user in df_u['username'].values:
-                                    st.error("⚠️ Dieser Username ist bereits vergeben.")
-                                elif s_email.strip().lower() in df_u['email'].values:
-                                    st.error("⚠️ Diese E-Mail ist bereits registriert.")
-                                else:
-                                    token = secrets.token_urlsafe(32)
-                                    expiry = datetime.datetime.now() + datetime.timedelta(minutes=30)
-                                    new_u = pd.DataFrame([{
+                                code = generate_code()
+                                expiry = datetime.datetime.now() + datetime.timedelta(minutes=10)
+                                html = email_html("Willkommen bei Balancely! Dein Verifizierungscode lautet:", code)
+                                if send_email(s_email.strip().lower(), "Balancely – E-Mail verifizieren", html):
+                                    st.session_state['pending_user'] = {
                                         "name": make_hashes(s_name.strip()),
                                         "username": s_user,
                                         "email": s_email.strip().lower(),
-                                        "password": make_hashes(s_pass),
-                                        "token": token,
-                                        "token_expiry": expiry.isoformat(),
-                                        "verified": "False"
-                                    }])
-                                    conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
-                                    link = f"{APP_URL}?token={token}&type=verify"
-                                    html = email_html(
-                                        "Willkommen bei Balancely! Bitte verifiziere deine E-Mail-Adresse um dein Konto zu aktivieren.",
-                                        "E-Mail verifizieren",
-                                        link
-                                    )
-                                    if send_email(s_email.strip().lower(), "Balancely – E-Mail verifizieren", html):
-                                        st.success("✅ Konto erstellt! Bitte prüfe deine E-Mails und verifiziere deine Adresse.")
-                                    else:
-                                        st.warning("⚠️ Konto erstellt, aber E-Mail konnte nicht gesendet werden.")
+                                        "password": make_hashes(s_pass)
+                                    }
+                                    st.session_state['verify_code'] = code
+                                    st.session_state['verify_expiry'] = expiry
+                                    st.session_state['auth_mode'] = 'verify_email'
+                                    st.rerun()
+                                else:
+                                    st.error("❌ E-Mail konnte nicht gesendet werden.")
+            if st.button("Zurück zum Login", use_container_width=True):
+                st.session_state['auth_mode'] = 'login'
+                st.rerun()
 
-                if st.button("Zurück zum Login", use_container_width=True):
-                    st.session_state['auth_mode'] = 'login'
-                    st.rerun()
+        # ===== EMAIL VERIFIZIEREN =====
+        elif st.session_state['auth_mode'] == 'verify_email':
+            with st.form("verify_form"):
+                st.markdown("<h3 style='text-align:center; color:white;'>E-Mail verifizieren</h3>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center; color:#94a3b8;'>Wir haben einen 6-stelligen Code an <b style='color:#38bdf8;'>{st.session_state['pending_user'].get('email','')}</b> gesendet.</p>", unsafe_allow_html=True)
+                code_input = st.text_input("Code eingeben", placeholder="123456", max_chars=6)
+                if st.form_submit_button("Bestätigen", use_container_width=True):
+                    if datetime.datetime.now() > st.session_state['verify_expiry']:
+                        st.error("⏰ Der Code ist abgelaufen. Bitte registriere dich erneut.")
+                        st.session_state['auth_mode'] = 'signup'
+                        st.rerun()
+                    elif code_input.strip() != st.session_state['verify_code']:
+                        st.error("❌ Falscher Code. Bitte versuche es erneut.")
+                    else:
+                        df_u = conn.read(worksheet="users", ttl="0")
+                        new_u = pd.DataFrame([{
+                            **st.session_state['pending_user'],
+                            "verified": "True",
+                            "token": "",
+                            "token_expiry": ""
+                        }])
+                        conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
+                        st.session_state['pending_user'] = {}
+                        st.session_state['verify_code'] = ""
+                        st.session_state['verify_expiry'] = None
+                        st.session_state['auth_mode'] = 'login'
+                        st.success("✅ E-Mail verifiziert! Du kannst dich jetzt einloggen.")
+                        st.rerun()
+            if st.button("Zurück", use_container_width=True):
+                st.session_state['auth_mode'] = 'signup'
+                st.rerun()
+
+        # ===== PASSWORT VERGESSEN =====
+        elif st.session_state['auth_mode'] == 'forgot':
+            with st.form("forgot_form"):
+                st.markdown("<h3 style='text-align:center; color:white;'>Passwort vergessen</h3>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align:center; color:#94a3b8;'>Gib deine E-Mail-Adresse ein.</p>", unsafe_allow_html=True)
+                forgot_email = st.text_input("E-Mail", placeholder="deine@email.de")
+                if st.form_submit_button("Code senden", use_container_width=True):
+                    if not is_valid_email(forgot_email):
+                        st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
+                    else:
+                        df_u = conn.read(worksheet="users", ttl="0")
+                        idx = df_u[df_u['email'] == forgot_email.strip().lower()].index
+                        if idx.empty:
+                            st.success("✅ Falls diese E-Mail registriert ist, wurde ein Code gesendet.")
+                        else:
+                            code = generate_code()
+                            expiry = datetime.datetime.now() + datetime.timedelta(minutes=10)
+                            html = email_html("Dein Code zum Zurücksetzen des Passworts lautet:", code)
+                            if send_email(forgot_email.strip().lower(), "Balancely – Passwort zurücksetzen", html):
+                                st.session_state['reset_email'] = forgot_email.strip().lower()
+                                st.session_state['reset_code'] = code
+                                st.session_state['reset_expiry'] = expiry
+                                st.session_state['auth_mode'] = 'reset_password'
+                                st.rerun()
+            if st.button("Zurück zum Login", use_container_width=True):
+                st.session_state['auth_mode'] = 'login'
+                st.rerun()
+
+        # ===== PASSWORT ZURÜCKSETZEN =====
+        elif st.session_state['auth_mode'] == 'reset_password':
+            with st.form("reset_form"):
+                st.markdown("<h3 style='text-align:center; color:white;'>Passwort zurücksetzen</h3>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center; color:#94a3b8;'>Code wurde an <b style='color:#38bdf8;'>{st.session_state['reset_email']}</b> gesendet.</p>", unsafe_allow_html=True)
+                code_input = st.text_input("6-stelliger Code", placeholder="123456", max_chars=6)
+                pw_neu = st.text_input("Neues Passwort", type="password")
+                pw_neu2 = st.text_input("Passwort wiederholen", type="password")
+                if st.form_submit_button("Passwort speichern", use_container_width=True):
+                    if datetime.datetime.now() > st.session_state['reset_expiry']:
+                        st.error("⏰ Der Code ist abgelaufen. Bitte fordere einen neuen an.")
+                        st.session_state['auth_mode'] = 'forgot'
+                        st.rerun()
+                    elif code_input.strip() != st.session_state['reset_code']:
+                        st.error("❌ Falscher Code.")
+                    else:
+                        is_strong, msg = check_password_strength(pw_neu)
+                        if not is_strong:
+                            st.error(f"❌ {msg}")
+                        elif pw_neu != pw_neu2:
+                            st.error("❌ Die Passwörter stimmen nicht überein.")
+                        else:
+                            df_u = conn.read(worksheet="users", ttl="0")
+                            idx = df_u[df_u['email'] == st.session_state['reset_email']].index
+                            if not idx.empty:
+                                df_u.loc[idx[0], 'password'] = make_hashes(pw_neu)
+                                conn.update(worksheet="users", data=df_u)
+                                st.session_state['reset_email'] = ""
+                                st.session_state['reset_code'] = ""
+                                st.session_state['reset_expiry'] = None
+                                st.session_state['auth_mode'] = 'login'
+                                st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen.")
+                                st.rerun()
+            if st.button("Zurück zum Login", use_container_width=True):
+                st.session_state['auth_mode'] = 'login'
+                st.rerun()
