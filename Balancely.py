@@ -19,6 +19,9 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
+def is_valid_email(email):
+    return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -100,8 +103,6 @@ st.markdown("""
         border: none !important; height: 50px !important;
         border-radius: 12px !important; font-weight: 700 !important;
     }
-
-    /* ===== SIDEBAR RADIO ===== */
     [data-testid="stSidebar"] [data-testid="stRadio"] > div > label {
         border: 1px solid #1e293b !important;
         border-radius: 10px !important;
@@ -123,12 +124,6 @@ st.markdown("""
     }
     [data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:first-child {
         display: none !important;
-    }
-
-    /* ===== TOGGLE BUTTONS (Ausgabe/Einnahme) ===== */
-    div[data-testid="stHorizontalBlock"]:has(button[key="btn_ausgabe"]) {
-        gap: 10px !important;
-        margin-bottom: 16px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -227,6 +222,33 @@ if st.session_state['logged_in']:
                 st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
 
+    elif menu == "⚙️ Einstellungen":
+        st.title("Einstellungen ⚙️")
+
+        st.subheader("Passwort ändern")
+        with st.form("pw_form"):
+            pw_alt = st.text_input("Aktuelles Passwort", type="password")
+            pw_neu = st.text_input("Neues Passwort", type="password")
+            pw_neu2 = st.text_input("Neues Passwort wiederholen", type="password")
+
+            if st.form_submit_button("Passwort ändern", use_container_width=True):
+                df_u = conn.read(worksheet="users", ttl="0")
+                idx = df_u[df_u['username'] == st.session_state['user_name']].index
+                if idx.empty:
+                    st.error("❌ Benutzer nicht gefunden.")
+                elif make_hashes(pw_alt) != str(df_u.loc[idx[0], 'password']):
+                    st.error("❌ Aktuelles Passwort ist falsch.")
+                else:
+                    is_strong, msg = check_password_strength(pw_neu)
+                    if not is_strong:
+                        st.error(f"❌ {msg}")
+                    elif pw_neu != pw_neu2:
+                        st.error("❌ Die neuen Passwörter stimmen nicht überein.")
+                    else:
+                        df_u.loc[idx[0], 'password'] = make_hashes(pw_neu)
+                        conn.update(worksheet="users", data=df_u)
+                        st.success("✅ Passwort erfolgreich geändert!")
+
 else:
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
@@ -258,14 +280,17 @@ else:
                 st.markdown("<h3 style='text-align:center; color:white;'>Registrierung</h3>", unsafe_allow_html=True)
                 s_name = st.text_input("Name", placeholder="Max Mustermann")
                 s_user = st.text_input("Username", placeholder="max123")
+                s_email = st.text_input("E-Mail", placeholder="max@beispiel.de")
                 s_pass = st.text_input("Passwort", type="password")
                 c_pass = st.text_input("Passwort wiederholen", type="password")
 
                 if st.form_submit_button("Konto erstellen"):
-                    if not s_name or not s_user or not s_pass:
+                    if not s_name or not s_user or not s_email or not s_pass:
                         st.error("❌ Bitte fülle alle Felder aus!")
                     elif len(s_name.strip().split()) < 2:
                         st.error("❌ Bitte gib deinen vollständigen Vor- und Nachnamen an.")
+                    elif not is_valid_email(s_email):
+                        st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
                     else:
                         is_strong, msg = check_password_strength(s_pass)
                         if not is_strong:
@@ -276,10 +301,13 @@ else:
                             df_u = conn.read(worksheet="users", ttl="0")
                             if s_user in df_u['username'].values:
                                 st.error("⚠️ Dieser Username ist bereits vergeben.")
+                            elif s_email in df_u['email'].values:
+                                st.error("⚠️ Diese E-Mail ist bereits registriert.")
                             else:
                                 new_u = pd.DataFrame([{
                                     "name": make_hashes(s_name.strip()),
                                     "username": s_user,
+                                    "email": s_email,
                                     "password": make_hashes(s_pass)
                                 }])
                                 conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
