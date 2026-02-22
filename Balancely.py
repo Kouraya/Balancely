@@ -6,6 +6,8 @@ import datetime
 import re
 
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
+# TEMPORÄR - Version prüfen
+st.write(st.__version__)
 
 def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
@@ -240,3 +242,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
