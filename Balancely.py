@@ -672,9 +672,9 @@ if st.session_state['logged_in']:
             f"<div style='margin-bottom:28px;'>"
             f"<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
             f"color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-0.5px;'>"
-            f"Guten Tag, {st.session_state['user_name']}</h1>"
+            f"Deine Übersicht, {st.session_state['user_name']}! ⚖️</h1>"
             f"<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;margin:0;'>"
-            f"Hier ist deine Finanzübersicht</p>"
+            f"Monatliche Finanzübersicht</p>"
             f"</div>",
             unsafe_allow_html=True
         )
@@ -822,36 +822,34 @@ if st.session_state['logged_in']:
                         ),
                         textinfo="none",
                         customdata=customdata_list,
-                        # FIX: %{value} für den tatsächlichen Euro-Betrag (direkt aus values)
-                        # %{customdata[0]} = Typ (Einnahme/Ausgabe)
-                        # %{customdata[1]:.1f} = Prozent (selbst berechnet, korrekt)
+                        # Tooltip zeigt saubere Werte — kein pull damit Kreis rund bleibt
                         hovertemplate=(
-                            "<b style='font-size:15px'>%{label}</b><br>"
-                            "<span style='color:#94a3b8'>%{customdata[0]}</span><br>"
-                            "<b>%{value:,.2f} €</b>  ·  <span>%{customdata[1]:.1f}%</span>"
+                            "<b>%{label}</b><br>"
+                            "%{customdata[0]}<br>"
+                            "%{value:,.2f} €  ·  %{customdata[1]:.1f}%"
                             "<extra></extra>"
                         ),
                         direction="clockwise",
                         sort=False,
                         rotation=90,
-                        pull=[0.03] * len(all_cats),
                     ))
 
                     fig.update_layout(
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)",
                         showlegend=False,
-                        margin=dict(t=16, b=16, l=16, r=16),
+                        margin=dict(t=20, b=20, l=20, r=20),
                         height=380,
+                        autosize=True,
                         hoverlabel=dict(
                             bgcolor="#0d1729",
-                            bordercolor="rgba(148,163,184,0.3)",
+                            bordercolor="rgba(56,189,248,0.4)",
                             font=dict(
                                 color="#e2e8f0",
                                 size=13,
                                 family="DM Sans, sans-serif",
                             ),
-                            namelength=0,
+                            namelength=-1,
                             align="left",
                         ),
                         annotations=[
@@ -879,7 +877,7 @@ if st.session_state['logged_in']:
                     )
 
                     # ── Layout: Chart + Legende ───────────────
-                    chart_col, legend_col = st.columns([3, 2])
+                    chart_col, legend_col = st.columns([2, 2])
 
                     with chart_col:
                         ev = st.plotly_chart(
@@ -1154,25 +1152,26 @@ if st.session_state['logged_in']:
                             row.get('timestamp', ''), row.get('datum', '')
                         )
 
-                        c1, c2, c3, c4, c5 = st.columns([2.5, 2, 2, 3, 1.5])
+                        c1, c2, c3, c4, c5 = st.columns([2.5, 2, 2.5, 3, 1])
                         c1.markdown(
                             f"<span style='font-family:DM Mono,monospace;color:#334155;"
-                            f"font-size:12px;'>{zeit_label}</span>",
+                            f"font-size:12px;line-height:2.4;display:block;'>{zeit_label}</span>",
                             unsafe_allow_html=True
                         )
                         c2.markdown(
                             f"<span style='font-family:DM Mono,monospace;color:{farbe};"
-                            f"font-weight:500;font-size:13px;'>{row['betrag_anzeige']}</span>",
+                            f"font-weight:500;font-size:13px;line-height:2.4;display:block;'>"
+                            f"{row['betrag_anzeige']}</span>",
                             unsafe_allow_html=True
                         )
                         c3.markdown(
                             f"<span style='font-family:DM Sans,sans-serif;color:#64748b;"
-                            f"font-size:13px;'>{row['kategorie']}</span>",
+                            f"font-size:13px;line-height:2.4;display:block;'>{row['kategorie']}</span>",
                             unsafe_allow_html=True
                         )
                         c4.markdown(
                             f"<span style='font-family:DM Sans,sans-serif;color:#334155;"
-                            f"font-size:13px;'>{notiz}</span>",
+                            f"font-size:13px;line-height:2.4;display:block;'>{notiz}</span>",
                             unsafe_allow_html=True
                         )
 
@@ -1180,7 +1179,11 @@ if st.session_state['logged_in']:
                             with st.popover("⋯", use_container_width=True):
                                 if st.button("✏️ Bearbeiten", key=f"edit_btn_{orig_idx}",
                                              use_container_width=True):
-                                    st.session_state['edit_idx'] = orig_idx
+                                    # Wenn gleicher Eintrag nochmal geklickt → zuklappen
+                                    if st.session_state['edit_idx'] == orig_idx:
+                                        st.session_state['edit_idx'] = None
+                                    else:
+                                        st.session_state['edit_idx'] = orig_idx
                                     st.session_state['show_new_cat'] = False
                                     st.rerun()
                                 if st.button("🗑️ Löschen", key=f"del_btn_{orig_idx}",
