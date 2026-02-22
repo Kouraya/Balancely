@@ -250,6 +250,24 @@ button[kind="primaryFormSubmit"] {
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:first-child {
     display: none !important;
 }
+
+/* ── FIX: Dialoge zentriert anzeigen ───────────────────────── */
+div[data-testid="stDialog"] > div,
+div[role="dialog"] {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+}
+/* Backdrop zentriert */
+div[data-testid="stDialog"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -276,8 +294,11 @@ defaults = {
     'reset_code':      "",
     'reset_expiry':    None,
     'edit_idx':        None,
+    # FIX: show_new_cat nur True wenn explizit per Button gesetzt
     'show_new_cat':    False,
     'new_cat_typ':     'Ausgabe',
+    # FIX: letzter aktiver Tab – wird zum Erkennen von Tab-Wechseln genutzt
+    '_last_menu':      "",
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -416,6 +437,11 @@ if st.session_state['logged_in']:
             st.session_state['logged_in'] = False
             st.rerun()
 
+    # FIX: Wenn der Tab gewechselt wurde → show_new_cat zurücksetzen
+    if menu != st.session_state.get('_last_menu', ''):
+        st.session_state['show_new_cat'] = False
+        st.session_state['_last_menu'] = menu
+
     # ── Dashboard ────────────────────────────────────────────
     if menu == "📈 Dashboard":
         st.title(f"Deine Übersicht, {st.session_state['user_name']}! ⚖️")
@@ -454,8 +480,8 @@ if st.session_state['logged_in']:
         custom_cats = load_custom_cats(user_name, t_type)
         all_cats    = std_cats + custom_cats
 
-        # Dialog VOR allem rendern — nur einmal
-        if st.session_state.get('show_new_cat'):
+        # FIX: Dialog NUR aufrufen wenn show_new_cat explizit True ist
+        if st.session_state.get('show_new_cat') is True:
             new_category_dialog()
 
         # ── Header ──────────────────────────────────────────
@@ -480,6 +506,8 @@ if st.session_state['logged_in']:
                 key="btn_ausgabe", use_container_width=True,
                 type="primary" if t_type == "Ausgabe" else "secondary"
             ):
+                # FIX: show_new_cat beim Typ-Wechsel zurücksetzen
+                st.session_state['show_new_cat'] = False
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
         with te:
@@ -488,6 +516,8 @@ if st.session_state['logged_in']:
                 key="btn_einnahme", use_container_width=True,
                 type="primary" if t_type == "Einnahme" else "secondary"
             ):
+                # FIX: show_new_cat beim Typ-Wechsel zurücksetzen
+                st.session_state['show_new_cat'] = False
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
 
@@ -531,6 +561,7 @@ if st.session_state['logged_in']:
         cat_btn_col, manage_col = st.columns([1, 1])
         with cat_btn_col:
             if st.button("➕ Neue Kategorie erstellen", use_container_width=True, type="secondary"):
+                # FIX: Nur hier wird show_new_cat auf True gesetzt
                 st.session_state['show_new_cat'] = True
                 st.session_state['new_cat_typ']  = t_type
                 st.rerun()
@@ -608,6 +639,8 @@ if st.session_state['logged_in']:
                                 if st.button("✏️ Bearbeiten", key=f"edit_btn_{orig_idx}",
                                              use_container_width=True):
                                     st.session_state['edit_idx'] = orig_idx
+                                    # FIX: show_new_cat beim Bearbeiten nicht triggern
+                                    st.session_state['show_new_cat'] = False
                                     st.rerun()
                                 if st.button("🗑️ Löschen", key=f"del_btn_{orig_idx}",
                                              use_container_width=True):
