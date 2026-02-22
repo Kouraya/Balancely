@@ -1365,13 +1365,13 @@ if st.session_state['logged_in']:
                 }])
                 df_old = conn.read(worksheet="transactions", ttl="5")
                 if st.form_submit_button("Speichern", use_container_width=True):
-    conn.update(worksheet="transactions", data=df_new)
-    
-    st.cache_data.clear()  # <--- DIESE ZEILE HINZUFÜGEN
-    
-    st.success(f"✅ {selected_type} über {t_amount:.2f} € gespeichert!")
-    st.rerun()
-                st.balloons()
+                    new_row = pd.DataFrame([{ ... }]) # Deine Logik zum Erstellen der Zeile
+                    df_old = conn.read(worksheet="transactions", ttl="600")
+                    df_new = pd.concat([df_old, new_row], ignore_index=True)
+                    conn.update(worksheet="transactions", data=df_new)
+                    st.cache_data.clear()  # <-- Diese Zeile muss genau unter conn.update stehen
+                    st.success("✅ Gespeichert!")
+                    st.balloons()
 
         cat_btn_col, manage_col = st.columns([1, 1])
         with cat_btn_col:
@@ -2991,5 +2991,6 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
 
 
