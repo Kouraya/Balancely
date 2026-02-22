@@ -1,39 +1,26 @@
 # ============================================================
-#  Balancely — Persönliche Finanzverwaltung  v4
+#  Balancely — Persönliche Finanzverwaltung  v5
 # ============================================================
-
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-import hashlib
-import datetime
-import re
-import smtplib
-import random
-import time
+import hashlib, datetime, re, smtplib, random, time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
-# ============================================================
-#  Hilfsfunktionen
-# ============================================================
-
 def make_hashes(text): return hashlib.sha256(str.encode(text)).hexdigest()
-
 def check_password_strength(pw):
     if len(pw) < 6: return False, "Mindestens 6 Zeichen erforderlich."
     if not re.search(r"[a-z]", pw): return False, "Mindestens ein Kleinbuchstabe erforderlich."
     if not re.search(r"[A-Z]", pw): return False, "Mindestens ein Großbuchstabe erforderlich."
     return True, ""
-
 def is_valid_email(e): return bool(re.match(r"[^@]+@[^@]+\.[^@]+", e))
 def generate_code(): return str(random.randint(100000, 999999))
 def is_verified(v):
     try: return float(v) >= 1.0
     except: return str(v).strip().lower() in ('true','1','yes')
-
 def format_timestamp(ts_str, datum_str):
     now = datetime.datetime.now(); today = now.date()
     try:
@@ -49,7 +36,6 @@ def format_timestamp(ts_str, datum_str):
             if d == today - datetime.timedelta(days=1): return "gestern"
             return d.strftime("%d.%m.%Y")
         except: return str(datum_str)
-
 def find_row_mask(df, row):
     return (
         (df['user'] == row['user']) &
@@ -63,7 +49,7 @@ def send_email(to_email, subject, html_content):
     try:
         sender = st.secrets["email"]["sender"]; password = st.secrets["email"]["password"]
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject; msg["From"] = f"Balancely ⚖️ <{sender}>"; msg["To"] = to_email
+        msg["Subject"] = subject; msg["From"] = "Balancely ⚖️ <" + sender + ">"; msg["To"] = to_email
         msg.attach(MIMEText(html_content, "html"))
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
             s.login(sender, password); s.sendmail(sender, to_email, msg.as_string())
@@ -71,49 +57,32 @@ def send_email(to_email, subject, html_content):
     except Exception as e:
         st.error(f"Email-Fehler: {e}"); return False
 
-def email_html(text, code):
-    return f"""<html><body style="font-family:sans-serif;background:#020617;color:#f1f5f9;padding:40px;">
-    <div style="max-width:480px;margin:auto;background:#0f172a;border-radius:16px;padding:40px;border:1px solid #1e293b;">
-        <h2 style="color:#38bdf8;">Balancely ⚖️</h2><p>{text}</p>
-        <div style="margin:24px 0;padding:20px;background:#1e293b;border-radius:12px;text-align:center;
-                    font-size:36px;font-weight:800;letter-spacing:8px;color:#38bdf8;">{code}</div>
-        <p style="color:#94a3b8;font-size:13px;">Dieser Code ist 10 Minuten gültig.<br>
-        Falls du diese Anfrage nicht gestellt hast, ignoriere diese Email.</p>
-    </div></body></html>"""
-
-# ============================================================
-#  Konstanten
-# ============================================================
+def email_html(text, code_val):
+    return (
+        '<html><body style="font-family:sans-serif;background:#020617;color:#f1f5f9;padding:40px;">'
+        '<div style="max-width:480px;margin:auto;background:#0f172a;border-radius:16px;padding:40px;border:1px solid #1e293b;">'
+        '<h2 style="color:#38bdf8;">Balancely ⚖️</h2><p>' + text + '</p>'
+        '<div style="margin:24px 0;padding:20px;background:#1e293b;border-radius:12px;text-align:center;'
+        'font-size:36px;font-weight:800;letter-spacing:8px;color:#38bdf8;">' + code_val + '</div>'
+        '<p style="color:#94a3b8;font-size:13px;">Dieser Code ist 10 Minuten gültig.</p>'
+        '</div></body></html>')
 
 DEFAULT_CATS = {
     "Einnahme": ["💼 Gehalt","🎁 Bonus","🛒 Verkauf","📈 Investitionen","🏠 Miete (Einnahme)"],
-    "Ausgabe":  ["🍔 Essen","🏠 Miete","🎮 Freizeit","🚗 Transport","🛍️ Shopping",
-                 "💊 Gesundheit","📚 Bildung","⚡ Strom & Gas"],
+    "Ausgabe":  ["🍔 Essen","🏠 Miete","🎮 Freizeit","🚗 Transport","🛍️ Shopping","💊 Gesundheit","📚 Bildung","⚡ Strom & Gas"],
     "Depot":    ["📦 ETF","📊 Aktien","🪙 Krypto","🏦 Tagesgeld","💎 Sonstiges"],
 }
-
 THEMES = {
-    'Ocean Blue':    {'primary':'#38bdf8','bg1':'#070d1a','bg2':'#080e1c','bg3':'#050b16',
-                      'grad1':'rgba(56,189,248,0.06)','grad2':'rgba(99,102,241,0.05)',
-                      'accent':'#0ea5e9','accent2':'#2563eb'},
-    'Emerald Green': {'primary':'#34d399','bg1':'#061510','bg2':'#071812','bg3':'#051110',
-                      'grad1':'rgba(52,211,153,0.07)','grad2':'rgba(16,185,129,0.05)',
-                      'accent':'#10b981','accent2':'#059669'},
-    'Deep Purple':   {'primary':'#a78bfa','bg1':'#0d0a1a','bg2':'#100c1e','bg3':'#08061a',
-                      'grad1':'rgba(167,139,250,0.07)','grad2':'rgba(139,92,246,0.05)',
-                      'accent':'#8b5cf6','accent2':'#7c3aed'},
+    'Ocean Blue':    {'primary':'#38bdf8','bg1':'#070d1a','bg2':'#080e1c','bg3':'#050b16','grad1':'rgba(56,189,248,0.06)','grad2':'rgba(99,102,241,0.05)','accent':'#0ea5e9','accent2':'#2563eb'},
+    'Emerald Green': {'primary':'#34d399','bg1':'#061510','bg2':'#071812','bg3':'#051110','grad1':'rgba(52,211,153,0.07)','grad2':'rgba(16,185,129,0.05)','accent':'#10b981','accent2':'#059669'},
+    'Deep Purple':   {'primary':'#a78bfa','bg1':'#0d0a1a','bg2':'#100c1e','bg3':'#08061a','grad1':'rgba(167,139,250,0.07)','grad2':'rgba(139,92,246,0.05)','accent':'#8b5cf6','accent2':'#7c3aed'},
 }
-
 CURRENCY_SYMBOLS = {'EUR':'€','CHF':'CHF','USD':'$','GBP':'£','JPY':'¥','SEK':'kr','NOK':'kr','DKK':'kr'}
-TOPF_PALETTE     = ["#38bdf8","#4ade80","#a78bfa","#fb923c","#f472b6","#34d399","#facc15","#60a5fa"]
-PALETTE_AUS      = ["#ff0000","#ff5232","#ff7b5a","#ff9e81","#ffbfaa","#ffdfd4","#dc2626","#b91c1c","#991b1b","#7f1d1d"]
-PALETTE_EIN      = ["#008000","#469536","#6eaa5e","#93bf85","#b7d5ac","#dbead5","#2d7a2d","#4a9e4a","#5cb85c","#80c780"]
-PALETTE_DEP      = ["#0000ff","#1e0bd0","#2510a3","#241178","#1f104f","#19092e","#2563eb","#1d4ed8","#1e40af","#1e3a8a"]
-TYPE_COLORS      = {'Einnahme':'#4ade80','Depot':'#38bdf8','Spartopf':'#a78bfa'}
-
-# ============================================================
-#  Session State Init
-# ============================================================
+TOPF_PALETTE = ["#38bdf8","#4ade80","#a78bfa","#fb923c","#f472b6","#34d399","#facc15","#60a5fa"]
+PALETTE_AUS  = ["#ff0000","#ff5232","#ff7b5a","#ff9e81","#ffbfaa","#ffdfd4","#dc2626","#b91c1c","#991b1b","#7f1d1d"]
+PALETTE_EIN  = ["#008000","#469536","#6eaa5e","#93bf85","#b7d5ac","#dbead5","#2d7a2d","#4a9e4a","#5cb85c","#80c780"]
+PALETTE_DEP  = ["#0000ff","#1e0bd0","#2510a3","#241178","#1f104f","#19092e","#2563eb","#1d4ed8","#1e40af","#1e3a8a"]
+TYPE_COLORS  = {'Einnahme':'#4ade80','Depot':'#38bdf8','Spartopf':'#a78bfa'}
 
 _DEFAULTS = {
     'logged_in':False,'user_name':"",'auth_mode':'login','t_type':'Ausgabe',
@@ -124,39 +93,31 @@ _DEFAULTS = {
     'dash_month_offset':0,'dash_selected_aus':None,'dash_selected_ein':None,
     'dash_selected_cat':None,'dash_selected_typ':None,'dash_selected_color':None,
     'analysen_zeitraum':'Monatlich','analysen_month_offset':0,
-    'heatmap_month_offset':0,
-    'topf_edit_data':None,'topf_delete_id':None,'topf_delete_name':None,
-    'settings_tab':'Profil',
-    'email_verify_code':"",'email_verify_expiry':None,'email_verify_new':"",
-    'theme':'Ocean Blue',
-    'confirm_reset':False,'confirm_delete_account':False,
+    'heatmap_month_offset':0,'topf_edit_data':None,'topf_delete_id':None,'topf_delete_name':None,
+    'settings_tab':'Profil','email_verify_code':"",'email_verify_expiry':None,'email_verify_new':"",
+    'theme':'Ocean Blue','confirm_reset':False,'confirm_delete_account':False,
     'tx_page':0,'tx_search':"",
+    'show_walkthrough':False,'walkthrough_step':0,
+    'show_onboarding_prefs':False,
+    'onboarding_selected_theme':'Ocean Blue','onboarding_selected_curr_idx':0,
+    'is_first_login':False,
 }
 for k,v in _DEFAULTS.items():
     if k not in st.session_state: st.session_state[k] = v
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# ============================================================
-#  GSheet Cache
-# ============================================================
-
+# GSheet Cache
 def _gs_read(ws):
     k = f"_gs_cache_{ws}"
     if k not in st.session_state:
         st.session_state[k] = conn.read(worksheet=ws, ttl=0)
     return st.session_state[k].copy()
-
 def _gs_update(ws, df):
     conn.update(worksheet=ws, data=df)
     st.session_state[f"_gs_cache_{ws}"] = df.copy()
-
 def _gs_invalidate(*wss):
     for ws in wss: st.session_state.pop(f"_gs_cache_{ws}", None)
-
-# ============================================================
-#  Daten-Hilfsfunktionen
-# ============================================================
 
 def load_custom_cats(user, typ):
     try:
@@ -164,25 +125,21 @@ def load_custom_cats(user, typ):
         if df.empty or 'user' not in df.columns: return []
         return df[(df['user']==user)&(df['typ']==typ)]['kategorie'].tolist()
     except: return []
-
 def save_custom_cat(user, typ, kategorie):
     try: df = _gs_read("categories")
     except: df = pd.DataFrame(columns=['user','typ','kategorie'])
     _gs_update("categories", pd.concat([df, pd.DataFrame([{'user':user,'typ':typ,'kategorie':kategorie}])], ignore_index=True))
-
 def delete_custom_cat(user, typ, kategorie):
     try:
         df = _gs_read("categories")
         _gs_update("categories", df[~((df['user']==user)&(df['typ']==typ)&(df['kategorie']==kategorie))])
     except: pass
-
 def update_custom_cat(user, typ, old_label, new_label):
     try:
         df = _gs_read("categories")
         df.loc[(df['user']==user)&(df['typ']==typ)&(df['kategorie']==old_label),'kategorie'] = new_label
         _gs_update("categories", df)
     except: pass
-
 def load_goal(user):
     try:
         df = _gs_read("goals")
@@ -190,7 +147,6 @@ def load_goal(user):
         row = df[df['user']==user]
         return float(row.iloc[-1].get('sparziel',0) or 0) if not row.empty else 0.0
     except: return 0.0
-
 def save_goal(user, goal):
     try: df = _gs_read("goals")
     except: df = pd.DataFrame(columns=['user','sparziel'])
@@ -199,7 +155,6 @@ def save_goal(user, goal):
     if mask.any(): df.loc[mask,'sparziel'] = goal
     else: df = pd.concat([df, pd.DataFrame([{'user':user,'sparziel':goal}])], ignore_index=True)
     _gs_update("goals", df)
-
 def load_user_settings(user):
     try:
         df = _gs_read("settings")
@@ -211,7 +166,6 @@ def load_user_settings(user):
                 'avatar_url':str(r.get('avatar_url','') or ''),'theme':str(r.get('theme','Ocean Blue') or 'Ocean Blue'),
                 'last_username_change':str(r.get('last_username_change','') or '')}
     except: return {}
-
 def save_user_settings(user, **kwargs):
     try: df = _gs_read("settings")
     except: df = pd.DataFrame(columns=['user','budget','currency','avatar_url','theme'])
@@ -224,9 +178,12 @@ def save_user_settings(user, **kwargs):
         row_data.update(kwargs)
         df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
     _gs_update("settings", df)
-
-# ── Daueraufträge ────────────────────────────────────────────
-
+def check_first_login(user):
+    try:
+        df = _gs_read("settings")
+        if df.empty or 'user' not in df.columns: return True
+        return df[df['user']==user].empty
+    except: return True
 def load_dauerauftraege(user):
     try:
         df = _gs_read("dauerauftraege")
@@ -238,52 +195,34 @@ def load_dauerauftraege(user):
                            'typ':str(r.get('typ','Ausgabe')),'kategorie':str(r.get('kategorie','')),'aktiv':str(r.get('aktiv','True'))})
         return result
     except: return []
-
 def save_dauerauftrag(user, name, betrag, typ, kategorie):
     try: df = _gs_read("dauerauftraege")
     except: df = pd.DataFrame(columns=['user','id','name','betrag','typ','kategorie','aktiv','deleted'])
     new_id = f"{user}_{int(time.time())}"
     new_row = pd.DataFrame([{'user':user,'id':new_id,'name':name,'betrag':betrag,'typ':typ,'kategorie':kategorie,'aktiv':'True','deleted':''}])
     _gs_update("dauerauftraege", pd.concat([df, new_row], ignore_index=True))
-
 def delete_dauerauftrag(user, da_id):
     try:
         df = _gs_read("dauerauftraege")
         df.loc[(df['user']==user)&(df['id']==da_id),'deleted'] = 'True'
         _gs_update("dauerauftraege", df)
     except: pass
-
 def apply_dauerauftraege(user):
     try:
         das = load_dauerauftraege(user)
         if not das: return 0
-        today = datetime.date.today()
-        target_date = today.replace(day=1)
-        df_t = _gs_read("transactions")
-        booked = 0
+        today = datetime.date.today(); target_date = today.replace(day=1)
+        df_t = _gs_read("transactions"); booked = 0
         for da in das:
             if da['aktiv'] != 'True': continue
-            already = df_t[
-                (df_t['user']==user) &
-                (df_t['notiz']==f"⚙️ Dauerauftrag: {da['name']}") &
-                (df_t['datum'].astype(str).str.startswith(target_date.strftime('%Y-%m')))
-            ] if not df_t.empty and 'user' in df_t.columns else pd.DataFrame()
+            already = df_t[(df_t['user']==user)&(df_t['notiz']==f"⚙️ Dauerauftrag: {da['name']}")&(df_t['datum'].astype(str).str.startswith(target_date.strftime('%Y-%m')))] if not df_t.empty and 'user' in df_t.columns else pd.DataFrame()
             if not already.empty: continue
             betrag_save = da['betrag'] if da['typ'] in ('Einnahme','Depot') else -da['betrag']
-            new_row = pd.DataFrame([{
-                'user':user,'datum':str(target_date),
-                'timestamp':datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-                'typ':da['typ'],'kategorie':da['kategorie'],'betrag':betrag_save,
-                'notiz':f"⚙️ Dauerauftrag: {da['name']}",'deleted':''
-            }])
-            df_t = pd.concat([df_t, new_row], ignore_index=True)
-            booked += 1
+            new_row = pd.DataFrame([{'user':user,'datum':str(target_date),'timestamp':datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),'typ':da['typ'],'kategorie':da['kategorie'],'betrag':betrag_save,'notiz':f"⚙️ Dauerauftrag: {da['name']}",'deleted':''}])
+            df_t = pd.concat([df_t, new_row], ignore_index=True); booked += 1
         if booked > 0: _gs_update("transactions", df_t)
         return booked
     except: return 0
-
-# ── Spartöpfe ────────────────────────────────────────────────
-
 def load_toepfe(user):
     try:
         df = _gs_read("toepfe")
@@ -295,15 +234,12 @@ def load_toepfe(user):
                            'gespart':float(r.get('gespart',0) or 0),'emoji':str(r.get('emoji','🪣')),'farbe':str(r.get('farbe','#38bdf8'))})
         return result
     except: return []
-
 def save_topf(user, name, ziel, emoji):
     try: df = _gs_read("toepfe")
     except: df = pd.DataFrame(columns=['user','id','name','ziel','gespart','emoji','farbe','deleted'])
     cnt = len(df[df['user']==user]) if not df.empty and 'user' in df.columns else 0
-    new_row = pd.DataFrame([{'user':user,'id':f"{user}_{int(time.time())}","name":name,'ziel':ziel,'gespart':0,
-                              'emoji':emoji,'farbe':TOPF_PALETTE[cnt%len(TOPF_PALETTE)],'deleted':''}])
+    new_row = pd.DataFrame([{'user':user,'id':f"{user}_{int(time.time())}","name":name,'ziel':ziel,'gespart':0,'emoji':emoji,'farbe':TOPF_PALETTE[cnt%len(TOPF_PALETTE)],'deleted':''}])
     _gs_update("toepfe", pd.concat([df, new_row], ignore_index=True))
-
 def update_topf_gespart(user, topf_id, topf_name, delta):
     try:
         df = _gs_read("toepfe"); mask = (df['user']==user)&(df['id']==topf_id)
@@ -313,20 +249,15 @@ def update_topf_gespart(user, topf_id, topf_name, delta):
     except: pass
     try:
         df_t = _gs_read("transactions")
-        new_row = pd.DataFrame([{"user":user,"datum":str(datetime.date.today()),
-            "timestamp":datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),"typ":"Spartopf",
-            "kategorie":f"🪣 {topf_name}","betrag":(-1 if delta>0 else 1)*abs(delta),
-            "notiz":f"{'↓' if delta>0 else '↑'} {topf_name}",'deleted':''}])
+        new_row = pd.DataFrame([{"user":user,"datum":str(datetime.date.today()),"timestamp":datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),"typ":"Spartopf","kategorie":f"🪣 {topf_name}","betrag":(-1 if delta>0 else 1)*abs(delta),"notiz":f"{'↓' if delta>0 else '↑'} {topf_name}",'deleted':''}])
         _gs_update("transactions", pd.concat([df_t, new_row], ignore_index=True))
     except: pass
-
 def delete_topf(user, topf_id):
     try:
         df = _gs_read("toepfe")
         df.loc[(df['user']==user)&(df['id']==topf_id),'deleted'] = 'True'
         _gs_update("toepfe", df)
     except: pass
-
 def update_topf_meta(user, topf_id, name, ziel, emoji):
     try:
         df = _gs_read("toepfe"); mask = (df['user']==user)&(df['id']==topf_id)
@@ -335,1646 +266,1057 @@ def update_topf_meta(user, topf_id, name, ziel, emoji):
             _gs_update("toepfe", df)
     except: pass
 
-# ============================================================
-#  CSS + Theme
-# ============================================================
+# ── WALKTHROUGH DATA ─────────────────────────────────────────
+WALKTHROUGH_STEPS = [
+    {"icon":"🏠","title":"Dashboard","desc":"Dein persönlicher Überblick – Kontostand, Monatsbilanz und die letzten Transaktionen auf einen Blick.","tip":"💡 Nutze die Monatsnavigation, um frühere Monate zu vergleichen."},
+    {"icon":"💸","title":"Transaktionen","desc":"Erfasse alle Einnahmen, Ausgaben und Depot-Käufe. Mit Daueraufträgen automatisierst du wiederkehrende Buchungen.","tip":"💡 Suchfunktion und Filter helfen dir, Buchungen schnell zu finden."},
+    {"icon":"📊","title":"Analysen","desc":"Visualisiere deine Ausgaben mit interaktiven Charts, einer Heatmap und behalte dein Sparziel im Blick.","tip":"💡 Hellere Felder in der Heatmap = höhere Ausgaben an diesem Tag."},
+    {"icon":"🪣","title":"Spartöpfe","desc":"Spare gezielt für bestimmte Ziele – Urlaub, neues Laptop, Notfallreserve. Jeder Topf zeigt deinen Fortschritt.","tip":"💡 Einzahlungen werden automatisch als Transaktion erfasst."},
+    {"icon":"⚙️","title":"Einstellungen","desc":"Passe Theme, Währung, Budget und dein Profil an. Du kannst auch Kategorien verwalten.","tip":"💡 Mit dem monatlichen Budget bekommst du Warnungen, wenn du es überschreitest."},
+]
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
-*, *::before, *::after { box-sizing: border-box; }
-html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] { font-family: 'DM Sans', sans-serif !important; }
-[data-testid="stAppViewContainer"] {
-    background: radial-gradient(ellipse 80% 50% at 20% -10%, rgba(56,189,248,0.06) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(99,102,241,0.05) 0%, transparent 55%),
-                linear-gradient(160deg, #070d1a 0%, #080e1c 40%, #050b16 100%) !important;
-    min-height: 100vh;
-}
-h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: -0.5px; }
-[data-testid="stMain"] .block-container { padding-top: 2rem !important; max-width: 1200px !important; }
-.main-title {
-    text-align: center; color: #f8fafc; font-size: clamp(48px, 8vw, 72px);
-    font-weight: 700; letter-spacing: -3px; margin-bottom: 0; line-height: 1;
-    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #64748b 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-}
-.sub-title { text-align: center; color: #475569; font-size: 15px; font-weight: 400; letter-spacing: 0.3px; margin-bottom: 48px; margin-top: 8px; }
-[data-testid="stForm"] {
-    background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(10,16,32,0.95) 100%) !important;
-    backdrop-filter: blur(20px) !important; padding: 40px !important;
-    border-radius: 20px !important; border: 1px solid rgba(148,163,184,0.08) !important;
-    box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04) !important;
-}
-div[data-testid="stTextInputRootElement"] { background-color: transparent !important; }
-div[data-baseweb="input"], div[data-baseweb="base-input"] {
-    background-color: rgba(15,23,42,0.6) !important; border: 1px solid rgba(148,163,184,0.1) !important;
-    border-radius: 10px !important; transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-    padding-right: 0 !important; gap: 0 !important; box-shadow: none !important;
-}
-div[data-baseweb="input"]:focus-within, div[data-baseweb="base-input"]:focus-within {
-    background-color: rgba(15,23,42,0.8) !important; border-color: rgba(56,189,248,0.5) !important;
-    box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important;
-}
-input { padding-left: 15px !important; color: #e2e8f0 !important; font-family: 'DM Sans', sans-serif !important; font-size: 14px !important; }
-input::placeholder { color: #334155 !important; }
-div[data-testid="stDateInput"] > div {
-    background-color: rgba(15,23,42,0.6) !important; border: 1px solid rgba(148,163,184,0.1) !important;
-    border-radius: 10px !important; box-shadow: none !important; min-height: 42px !important; overflow: hidden !important;
-}
-div[data-baseweb="select"] > div:first-child {
-    background-color: rgba(15,23,42,0.6) !important; border: 1px solid rgba(148,163,184,0.1) !important;
-    border-radius: 10px !important; box-shadow: none !important;
-}
-div[data-baseweb="select"] > div:first-child:focus-within {
-    border-color: rgba(56,189,248,0.5) !important; box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important;
-}
-button[kind="primaryFormSubmit"], button[kind="secondaryFormSubmit"] {
-    height: 48px !important; border-radius: 10px !important; font-weight: 600 !important;
-    font-family: 'DM Sans', sans-serif !important; font-size: 14px !important; letter-spacing: 0.2px !important; transition: all 0.2s ease !important;
-}
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #070d1a 0%, #060b18 100%) !important;
-    border-right: 1px solid rgba(148,163,184,0.07) !important;
-}
-[data-testid="stSidebar"] .stMarkdown p { font-family: 'DM Sans', sans-serif !important; color: #475569 !important; font-size: 13px !important; }
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label {
-    border: 1px solid transparent !important; border-radius: 10px !important; padding: 9px 14px !important;
-    margin-bottom: 3px !important; color: #475569 !important; font-family: 'DM Sans', sans-serif !important;
-    font-size: 14px !important; font-weight: 400 !important; transition: all 0.15s ease !important; letter-spacing: 0.1px !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label:hover {
-    border-color: rgba(56,189,248,0.15) !important; color: #94a3b8 !important; background: rgba(56,189,248,0.04) !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label:has(input:checked) {
-    border-color: rgba(56,189,248,0.25) !important; background: rgba(56,189,248,0.08) !important; color: #e2e8f0 !important; font-weight: 500 !important;
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:first-child { display: none !important; }
-button[data-testid="stNumberInputStepDown"], button[data-testid="stNumberInputStepUp"] { display: none !important; }
-div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) { display: none !important; }
-[data-testid="InputInstructions"], [data-testid="stInputInstructions"],
-div[class*="InputInstructions"], div[class*="stInputInstructions"] {
-    display: none !important; visibility: hidden !important; height: 0 !important; overflow: hidden !important; position: absolute !important;
-}
-button, [data-testid="stPopover"] button, div[data-baseweb="select"], div[data-baseweb="select"] *,
-div[data-testid="stDateInput"], [data-testid="stSelectbox"] * { cursor: pointer !important; }
-div[data-testid="stDialog"] > div, div[role="dialog"] {
-    position: fixed !important; top: 50% !important; left: 50% !important;
-    transform: translate(-50%, -50%) !important; margin: 0 !important; max-height: 90vh !important; overflow-y: auto !important;
-    background: linear-gradient(145deg, #0d1729, #0a1020) !important;
-    border: 1px solid rgba(148,163,184,0.1) !important; border-radius: 18px !important; box-shadow: 0 40px 80px rgba(0,0,0,0.6) !important;
-}
-div[data-testid="stDialog"] { display: flex !important; align-items: center !important; justify-content: center !important; }
-hr { border-color: rgba(148,163,184,0.08) !important; margin: 24px 0 !important; }
-[data-testid="stMarkdownContainer"] h3 { font-size: 15px !important; font-weight: 600 !important; color: #64748b !important; letter-spacing: 0.5px !important; text-transform: uppercase !important; }
-[data-testid="stAlert"] { border-radius: 10px !important; font-family: 'DM Sans', sans-serif !important; font-size: 14px !important; }
-[data-testid="stExpander"] { border: 1px solid rgba(148,163,184,0.08) !important; border-radius: 12px !important; background: rgba(10,16,32,0.5) !important; }
-</style>
-""", unsafe_allow_html=True)
+@st.dialog("🗺️ App-Tour", width="large")
+def walkthrough_dialog():
+    step = st.session_state.walkthrough_step
+    total = len(WALKTHROUGH_STEPS)
+    s = WALKTHROUGH_STEPS[step]
+    pri = THEMES.get(st.session_state.get('theme','Ocean Blue'),THEMES['Ocean Blue'])['primary']
+    st.markdown(f'''
+    <div style="text-align:center;padding:20px 0 10px;">
+        <div style="font-size:56px;margin-bottom:12px;">{s["icon"]}</div>
+        <h2 style="font-size:24px;font-weight:800;margin:0 0 8px;">{s["title"]}</h2>
+        <p style="color:#94a3b8;max-width:420px;margin:0 auto 16px;line-height:1.6;">{s["desc"]}</p>
+        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px 20px;display:inline-block;margin-bottom:20px;">
+            <span style="color:{pri};font-size:14px;">{s["tip"]}</span>
+        </div>
+    </div>''', unsafe_allow_html=True)
+    # Progress dots
+    dots_html = '<div style="text-align:center;margin-bottom:24px;">'
+    for i in range(total):
+        color = pri if i==step else '#334155'
+        dots_html += f'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{color};margin:0 4px;"></span>'
+    dots_html += f'<p style="color:#64748b;font-size:13px;margin-top:8px;">{step+1} / {total}</p></div>'
+    st.markdown(dots_html, unsafe_allow_html=True)
+    c1,c2 = st.columns(2)
+    with c1:
+        if st.button("Überspringen", use_container_width=True):
+            st.session_state.show_walkthrough = False; st.rerun()
+    with c2:
+        if step < total-1:
+            if st.button("Weiter →", use_container_width=True, type="primary"):
+                st.session_state.walkthrough_step += 1; st.rerun()
+        else:
+            if st.button("✅ Los geht's!", use_container_width=True, type="primary"):
+                st.session_state.show_walkthrough = False; st.rerun()
 
-def inject_theme(t):
-    st.markdown(f"""<style>
-    [data-testid="stAppViewContainer"] {{
-        background: radial-gradient(ellipse 80% 50% at 20% -10%, {t['grad1']} 0%, transparent 60%),
-                    radial-gradient(ellipse 60% 40% at 80% 110%, {t['grad2']} 0%, transparent 55%),
-                    linear-gradient(160deg, {t['bg1']} 0%, {t['bg2']} 40%, {t['bg3']} 100%) !important;
-    }}
-    [data-testid="stSidebar"] {{ background: linear-gradient(180deg, {t['bg1']} 0%, {t['bg3']} 100%) !important; }}
-    button[kind="primary"], button[kind="primaryFormSubmit"], [data-testid="baseButton-primary"],
-    div[data-testid="stFormSubmitButton"] > button {{
-        background: linear-gradient(135deg, {t['accent']}, {t['accent2']}) !important; border: none !important;
-        color: #ffffff !important; box-shadow: 0 4px 15px {t['primary']}40 !important; transition: all 0.2s ease !important;
-    }}
-    button[kind="secondary"], [data-testid="baseButton-secondary"] {{
-        background: rgba(255,255,255,0.04) !important; border: 1px solid {t['primary']}30 !important;
-        color: {t['primary']} !important; transition: all 0.2s ease !important;
-    }}
-    [data-testid="stDownloadButton"] > button {{
-        background: linear-gradient(135deg, {t['accent']}, {t['accent2']}) !important;
-        border: none !important; color: #ffffff !important; box-shadow: 0 4px 15px {t['primary']}40 !important;
-    }}
-    </style>""", unsafe_allow_html=True)
+@st.dialog("👋 Willkommen bei Balancely!", width="large")
+def onboarding_prefs_dialog():
+    pri = THEMES.get(st.session_state.get('theme','Ocean Blue'),THEMES['Ocean Blue'])['primary']
+    st.markdown(f'<p style="color:#94a3b8;margin-bottom:24px;">Bevor es losgeht – richte kurz deine Vorlieben ein.</p>', unsafe_allow_html=True)
+    # Theme selection
+    st.markdown("**🎨 Wähle dein Theme:**")
+    theme_cols = st.columns(3)
+    theme_names = list(THEMES.keys())
+    theme_icons = {'Ocean Blue':'🌊','Emerald Green':'🌿','Deep Purple':'🔮'}
+    for i, (tc, tname) in enumerate(zip(theme_cols, theme_names)):
+        with tc:
+            th = THEMES[tname]
+            selected = st.session_state.onboarding_selected_theme == tname
+            border = f"2px solid {th['primary']}" if selected else "2px solid #1e293b"
+            if st.button(f"{theme_icons.get(tname,'🎨')} {tname}", key=f"ob_theme_{tname}", use_container_width=True,
+                         type="primary" if selected else "secondary"):
+                st.session_state.onboarding_selected_theme = tname; st.rerun()
+            st.markdown(f'<div style="height:6px;border-radius:3px;background:{th["primary"]};margin-top:4px;"></div>', unsafe_allow_html=True)
+    st.markdown("<br>**💱 Wähle deine Währung:**")
+    curr_list = list(CURRENCY_SYMBOLS.keys())
+    curr_idx = st.selectbox("", curr_list, index=st.session_state.onboarding_selected_curr_idx, label_visibility="collapsed",
+                             format_func=lambda c: f"{c} ({CURRENCY_SYMBOLS[c]})", key="ob_curr_select")
+    st.session_state.onboarding_selected_curr_idx = curr_list.index(curr_idx)
+    st.markdown("<br>")
+    if st.button("✅ Einstellungen speichern & Tour starten", use_container_width=True, type="primary"):
+        user = st.session_state.user_name
+        chosen_theme = st.session_state.onboarding_selected_theme
+        chosen_curr = curr_list[st.session_state.onboarding_selected_curr_idx]
+        save_user_settings(user, theme=chosen_theme, currency=chosen_curr)
+        st.session_state.theme = chosen_theme
+        st.session_state.show_onboarding_prefs = False
+        st.session_state.show_walkthrough = True
+        st.session_state.walkthrough_step = 0
+        st.rerun()
 
-def section_header(title, subtitle=""):
-    sub = (f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin:2px 0 20px 0;'>{subtitle}</p>"
-           if subtitle else "<div style='margin-bottom:20px;'></div>")
-    st.markdown(f"<p style='font-family:DM Mono,monospace;color:#475569;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 4px 0;'>{title}</p>{sub}", unsafe_allow_html=True)
+# ── THEME INJECTION ──────────────────────────────────────────
+def inject_theme(theme_name):
+    t = THEMES.get(theme_name, THEMES['Ocean Blue'])
+    pri = t['primary']; bg1 = t['bg1']; bg2 = t['bg2']; bg3 = t['bg3']
+    grad1 = t['grad1']; grad2 = t['grad2']; accent = t['accent']; accent2 = t['accent2']
+    css = f"""<style>
+:root{{--pri:{pri};--bg1:{bg1};--bg2:{bg2};--bg3:{bg3};
+      --grad1:{grad1};--grad2:{grad2};--accent:{accent};--accent2:{accent2};}}
+[data-testid="stAppViewContainer"]{{background-color:{bg1}!important;}}
+[data-testid="stSidebar"]{{background-color:{bg2}!important;border-right:1px solid #1e293b;}}
+[data-testid="stMain"] .block-container{{background:transparent!important;padding-top:1.5rem;}}
+.stButton>button{{background:linear-gradient(135deg,{pri},{accent2});color:#fff;border:none;
+    border-radius:12px;font-weight:600;transition:all .2s;}}
+.stButton>button:hover{{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 15px rgba(0,0,0,.4);}}
+.stButton>button[kind="secondary"]{{background:#1e293b;color:#cbd5e1;}}
+[data-testid="stMetricValue"]{{font-size:2rem!important;font-weight:800!important;}}
+.stTextInput>div>input,.stSelectbox>div>div,.stNumberInput>div>input{{background:#0f172a!important;
+    color:#f1f5f9!important;border:1px solid #334155!important;border-radius:10px!important;}}
+h1,h2,h3{{color:#f1f5f9!important;}} p,label{{color:#cbd5e1;}}
+::-webkit-scrollbar{{width:6px;}} ::-webkit-scrollbar-track{{background:#0f172a;}}
+::-webkit-scrollbar-thumb{{background:#334155;border-radius:3px;}}
+.stAlert{{border-radius:12px!important;}}
+</style>"""
+    st.markdown(css, unsafe_allow_html=True)
 
-# ============================================================
-#  Dialoge
-# ============================================================
+def section_header(icon, title, subtitle=""):
+    t = THEMES.get(st.session_state.get('theme','Ocean Blue'), THEMES['Ocean Blue'])
+    pri = t['primary']; acc2 = t['accent2']
+    sub_html = f'<p style="color:#64748b;font-size:14px;margin:4px 0 0;">{subtitle}</p>' if subtitle else ""
+    st.markdown(f"""
+<div style="padding:20px 0 16px;border-bottom:1px solid #1e293b;margin-bottom:24px;">
+    <h1 style="font-size:26px;font-weight:800;margin:0;color:#f1f5f9;">
+        <span style="background:linear-gradient(135deg,{pri},{acc2});-webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;">{icon} {title}</span>
+    </h1>{sub_html}
+</div>""", unsafe_allow_html=True)
+
+# ── CRUD DIALOGS ─────────────────────────────────────────────
+@st.dialog("✏️ Transaktion bearbeiten", width="large")
+def edit_transaction_dialog(row):
+    user = st.session_state.user_name
+    settings = load_user_settings(user)
+    sym = CURRENCY_SYMBOLS.get(settings.get('currency','EUR'),'€')
+    all_cats = DEFAULT_CATS.copy()
+    for typ in ('Einnahme','Ausgabe','Depot'):
+        custom = load_custom_cats(user, typ)
+        all_cats[typ] = all_cats.get(typ,[]) + [c for c in custom if c not in all_cats.get(typ,[])]
+    typ_val = str(row.get('typ','Ausgabe'))
+    datum_str = str(row.get('datum','')).strip()
+    betrag_num = abs(float(str(row.get('betrag',0)).replace(',','.')))
+    notiz_val = str(row.get('notiz',''))
+    c1,c2 = st.columns(2)
+    with c1:
+        typ_new = st.selectbox("Typ", ['Einnahme','Ausgabe','Depot'], index=['Einnahme','Ausgabe','Depot'].index(typ_val) if typ_val in ['Einnahme','Ausgabe','Depot'] else 1)
+    with c2:
+        cats = all_cats.get(typ_new, [])
+        cat_val = str(row.get('kategorie',''))
+        cat_idx = cats.index(cat_val) if cat_val in cats else 0
+        cat_new = st.selectbox("Kategorie", cats, index=cat_idx)
+    c3,c4 = st.columns(2)
+    with c3:
+        try: datum_obj = datetime.date.fromisoformat(datum_str)
+        except: datum_obj = datetime.date.today()
+        datum_new = st.date_input("Datum", value=datum_obj)
+    with c4:
+        betrag_new = st.number_input(f"Betrag ({sym})", min_value=0.01, value=betrag_num, step=0.01)
+    notiz_new = st.text_input("Notiz (optional)", value=notiz_val)
+    ca, cb = st.columns(2)
+    with ca:
+        if st.button("Abbrechen", use_container_width=True):
+            st.session_state.edit_idx = None; st.rerun()
+    with cb:
+        if st.button("💾 Speichern", use_container_width=True, type="primary"):
+            df = _gs_read("transactions")
+            mask = find_row_mask(df, row)
+            if mask.any():
+                idx = df[mask].index[0]
+                betrag_save = betrag_new if typ_new in ('Einnahme','Depot') else -betrag_new
+                df.at[idx,'typ'] = typ_new; df.at[idx,'kategorie'] = cat_new
+                df.at[idx,'datum'] = str(datum_new); df.at[idx,'betrag'] = betrag_save
+                df.at[idx,'notiz'] = notiz_new
+                _gs_update("transactions", df)
+            st.session_state.edit_idx = None; st.rerun()
+
+@st.dialog("🗑️ Transaktion löschen")
+def delete_transaction_dialog(row):
+    sym = CURRENCY_SYMBOLS.get(load_user_settings(st.session_state.user_name).get('currency','EUR'),'€')
+    st.warning(f"Wirklich löschen? {row.get('typ','')} · {row.get('kategorie','')} · {abs(float(str(row.get('betrag',0)).replace(',','.')))} {sym}")
+    ca, cb = st.columns(2)
+    with ca:
+        if st.button("Abbrechen", use_container_width=True): st.rerun()
+    with cb:
+        if st.button("🗑️ Löschen", use_container_width=True, type="primary"):
+            df = _gs_read("transactions")
+            mask = find_row_mask(df, row)
+            if mask.any(): df.loc[mask,'deleted'] = 'True'; _gs_update("transactions", df)
+            st.rerun()
 
 @st.dialog("➕ Neue Kategorie")
-def new_category_dialog():
-    typ = st.session_state.get('new_cat_typ','Ausgabe')
-    st.markdown(f"<p style='color:#64748b;font-size:13px;margin-bottom:20px;font-family:DM Sans,sans-serif;'>Für Typ: <span style='color:#38bdf8;font-weight:500;'>{typ}</span></p>", unsafe_allow_html=True)
-    nc1, nc2 = st.columns([1,3])
-    with nc1: new_emoji = st.text_input("Emoji", placeholder="🎵", max_chars=4)
-    with nc2: new_name  = st.text_input("Name", placeholder="z.B. Musik")
-    nc_typ = st.selectbox("Typ", ["Ausgabe","Einnahme","Depot"], index=["Ausgabe","Einnahme","Depot"].index(typ) if typ in ["Ausgabe","Einnahme","Depot"] else 0)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Speichern", use_container_width=True, type="primary"):
-            if not new_name.strip(): st.error("Bitte einen Namen eingeben.")
-            else:
-                label = f"{new_emoji.strip()} {new_name.strip()}" if new_emoji.strip() else new_name.strip()
-                existing = load_custom_cats(st.session_state['user_name'], nc_typ) + DEFAULT_CATS.get(nc_typ,[])
-                if label in existing: st.error("Kategorie existiert bereits.")
-                else:
-                    save_custom_cat(st.session_state['user_name'], nc_typ, label)
-                    st.session_state['show_new_cat'] = False; st.rerun()
-    with c2:
+def add_cat_dialog():
+    user = st.session_state.user_name
+    typ = st.selectbox("Typ", ['Einnahme','Ausgabe','Depot'])
+    st.session_state.new_cat_typ = typ
+    emoji = st.text_input("Emoji", "💡", max_chars=2)
+    name = st.text_input("Name")
+    ca,cb = st.columns(2)
+    with ca:
         if st.button("Abbrechen", use_container_width=True):
-            st.session_state['show_new_cat'] = False; st.rerun()
+            st.session_state.show_new_cat = False; st.rerun()
+    with cb:
+        if st.button("➕ Hinzufügen", use_container_width=True, type="primary"):
+            if name.strip():
+                label = f"{emoji} {name.strip()}"
+                save_custom_cat(user, typ, label)
+                st.session_state.show_new_cat = False; st.rerun()
+            else: st.error("Bitte Namen eingeben.")
 
 @st.dialog("✏️ Kategorie bearbeiten")
-def edit_category_dialog():
-    data = st.session_state.get('edit_cat_data')
-    if not data: st.rerun(); return
-    old_label, typ, user = data['old_label'], data['typ'], data['user']
-    parts = old_label.split(' ',1)
-    init_emoji = parts[0] if len(parts)==2 and len(parts[0])<=4 else ''
-    init_name  = parts[1] if len(parts)==2 and len(parts[0])<=4 else old_label
-    nc1, nc2 = st.columns([1,3])
-    with nc1: new_emoji = st.text_input("Emoji", value=init_emoji, max_chars=4)
-    with nc2: new_name  = st.text_input("Name", value=init_name)
-    new_typ = st.selectbox("Typ", ["Ausgabe","Einnahme","Depot"], index=["Ausgabe","Einnahme","Depot"].index(typ) if typ in ["Ausgabe","Einnahme","Depot"] else 0)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Speichern", use_container_width=True, type="primary"):
-            if not new_name.strip(): st.error("Bitte einen Namen eingeben.")
-            else:
-                new_label = f"{new_emoji.strip()} {new_name.strip()}" if new_emoji.strip() else new_name.strip()
-                existing  = load_custom_cats(user, new_typ) + DEFAULT_CATS.get(new_typ,[])
-                if new_label != old_label and new_label in existing: st.error("Kategorie existiert bereits.")
-                else:
-                    if new_typ != typ: delete_custom_cat(user, typ, old_label); save_custom_cat(user, new_typ, new_label)
-                    else: update_custom_cat(user, typ, old_label, new_label)
-                    st.session_state['edit_cat_data'] = None; st.rerun()
-    with c2:
+def edit_cat_dialog(cat_data):
+    user = st.session_state.user_name
+    old_label = cat_data['kategorie']; typ = cat_data['typ']
+    parts = old_label.split(" ", 1)
+    old_emoji = parts[0] if len(parts)>1 else "💡"
+    old_name = parts[1] if len(parts)>1 else old_label
+    new_emoji = st.text_input("Emoji", old_emoji, max_chars=2)
+    new_name = st.text_input("Name", old_name)
+    ca,cb = st.columns(2)
+    with ca:
         if st.button("Abbrechen", use_container_width=True):
-            st.session_state['edit_cat_data'] = None; st.rerun()
+            st.session_state.edit_cat_data = None; st.rerun()
+    with cb:
+        if st.button("💾 Speichern", use_container_width=True, type="primary"):
+            new_label = f"{new_emoji} {new_name.strip()}"
+            update_custom_cat(user, typ, old_label, new_label)
+            st.session_state.edit_cat_data = None; st.rerun()
 
-@st.dialog("Kategorie löschen")
-def confirm_delete_cat():
-    data = st.session_state.get('delete_cat_data')
-    if not data: st.rerun(); return
-    st.markdown(f"<p style='color:#e2e8f0;font-size:15px;margin-bottom:8px;'>Kategorie wirklich löschen?</p><p style='color:#64748b;font-size:14px;'>{data['label']}</p>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Löschen", use_container_width=True, type="primary"):
-            delete_custom_cat(data['user'], data['typ'], data['label'])
-            st.session_state['delete_cat_data'] = None; st.rerun()
-    with c2:
+@st.dialog("🗑️ Kategorie löschen")
+def delete_cat_dialog(cat_data):
+    st.warning(f"Kategorie '{cat_data['kategorie']}' löschen?")
+    ca,cb = st.columns(2)
+    with ca:
         if st.button("Abbrechen", use_container_width=True):
-            st.session_state['delete_cat_data'] = None; st.rerun()
+            st.session_state.delete_cat_data = None; st.rerun()
+    with cb:
+        if st.button("🗑️ Löschen", use_container_width=True, type="primary"):
+            delete_custom_cat(st.session_state.user_name, cat_data['typ'], cat_data['kategorie'])
+            st.session_state.delete_cat_data = None; st.rerun()
 
-@st.dialog("Eintrag löschen")
-def confirm_delete(row_data):
-    st.markdown(f"<p style='color:#e2e8f0;font-size:15px;margin-bottom:6px;'>Eintrag wirklich löschen?</p><p style='color:#475569;font-size:13px;'>{row_data['datum']} · {row_data['betrag_anzeige']} · {row_data['kategorie']}</p>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Löschen", use_container_width=True, type="primary"):
-            df_all = _gs_read("transactions")
-            if 'deleted' not in df_all.columns: df_all['deleted'] = ''
-            mask = (
-                (df_all['user']==row_data['user']) & (df_all['datum'].astype(str)==str(row_data['datum'])) &
-                (pd.to_numeric(df_all['betrag'],errors='coerce')==pd.to_numeric(row_data['betrag'],errors='coerce')) &
-                (df_all['kategorie']==row_data['kategorie']) &
-                (~df_all['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0']))
-            )
-            idx = df_all[mask].index
-            if len(idx)>0:
-                df_all.loc[idx[0],'deleted'] = 'True'; _gs_update("transactions", df_all)
-                st.session_state['edit_idx'] = None; st.rerun()
-            else: st.error("Eintrag nicht gefunden.")
-    with c2:
+@st.dialog("✏️ Sparziel bearbeiten")
+def edit_goal_dialog(current_goal):
+    user = st.session_state.user_name
+    sym = CURRENCY_SYMBOLS.get(load_user_settings(user).get('currency','EUR'),'€')
+    new_goal = st.number_input(f"Monatliches Sparziel ({sym})", min_value=0.0, value=float(current_goal), step=50.0)
+    ca,cb = st.columns(2)
+    with ca:
         if st.button("Abbrechen", use_container_width=True): st.rerun()
+    with cb:
+        if st.button("💾 Speichern", use_container_width=True, type="primary"):
+            save_goal(user, new_goal); st.rerun()
 
-# ============================================================
-#  APP — Eingeloggt
-# ============================================================
+@st.dialog("➕ Neuer Dauerauftrag")
+def add_dauerauftrag_dialog():
+    user = st.session_state.user_name
+    all_cats = DEFAULT_CATS.copy()
+    for typ in ('Einnahme','Ausgabe','Depot'):
+        custom = load_custom_cats(user, typ)
+        all_cats[typ] = all_cats.get(typ,[]) + [c for c in custom if c not in all_cats.get(typ,[])]
+    sym = CURRENCY_SYMBOLS.get(load_user_settings(user).get('currency','EUR'),'€')
+    name = st.text_input("Name des Dauerauftrags")
+    c1,c2 = st.columns(2)
+    with c1: typ = st.selectbox("Typ", ['Einnahme','Ausgabe','Depot'])
+    with c2: kat = st.selectbox("Kategorie", all_cats.get(typ,[]))
+    betrag = st.number_input(f"Betrag ({sym})", min_value=0.01, step=1.0)
+    ca,cb = st.columns(2)
+    with ca:
+        if st.button("Abbrechen", use_container_width=True): st.rerun()
+    with cb:
+        if st.button("✅ Speichern", use_container_width=True, type="primary"):
+            if name.strip(): save_dauerauftrag(user, name, betrag, typ, kat); st.rerun()
+            else: st.error("Bitte Namen eingeben.")
 
-if st.session_state['logged_in']:
-    _theme_name    = st.session_state.get('theme','Ocean Blue')
-    _t             = THEMES.get(_theme_name, THEMES['Ocean Blue'])
-    _user_settings = load_user_settings(st.session_state['user_name'])
-    _currency_sym  = CURRENCY_SYMBOLS.get(_user_settings.get('currency','EUR'),'€')
+@st.dialog("➕ Neuer Spartopf")
+def add_topf_dialog():
+    name = st.text_input("Name")
+    c1,c2 = st.columns(2)
+    with c1: emoji = st.text_input("Emoji", "🪣", max_chars=2)
+    with c2: ziel = st.number_input("Sparziel (€)", min_value=1.0, step=50.0)
+    ca,cb = st.columns(2)
+    with ca:
+        if st.button("Abbrechen", use_container_width=True): st.rerun()
+    with cb:
+        if st.button("✅ Erstellen", use_container_width=True, type="primary"):
+            if name.strip(): save_topf(st.session_state.user_name, name, ziel, emoji); st.rerun()
+            else: st.error("Bitte Namen eingeben.")
 
-    inject_theme(_t)
+@st.dialog("✏️ Spartopf bearbeiten")
+def edit_topf_dialog(topf):
+    new_name = st.text_input("Name", topf['name'])
+    c1,c2 = st.columns(2)
+    with c1: new_emoji = st.text_input("Emoji", topf['emoji'], max_chars=2)
+    with c2: new_ziel = st.number_input("Sparziel", min_value=1.0, value=float(topf['ziel']), step=50.0)
+    ca,cb = st.columns(2)
+    with ca:
+        if st.button("Abbrechen", use_container_width=True):
+            st.session_state.topf_edit_data = None; st.rerun()
+    with cb:
+        if st.button("💾 Speichern", use_container_width=True, type="primary"):
+            if new_name.strip():
+                update_topf_meta(st.session_state.user_name, topf['id'], new_name, new_ziel, new_emoji)
+                st.session_state.topf_edit_data = None; st.rerun()
 
-    if _user_settings.get('theme') and _user_settings['theme'] != st.session_state.get('theme'):
-        st.session_state['theme'] = _user_settings['theme']
+@st.dialog("🗑️ Spartopf löschen")
+def delete_topf_dialog(topf_id, topf_name):
+    st.warning(f"Spartopf '{topf_name}' wirklich löschen?")
+    ca,cb = st.columns(2)
+    with ca:
+        if st.button("Abbrechen", use_container_width=True):
+            st.session_state.topf_delete_id = None; st.rerun()
+    with cb:
+        if st.button("🗑️ Löschen", use_container_width=True, type="primary"):
+            delete_topf(st.session_state.user_name, topf_id)
+            st.session_state.topf_delete_id = None; st.session_state.topf_delete_name = None; st.rerun()
 
-    if datetime.date.today().day == 1:
-        booked = apply_dauerauftraege(st.session_state['user_name'])
-        if booked > 0:
-            _gs_invalidate("transactions")
-            st.toast(f"✅ {booked} Dauerauftrag/-aufträge gebucht", icon="⚙️")
-
-    # ── Sidebar ──────────────────────────────────────────────
-    with st.sidebar:
-        st.markdown(
-            f"<div style='padding:8px 0 16px 0;'><span style='font-family:DM Sans,sans-serif;font-size:20px;font-weight:600;color:#e2e8f0;letter-spacing:-0.5px;'>Balancely</span>"
-            f"<span style='color:{_t['primary']};font-size:20px;'> ⚖️</span></div>", unsafe_allow_html=True)
-
-        _avatar = _user_settings.get('avatar_url','')
-        _initials = st.session_state['user_name'][:2].upper()
-        if _avatar and _avatar.startswith('http'):
-            avatar_html = f"<img src='{_avatar}' style='width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid {_t['primary']}40;'>"
-        else:
-            avatar_html = f"<div style='width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,{_t['accent']},{_t['accent2']});display:flex;align-items:center;justify-content:center;font-family:DM Sans,sans-serif;font-size:13px;font-weight:600;color:#fff;flex-shrink:0;'>{_initials}</div>"
-        st.markdown(
-            f"<div style='display:flex;align-items:center;gap:10px;margin-bottom:20px;'>{avatar_html}"
-            f"<div><div style='font-family:DM Sans,sans-serif;font-size:13px;color:#e2e8f0;font-weight:500;'>{st.session_state['user_name']}</div>"
-            f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;'>{_user_settings.get('currency','EUR')} · {_theme_name}</div></div></div>",
-            unsafe_allow_html=True)
-
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-        menu = st.radio("Navigation", ["📈 Dashboard","💸 Transaktionen","📂 Analysen","🪣 Spartöpfe","⚙️ Einstellungen"], label_visibility="collapsed")
-        st.markdown("<div style='height:28vh;'></div>", unsafe_allow_html=True)
-        if st.button("Logout ➜", use_container_width=True, type="secondary"):
-            for k in [k for k in st.session_state if k.startswith("_gs_cache_")]: del st.session_state[k]
-            st.session_state['logged_in'] = False; st.rerun()
-
-    if not st.session_state.pop('_dialog_just_opened', False):
-        st.session_state['show_new_cat'] = False
-        st.session_state['edit_cat_data'] = None
-        st.session_state['delete_cat_data'] = None
-
-    if menu != st.session_state.get('_last_menu', menu):
-        st.session_state['edit_idx'] = None
-    st.session_state['_last_menu'] = menu
-
-    # ============================================================
-    #  DASHBOARD
-    # ============================================================
-    if menu == "📈 Dashboard":
-        import plotly.graph_objects as go
-
-        now = datetime.datetime.now()
-        st.markdown(
-            f"<div style='margin-bottom:36px;margin-top:16px;'>"
-            f"<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;color:#e2e8f0;margin:0 0 6px 0;letter-spacing:-1px;'>Deine Übersicht, {st.session_state['user_name']}! ⚖️</h1>"
-            f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:15px;margin:0;'>Monatliche Finanzübersicht</p></div>", unsafe_allow_html=True)
-
-        offset  = st.session_state.get('dash_month_offset',0)
-        m_total = now.year*12 + (now.month-1) + offset
-        t_year, t_month_idx = divmod(m_total,12); t_month = t_month_idx+1
-        monat_label = datetime.date(t_year, t_month, 1).strftime("%B %Y")
-
-        nav1, nav2, nav3 = st.columns([1,5,1])
-        with nav1:
-            if st.button("‹", use_container_width=True, key="dash_prev"):
-                st.session_state['dash_month_offset'] -= 1
-                st.session_state.update({'dash_selected_cat':None,'dash_selected_typ':None,'dash_selected_color':None}); st.rerun()
-        with nav2:
-            st.markdown(f"<div style='text-align:center;font-family:DM Sans,sans-serif;font-size:14px;font-weight:500;color:#64748b;padding:6px 0;'>{monat_label}</div>", unsafe_allow_html=True)
-        with nav3:
-            if st.button("›", use_container_width=True, key="dash_next", disabled=(offset>=0)):
-                st.session_state['dash_month_offset'] += 1
-                st.session_state.update({'dash_selected_cat':None,'dash_selected_typ':None,'dash_selected_color':None}); st.rerun()
-
-        try:
-            df_t = _gs_read("transactions")
-            if "user" not in df_t.columns:
-                st.info("Noch keine Daten vorhanden.")
-            else:
-                alle = df_t[df_t["user"]==st.session_state["user_name"]].copy()
-                if "deleted" in alle.columns:
-                    alle = alle[~alle["deleted"].astype(str).str.strip().str.lower().isin(["true","1","1.0"])]
-                alle["datum_dt"] = pd.to_datetime(alle["datum"], errors="coerce")
-                monat_df = alle[(alle["datum_dt"].dt.year==t_year)&(alle["datum_dt"].dt.month==t_month)].copy()
-
-                if monat_df.empty:
-                    st.markdown(f"<div style='text-align:center;padding:60px 20px;color:#334155;font-family:DM Sans,sans-serif;font-size:15px;'>Keine Buchungen im {monat_label}</div>", unsafe_allow_html=True)
+# ── AUTH PAGES ───────────────────────────────────────────────
+def show_login():
+    t = THEMES.get(st.session_state.get('theme','Ocean Blue'), THEMES['Ocean Blue'])
+    pri = t['primary']; acc2 = t['accent2']
+    st.markdown(f"""
+<div style="text-align:center;padding:60px 20px 40px;">
+    <div style="font-size:64px;margin-bottom:16px;">⚖️</div>
+    <h1 style="font-size:38px;font-weight:900;background:linear-gradient(135deg,{pri},{acc2});
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">Balancely</h1>
+    <p style="color:#64748b;font-size:16px;">Deine persönliche Finanzverwaltung</p>
+</div>""", unsafe_allow_html=True)
+    col = st.columns([1,2,1])[1]
+    with col:
+        mode = st.session_state.auth_mode
+        tab_login, tab_reg = st.tabs(["🔐 Anmelden","📝 Registrieren"])
+        with tab_login:
+            u = st.text_input("Benutzername", key="li_user")
+            p = st.text_input("Passwort", type="password", key="li_pass")
+            if st.button("🔐 Anmelden", use_container_width=True, type="primary", key="li_btn"):
+                try:
+                    df = _gs_read("users")
+                    match = df[(df['username']==u)&(df['password']==make_hashes(p))]
+                    if match.empty: st.error("Falscher Benutzername oder Passwort.")
+                    else:
+                        row = match.iloc[-1]
+                        if not is_verified(row.get('verified',0)):
+                            st.error("Bitte zuerst E-Mail bestätigen."); st.stop()
+                        st.session_state.logged_in = True; st.session_state.user_name = u
+                        settings = load_user_settings(u)
+                        if settings.get('theme'): st.session_state.theme = settings['theme']
+                        # Check first login
+                        if check_first_login(u):
+                            st.session_state.is_first_login = True
+                            st.session_state.show_onboarding_prefs = True
+                        _gs_invalidate("transactions"); st.rerun()
+                except Exception as e: st.error(f"Fehler: {e}")
+            st.markdown("---")
+            st.markdown("**Passwort vergessen?**")
+            re_email = st.text_input("Deine E-Mail-Adresse", key="re_email_inp")
+            if st.button("📧 Code senden", use_container_width=True, key="re_send"):
+                if not is_valid_email(re_email): st.error("Ungültige E-Mail.")
                 else:
-                    monat_df["betrag_num"] = pd.to_numeric(monat_df["betrag"], errors="coerce")
-                    alle["betrag_num"]     = pd.to_numeric(alle["betrag"], errors="coerce")
-
-                    ein           = monat_df[monat_df["typ"]=="Einnahme"]["betrag_num"].sum()
-                    aus           = monat_df[monat_df["typ"]=="Ausgabe"]["betrag_num"].abs().sum()
-                    dep_monat     = monat_df[monat_df["typ"]=="Depot"]["betrag_num"].abs().sum()
-                    sp_netto      = monat_df[monat_df["typ"]=="Spartopf"]["betrag_num"].sum()
-                    bank          = ein - aus - dep_monat + sp_netto
-                    dep_gesamt    = alle[alle["typ"]=="Depot"]["betrag_num"].abs().sum()
-                    topf_gesamt   = sum(t['gespart'] for t in load_toepfe(st.session_state["user_name"]))
-                    networth      = bank + dep_gesamt + topf_gesamt
-
-                    bank_color = "#e2e8f0" if bank>=0 else "#f87171"
-                    nw_color   = "#4ade80" if networth>=0 else "#f87171"
-                    bank_str   = f"{bank:,.2f} {_currency_sym}" if bank>=0 else f"-{abs(bank):,.2f} {_currency_sym}"
-                    nw_str     = f"{networth:,.2f} {_currency_sym}" if networth>=0 else f"-{abs(networth):,.2f} {_currency_sym}"
-
-                    if offset==0:
-                        _budget = _user_settings.get('budget',0)
-                        if _budget>0:
-                            _bpct = min(aus/_budget*100,100)
-                            _bcol = "#4ade80" if _bpct<60 else ("#facc15" if _bpct<85 else "#f87171")
-                            _bem  = "🟢" if _bpct<60 else ("🟡" if _bpct<85 else "🔴")
-                            st.markdown(
-                                f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:14px;padding:14px 18px;margin-bottom:16px;'>"
-                                f"<div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;'>"
-                                f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:13px;'>{_bem} Monats-Budget</span>"
-                                f"<span style='font-family:DM Mono,monospace;color:{_bcol};font-size:13px;font-weight:600;'>{aus:,.2f} / {_budget:,.2f} {_currency_sym} · {_bpct:.0f}%</span>"
-                                f"</div><div style='background:rgba(30,41,59,0.8);border-radius:99px;height:6px;overflow:hidden;'>"
-                                f"<div style='width:{_bpct:.0f}%;height:100%;background:{_bcol};border-radius:99px;'></div></div></div>", unsafe_allow_html=True)
-
-                    if offset==0:
-                        _goal = load_goal(st.session_state["user_name"])
-                        _sp_einz = abs(monat_df[(monat_df["typ"]=="Spartopf")&(monat_df["betrag_num"]<0)]["betrag_num"].sum())
-                        if _goal>0:
-                            _effektiv = bank + _sp_einz
-                            if _effektiv < _goal:
-                                _fehl = _goal - _effektiv
-                                st.markdown(
-                                    f"<div style='background:linear-gradient(135deg,rgba(251,113,133,0.08),rgba(239,68,68,0.05));border:1px solid rgba(248,113,113,0.25);border-left:3px solid #f87171;border-radius:14px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;'>"
-                                    f"<span style='font-size:22px;'>⚠️</span><div>"
-                                    f"<div style='font-family:DM Sans,sans-serif;color:#fca5a5;font-weight:600;font-size:14px;margin-bottom:2px;'>Du liegst {_fehl:,.2f} {_currency_sym} unter deinem Sparziel</div>"
-                                    f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;'>Ziel: {_goal:,.2f} {_currency_sym} · Gespart: {_effektiv:,.2f} {_currency_sym}</div>"
-                                    f"</div></div>", unsafe_allow_html=True)
-                            else:
-                                _ueber = _effektiv - _goal
-                                st.markdown(
-                                    f"<div style='background:linear-gradient(135deg,rgba(74,222,128,0.05),rgba(34,197,94,0.03));border:1px solid rgba(74,222,128,0.2);border-left:3px solid #4ade80;border-radius:14px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;'>"
-                                    f"<span style='font-size:22px;'>✅</span><div>"
-                                    f"<div style='font-family:DM Sans,sans-serif;color:#86efac;font-weight:600;font-size:14px;margin-bottom:2px;'>Sparziel erreicht! +{_ueber:,.2f} {_currency_sym} Puffer</div>"
-                                    f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;'>Gespart: {_effektiv:,.2f} {_currency_sym}</div>"
-                                    f"</div></div>", unsafe_allow_html=True)
-
-                    _sp_einz2 = abs(monat_df[(monat_df["typ"]=="Spartopf")&(monat_df["betrag_num"]<0)]["betrag_num"].sum())
-                    dep_html = (f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(56,189,248,0.15);border-radius:16px;padding:20px 22px;'>"
-                                f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Depot</div>"
-                                f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>diesen Monat</div>"
-                                f"<div style='font-family:DM Sans,sans-serif;color:#38bdf8;font-size:24px;font-weight:600;'>{dep_monat:,.2f} {_currency_sym}</div></div>") if dep_monat>0 else ""
-                    topf_html = (f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(167,139,250,0.2);border-radius:16px;padding:20px 22px;'>"
-                                 f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#7c3aed;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Spartöpfe</div>"
-                                 f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>diesen Monat</div>"
-                                 f"<div style='font-family:DM Sans,sans-serif;color:#a78bfa;font-size:24px;font-weight:600;'>{_sp_einz2:,.2f} {_currency_sym}</div></div>") if _sp_einz2>0 else ""
-
-                    st.markdown(
-                        f"<div style='display:flex;gap:14px;margin:0 0 12px 0;flex-wrap:wrap;'>"
-                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Bankkontostand</div>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>diesen Monat</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:{bank_color};font-size:24px;font-weight:600;'>{bank_str}</div></div>"
-                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(56,189,248,0.12);border-radius:16px;padding:20px 22px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e40af;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Gesamtvermögen</div>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#1e293b;margin-bottom:10px;'>Bank + Depot + Töpfe</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:{nw_color};font-size:24px;font-weight:600;'>{nw_str}</div></div></div>"
-                        f"<div style='display:flex;gap:14px;margin:0 0 28px 0;flex-wrap:wrap;'>"
-                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Einnahmen</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#4ade80;font-size:24px;font-weight:600;'>+{ein:,.2f} {_currency_sym}</div></div>"
-                        f"<div style='flex:1;min-width:160px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Ausgaben</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#f87171;font-size:24px;font-weight:600;'>-{aus:,.2f} {_currency_sym}</div></div>"
-                        + dep_html + topf_html + "</div>", unsafe_allow_html=True)
-
-                    ausg_df = monat_df[monat_df["typ"]=="Ausgabe"].copy(); ausg_df["betrag_num"] = ausg_df["betrag_num"].abs()
-                    ein_df  = monat_df[monat_df["typ"]=="Einnahme"].copy()
-                    dep_df  = monat_df[monat_df["typ"]=="Depot"].copy(); dep_df["betrag_num"] = pd.to_numeric(dep_df["betrag_num"],errors="coerce").abs()
-                    ausg_grp = ausg_df.groupby("kategorie")["betrag_num"].sum().reset_index().sort_values("betrag_num",ascending=False)
-                    ein_grp  = ein_df.groupby("kategorie")["betrag_num"].sum().reset_index().sort_values("betrag_num",ascending=False)
-                    dep_grp  = dep_df.groupby("kategorie")["betrag_num"].sum().reset_index().sort_values("betrag_num",ascending=False)
-
-                    all_cats,all_vals,all_colors,all_types = [],[],[],[]
-                    for i,(_,row) in enumerate(ein_grp.iterrows()):
-                        all_cats.append(row["kategorie"]); all_vals.append(float(row["betrag_num"]))
-                        all_colors.append(PALETTE_EIN[i%len(PALETTE_EIN)]); all_types.append("Einnahme")
-                    for i,(_,row) in enumerate(ausg_grp.iterrows()):
-                        all_cats.append(row["kategorie"]); all_vals.append(float(row["betrag_num"]))
-                        all_colors.append(PALETTE_AUS[i%len(PALETTE_AUS)]); all_types.append("Ausgabe")
-                    for i,(_,row) in enumerate(dep_grp.iterrows()):
-                        all_cats.append(row["kategorie"]); all_vals.append(float(row["betrag_num"]))
-                        all_colors.append(PALETTE_DEP[i%len(PALETTE_DEP)]); all_types.append("Depot")
-
-                    fig = go.Figure(go.Pie(
-                        labels=all_cats, values=all_vals, hole=0.62,
-                        marker=dict(colors=all_colors, line=dict(color="rgba(5,10,20,0.8)",width=2)),
-                        textinfo="none", hoverinfo="none", direction="clockwise", sort=False, rotation=90))
-                    fig.update_layout(
-                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False,
-                        margin=dict(t=20,b=20,l=20,r=20), height=380, autosize=True,
-                        annotations=[
-                            dict(text="BANK", x=0.5, y=0.62, showarrow=False, font=dict(size=10,color="#334155",family="DM Mono, monospace"), xref="paper", yref="paper"),
-                            dict(text=f"<b>{bank_str}</b>", x=0.5, y=0.50, showarrow=False, font=dict(size=22,color=bank_color,family="DM Sans, sans-serif"), xref="paper", yref="paper"),
-                            dict(text=f"+{ein:,.0f}  /  -{aus:,.0f} {_currency_sym}", x=0.5, y=0.38, showarrow=False, font=dict(size=11,color="#334155",family="DM Sans, sans-serif"), xref="paper", yref="paper"),
-                        ])
-
-                    chart_col, legend_col = st.columns([2,2])
-                    with chart_col:
-                        st.plotly_chart(fig, use_container_width=True, key="donut_combined")
-                    with legend_col:
-                        sel_cat   = st.session_state.get('dash_selected_cat')
-                        sel_typ   = st.session_state.get('dash_selected_typ')
-                        sel_color = st.session_state.get('dash_selected_color')
-                        if sel_cat and sel_typ:
-                            src_df = {"Ausgabe":ausg_df,"Einnahme":ein_df,"Depot":dep_df}.get(sel_typ, ausg_df)
-                            detail = src_df[src_df["kategorie"]==sel_cat]
-                            total_d = detail["betrag_num"].sum()
-                            sign   = "−" if sel_typ=="Ausgabe" else "+"
-                            rows_html = "".join(
-                                f"<div style='display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);'>"
-                                f"<div style='display:flex;align-items:center;gap:10px;'>"
-                                f"<span style='font-family:DM Mono,monospace;color:#64748b;font-size:12px;'>{tr['datum_dt'].strftime('%d.%m.')}</span>"
-                                + (f"<span style='color:#94a3b8;font-size:13px;'>{str(tr.get('notiz',''))}</span>" if str(tr.get('notiz','')).lower() not in ('nan','') else "")
-                                + f"</div><span style='color:{sel_color};font-weight:600;font-size:13px;font-family:DM Mono,monospace;'>{sign}{tr['betrag_num']:,.2f} {_currency_sym}</span></div>"
-                                for _,tr in detail.sort_values("datum_dt",ascending=False).iterrows())
-                            if st.button("← Alle Kategorien", key="dash_back_btn"):
-                                st.session_state.update({'dash_selected_cat':None,'dash_selected_typ':None,'dash_selected_color':None}); st.rerun()
-                            st.markdown(
-                                f"<div style='background:linear-gradient(145deg,rgba(13,23,41,0.95),rgba(10,16,30,0.98));border:1px solid {sel_color}30;border-top:2px solid {sel_color};border-radius:14px;padding:18px 20px;margin-top:10px;'>"
-                                f"<div style='font-family:DM Mono,monospace;color:{sel_color};font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;'>{sel_typ}</div>"
-                                f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;font-weight:600;font-size:16px;margin-bottom:4px;'>{sel_cat}</div>"
-                                f"<div style='font-family:DM Mono,monospace;color:{sel_color};font-size:22px;font-weight:500;margin-bottom:18px;'>{sign}{total_d:,.2f} {_currency_sym}</div>"
-                                f"{rows_html}</div>", unsafe_allow_html=True)
+                    try:
+                        df = _gs_read("users"); row = df[df['email']==re_email]
+                        if row.empty: st.error("E-Mail nicht gefunden.")
                         else:
-                            TYP_CONFIG = {"Einnahme":("EINNAHMEN","#2b961f","+"),"Ausgabe":("AUSGABEN","#ff5232","−"),"Depot":("DEPOT","#2510a3","")}
-                            available_types = list(dict.fromkeys(all_types))
-                            if st.session_state.get('dash_legend_tab') not in available_types:
-                                st.session_state['dash_legend_tab'] = available_types[0] if available_types else "Ausgabe"
-                            active_tab_dash = st.session_state['dash_legend_tab']
-                            tab_cols = st.columns(len(available_types))
-                            for i,typ in enumerate(available_types):
-                                lbl,_,_ = TYP_CONFIG.get(typ,(typ.upper(),"#64748b",""))
-                                with tab_cols[i]:
-                                    if st.button(lbl, key=f"dash_tab_{typ}", use_container_width=True, type="primary" if typ==active_tab_dash else "secondary"):
-                                        st.session_state['dash_legend_tab'] = typ; st.rerun()
-                            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-                            _,color_active,sign_active = TYP_CONFIG.get(active_tab_dash,(active_tab_dash,"#64748b",""))
-                            total_sum = sum(all_vals) if sum(all_vals)>0 else 1
-                            for cat,val,color,typ in zip(all_cats,all_vals,all_colors,all_types):
-                                if typ!=active_tab_dash: continue
-                                col_legend, col_btn = st.columns([10,1])
-                                with col_legend:
-                                    st.markdown(
-                                        f"<div style='display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:8px;'>"
-                                        f"<div style='display:flex;align-items:center;gap:10px;min-width:0;'>"
-                                        f"<div style='width:7px;height:7px;border-radius:50%;background:{color};flex-shrink:0;'></div>"
-                                        f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>{cat}</span></div>"
-                                        f"<div style='display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:8px;'>"
-                                        f"<span style='font-family:DM Mono,monospace;color:{color};font-weight:500;font-size:12px;'>{sign_active}{val:,.2f} {_currency_sym}</span>"
-                                        f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:11px;'>{val/total_sum*100:.0f}%</span>"
-                                        f"</div></div>", unsafe_allow_html=True)
-                                with col_btn:
-                                    if st.button("›", key=f"legend_btn_{cat}_{typ}"):
-                                        st.session_state.update({'dash_selected_cat':cat,'dash_selected_typ':typ,'dash_selected_color':color}); st.rerun()
-        except Exception as e:
-            st.warning(f"Verbindung wird hergestellt... ({e})")
-
-    # ============================================================
-    #  TRANSAKTIONEN
-    # ============================================================
-    elif menu == "💸 Transaktionen":
-        user_name = st.session_state['user_name']
-        t_type    = st.session_state['t_type']
-
-        st.markdown(
-            "<div style='margin-bottom:36px;margin-top:16px;'>"
-            "<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;color:#e2e8f0;margin:0 0 6px 0;letter-spacing:-1px;'>Buchungen &amp; Verlauf 🧾</h1>"
-            "<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:15px;margin:0;'>Buchungen erfassen &amp; verwalten</p></div>",
-            unsafe_allow_html=True)
-
-        if st.session_state.get('show_new_cat'):    new_category_dialog()
-        if st.session_state.get('edit_cat_data'):   edit_category_dialog()
-        if st.session_state.get('delete_cat_data'): confirm_delete_cat()
-
-        tabs = st.tabs(["💸 Neue Buchung", "⚙️ Daueraufträge"])
-
-        with tabs[0]:
-            all_cats = DEFAULT_CATS[t_type] + load_custom_cats(user_name, t_type)
-            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-            st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Typ</p>", unsafe_allow_html=True)
-            ta, te, td, _ = st.columns([1,1,1,2])
-            for label,val,col in [("↗ Ausgabe","Ausgabe",ta),("↙ Einnahme","Einnahme",te),("📦 Depot","Depot",td)]:
-                with col:
-                    if st.button(label+(" ✓" if t_type==val else ""), key=f"btn_{val.lower()}", use_container_width=True, type="primary" if t_type==val else "secondary"):
-                        st.session_state['t_type'] = val; st.session_state['tx_page'] = 0; st.rerun()
-
-            st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-            with st.form("t_form", clear_on_submit=True):
-                col1, col2 = st.columns(2)
-                with col1:
-                    t_amount = st.number_input(f"Betrag in {_currency_sym}", min_value=0.01, step=0.01, format="%.2f")
-                    t_date   = st.date_input("Datum", datetime.date.today())
-                with col2:
-                    st.markdown("<div style='font-family:DM Sans,sans-serif;font-size:14px;color:#e2e8f0;margin-bottom:4px;'>Kategorie</div>", unsafe_allow_html=True)
-                    t_cat  = st.selectbox("Kategorie", all_cats, label_visibility="collapsed")
-                    t_note = st.text_input("Notiz (optional)", placeholder="z.B. Supermarkt, Tankstelle...")
-                if st.form_submit_button("Speichern", use_container_width=True):
-                    betrag_save = t_amount if t_type in ("Depot","Einnahme") else -t_amount
-                    new_row = pd.DataFrame([{"user":user_name,"datum":str(t_date),
-                        "timestamp":datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-                        "typ":t_type,"kategorie":t_cat,"betrag":betrag_save,"notiz":t_note,"deleted":""}])
-                    _gs_update("transactions", pd.concat([_gs_read("transactions"), new_row], ignore_index=True))
-                    st.session_state['tx_page'] = 0
-                    st.success(f"✅ {t_type} über {t_amount:.2f} {_currency_sym} gespeichert!")
-                    st.balloons()
-
-            cat_btn_col, manage_col = st.columns([1,1])
-            with cat_btn_col:
-                if st.button("+ Neue Kategorie", use_container_width=True, type="secondary"):
-                    st.session_state.update({'show_new_cat':True,'new_cat_typ':t_type,'_dialog_just_opened':True}); st.rerun()
-            custom_cats = load_custom_cats(user_name, t_type)
-            if custom_cats:
-                with manage_col:
-                    with st.expander(f"Eigene {t_type}-Kategorien"):
-                        for cat in custom_cats:
-                            cc1, cc2 = st.columns([5,1])
-                            cc1.markdown(f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:14px;'>{cat}</span>", unsafe_allow_html=True)
-                            with cc2:
-                                with st.popover("⋯", use_container_width=True):
-                                    if st.button("✏️ Bearbeiten", key=f"editcat_{cat}", use_container_width=True):
-                                        st.session_state.update({'edit_cat_data':{'user':user_name,'typ':t_type,'old_label':cat},'_dialog_just_opened':True}); st.rerun()
-                                    if st.button("🗑️ Löschen", key=f"delcat_{cat}", use_container_width=True):
-                                        st.session_state.update({'delete_cat_data':{'user':user_name,'typ':t_type,'label':cat},'_dialog_just_opened':True}); st.rerun()
-
-            st.markdown("<div style='height:8px'></div><div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin:20px 0 10px 0;'>Meine Buchungen</div>", unsafe_allow_html=True)
-
-            search_col, _ = st.columns([2,3])
-            with search_col:
-                search_val = st.text_input("🔍 Suchen...", value=st.session_state.get('tx_search',''), placeholder="Kategorie, Notiz, Betrag...", label_visibility="collapsed", key="tx_search_input")
-                if search_val != st.session_state.get('tx_search',''):
-                    st.session_state['tx_search'] = search_val; st.session_state['tx_page'] = 0; st.rerun()
-
-            try:
-                df_t = _gs_read("transactions")
-                if 'user' not in df_t.columns:
-                    st.info("Noch keine Buchungen vorhanden.")
-                else:
-                    del_mask = (~df_t['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0']) if 'deleted' in df_t.columns else pd.Series([True]*len(df_t),index=df_t.index))
-                    user_df  = df_t[(df_t['user']==user_name)&del_mask].copy()
-                    if user_df.empty:
-                        st.info("Noch keine Buchungen vorhanden.")
+                            code = generate_code()
+                            expiry = (datetime.datetime.now() + datetime.timedelta(minutes=10)).isoformat()
+                            st.session_state.reset_email = re_email
+                            st.session_state.reset_code = make_hashes(code)
+                            st.session_state.reset_expiry = expiry
+                            if send_email(re_email,"🔑 Balancely Passwort-Reset", email_html("Dein Reset-Code:", code)):
+                                st.success("Code gesendet! Prüfe dein Postfach.")
+                    except Exception as e: st.error(f"Fehler: {e}")
+            if st.session_state.reset_email:
+                code_inp = st.text_input("Reset-Code eingeben", key="re_code_inp")
+                new_pw = st.text_input("Neues Passwort", type="password", key="re_new_pw")
+                if st.button("🔑 Passwort zurücksetzen", use_container_width=True, key="re_confirm"):
+                    if datetime.datetime.now().isoformat() > st.session_state.reset_expiry:
+                        st.error("Code abgelaufen.")
+                    elif make_hashes(code_inp) != st.session_state.reset_code:
+                        st.error("Falscher Code.")
                     else:
-                        def betrag_anzeige(row, sym=_currency_sym):
-                            x = pd.to_numeric(row['betrag'], errors='coerce')
-                            if row.get('typ')=='Depot':    return f"📦 {abs(x):.2f} {sym}"
-                            if row.get('typ')=='Spartopf': return f"🪣 {abs(x):.2f} {sym}" if x<0 else f"🪣 +{abs(x):.2f} {sym}"
-                            return f"+{x:.2f} {sym}" if x>0 else f"{x:.2f} {sym}"
-
-                        user_df['betrag_anzeige'] = user_df.apply(betrag_anzeige, axis=1)
-                        sort_col = 'timestamp' if 'timestamp' in user_df.columns else 'datum'
-                        user_df  = user_df.sort_values(sort_col, ascending=False)
-
-                        search_q = st.session_state.get('tx_search','').strip().lower()
-                        if search_q:
-                            import re as _re
-                            _pat = _re.escape(search_q)
-                            betrag_match = user_df['betrag_anzeige'].str.lower().str.contains(
-                                r'(?<!\d)' + _pat + r'(?!\d)', na=False, regex=True)
-                            mask_s = (
-                                user_df['kategorie'].str.lower().str.contains(search_q, na=False) |
-                                user_df['notiz'].astype(str).str.lower().str.contains(search_q, na=False) |
-                                betrag_match |
-                                user_df['typ'].str.lower().str.contains(search_q, na=False)
-                            )
-                            user_df = user_df[mask_s]
-
-                        PAGE_SIZE = 10
-                        total     = len(user_df)
-                        page      = st.session_state.get('tx_page', 0)
-                        max_page  = max(0, (total-1)//PAGE_SIZE)
-                        page      = min(page, max_page)
-                        st.session_state['tx_page'] = page
-                        start     = page * PAGE_SIZE
-                        page_df   = user_df.iloc[start:start+PAGE_SIZE]
-
-                        if page_df.empty:
-                            st.info("Keine Buchungen gefunden.")
+                        ok, msg = check_password_strength(new_pw)
+                        if not ok: st.error(msg)
                         else:
-                            for orig_idx, row in page_df.iterrows():
-                                notiz     = str(row.get('notiz','')); notiz = '' if notiz.lower()=='nan' else notiz
-                                betrag_num = pd.to_numeric(row['betrag'], errors='coerce')
-                                farbe      = TYPE_COLORS.get(row['typ'],'#f87171')
-                                zeit_label = format_timestamp(row.get('timestamp',''), row.get('datum',''))
-
-                                c1,c2,c3,c4,c5 = st.columns([2.5,2,2.5,3,1])
-                                c1.markdown(f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:12px;line-height:2.4;display:block;'>{zeit_label}</span>", unsafe_allow_html=True)
-                                c2.markdown(f"<span style='font-family:DM Mono,monospace;color:{farbe};font-weight:500;font-size:13px;line-height:2.4;display:block;'>{row['betrag_anzeige']}</span>", unsafe_allow_html=True)
-                                c3.markdown(f"<span style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;line-height:2.4;display:block;'>{row['kategorie']}</span>", unsafe_allow_html=True)
-                                c4.markdown(f"<span style='font-family:DM Sans,sans-serif;color:#334155;font-size:13px;line-height:2.4;display:block;'>{notiz}</span>", unsafe_allow_html=True)
-                                with c5:
-                                    with st.popover("⋯", use_container_width=True):
-                                        if st.button("✏️ Bearbeiten", key=f"edit_btn_{orig_idx}", use_container_width=True):
-                                            st.session_state['edit_idx'] = None if st.session_state['edit_idx']==orig_idx else orig_idx
-                                            st.session_state['show_new_cat'] = False; st.rerun()
-                                        if st.button("🗑️ Löschen", key=f"del_btn_{orig_idx}", use_container_width=True):
-                                            confirm_delete({"user":row['user'],"datum":row['datum'],"betrag":row['betrag'],"betrag_anzeige":row['betrag_anzeige'],"kategorie":row['kategorie']})
-
-                                if st.session_state['edit_idx'] == orig_idx:
-                                    with st.form(key=f"edit_form_{orig_idx}"):
-                                        st.markdown("<p style='font-family:DM Sans,sans-serif;color:#38bdf8;font-weight:500;font-size:14px;margin-bottom:12px;'>Eintrag bearbeiten</p>", unsafe_allow_html=True)
-                                        ec1, ec2 = st.columns(2)
-                                        with ec1:
-                                            e_betrag = st.number_input(f"Betrag in {_currency_sym}", value=abs(float(betrag_num)), min_value=0.01, step=0.01, format="%.2f")
-                                            e_datum  = st.date_input("Datum", value=datetime.date.fromisoformat(str(row['datum'])))
-                                        with ec2:
-                                            e_typ = st.selectbox("Typ", ["Einnahme","Ausgabe","Depot"], index=["Einnahme","Ausgabe","Depot"].index(row['typ']) if row['typ'] in ["Einnahme","Ausgabe","Depot"] else 1)
-                                            e_all_cats = DEFAULT_CATS[e_typ] + load_custom_cats(user_name, e_typ)
-                                            e_cat = st.selectbox("Kategorie", e_all_cats, index=e_all_cats.index(row['kategorie']) if row['kategorie'] in e_all_cats else 0)
-                                        e_notiz = st.text_input("Notiz (optional)", value=notiz)
-                                        cs, cc = st.columns(2)
-                                        with cs: saved     = st.form_submit_button("Speichern", use_container_width=True, type="primary")
-                                        with cc: cancelled = st.form_submit_button("Abbrechen", use_container_width=True)
-                                        if saved:
-                                            df_all = _gs_read("transactions")
-                                            if 'deleted' not in df_all.columns: df_all['deleted'] = ''
-                                            match_idx = df_all[find_row_mask(df_all, row)].index
-                                            if len(match_idx)>0:
-                                                neuer_betrag = e_betrag if e_typ=="Einnahme" else -e_betrag
-                                                df_all.loc[match_idx[0],['datum','typ','kategorie','betrag','notiz']] = [str(e_datum),e_typ,e_cat,neuer_betrag,e_notiz]
-                                                _gs_update("transactions", df_all)
-                                                st.session_state['edit_idx'] = None; st.success("✅ Gespeichert!"); st.rerun()
-                                            else: st.error("❌ Eintrag nicht gefunden.")
-                                        if cancelled: st.session_state['edit_idx'] = None; st.rerun()
-
-                        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-                        p1,p2,p3 = st.columns([1,4,1])
-                        with p1:
-                            if st.button("‹ Neuer", use_container_width=True, disabled=(page<=0)):
-                                st.session_state['tx_page'] = page-1; st.rerun()
-                        with p2:
-                            st.markdown(f"<div style='text-align:center;font-family:DM Mono,monospace;color:#334155;font-size:12px;padding:8px 0;'>Seite {page+1} von {max_page+1} · {total} Einträge</div>", unsafe_allow_html=True)
-                        with p3:
-                            if st.button("Älter ›", use_container_width=True, disabled=(page>=max_page)):
-                                st.session_state['tx_page'] = page+1; st.rerun()
-            except Exception as e:
-                st.warning(f"Fehler beim Laden: {e}")
-
-        with tabs[1]:
-            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-            das = load_dauerauftraege(user_name)
-
-            if das:
-                st.markdown("<div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Aktive Daueraufträge</div>", unsafe_allow_html=True)
-                for da in das:
-                    betrag_num_da = da['betrag']
-                    farbe_da = '#4ade80' if da['typ']=='Einnahme' else ('#38bdf8' if da['typ']=='Depot' else '#f87171')
-                    sign_da  = '+' if da['typ']=='Einnahme' else '-'
-                    dc1,dc2,dc3,dc4,dc5 = st.columns([3,2,2,2,1])
-                    dc1.markdown(f"<span style='font-family:DM Sans,sans-serif;color:#e2e8f0;font-size:13px;line-height:2.4;display:block;'>⚙️ {da['name']}</span>", unsafe_allow_html=True)
-                    dc2.markdown(f"<span style='font-family:DM Mono,monospace;color:{farbe_da};font-size:13px;line-height:2.4;display:block;'>{sign_da}{betrag_num_da:,.2f} {_currency_sym}</span>", unsafe_allow_html=True)
-                    dc3.markdown(f"<span style='font-family:DM Sans,sans-serif;color:#64748b;font-size:12px;line-height:2.4;display:block;'>{da['typ']}</span>", unsafe_allow_html=True)
-                    dc4.markdown(f"<span style='font-family:DM Sans,sans-serif;color:#334155;font-size:12px;line-height:2.4;display:block;'>{da['kategorie']}</span>", unsafe_allow_html=True)
-                    with dc5:
-                        if st.button("🗑️", key=f"del_da_{da['id']}", use_container_width=True, type="secondary"):
-                            delete_dauerauftrag(user_name, da['id']); st.rerun()
-                st.markdown("<hr>", unsafe_allow_html=True)
-
-            st.markdown("<div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Neuen Dauerauftrag erstellen</div>", unsafe_allow_html=True)
-            st.markdown("<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:16px;'>Daueraufträge werden automatisch am 1. jedes Monats gebucht.</p>", unsafe_allow_html=True)
-            with st.form("da_form", clear_on_submit=True):
-                da1, da2 = st.columns(2)
-                with da1:
-                    da_name   = st.text_input("Name", placeholder="z.B. Miete, Netflix, Fitnessstudio")
-                    da_betrag = st.number_input(f"Betrag ({_currency_sym})", min_value=0.01, step=0.01, format="%.2f")
-                with da2:
-                    da_typ    = st.selectbox("Typ", ["Ausgabe","Einnahme","Depot"])
-                    da_all_cats = DEFAULT_CATS[da_typ] + load_custom_cats(user_name, da_typ)
-                    da_kat    = st.selectbox("Kategorie", da_all_cats)
-                if st.form_submit_button("Dauerauftrag erstellen", use_container_width=True, type="primary"):
-                    if not da_name.strip(): st.error("Bitte einen Namen eingeben.")
+                            try:
+                                df = _gs_read("users")
+                                df.loc[df['email']==st.session_state.reset_email,'password'] = make_hashes(new_pw)
+                                _gs_update("users", df)
+                                st.success("Passwort geändert!"); st.session_state.reset_email = ""; st.rerun()
+                            except Exception as e: st.error(f"Fehler: {e}")
+        with tab_reg:
+            ru = st.text_input("Benutzername", key="reg_user")
+            re_mail = st.text_input("E-Mail", key="reg_email")
+            rp = st.text_input("Passwort", type="password", key="reg_pass")
+            rp2 = st.text_input("Passwort wiederholen", type="password", key="reg_pass2")
+            if st.button("📝 Registrieren", use_container_width=True, type="primary", key="reg_btn"):
+                if not ru.strip(): st.error("Benutzername erforderlich.")
+                elif not is_valid_email(re_mail): st.error("Ungültige E-Mail.")
+                elif rp != rp2: st.error("Passwörter stimmen nicht überein.")
+                else:
+                    ok, msg = check_password_strength(rp)
+                    if not ok: st.error(msg)
                     else:
-                        save_dauerauftrag(user_name, da_name.strip(), da_betrag, da_typ, da_kat)
-                        st.success(f"✅ Dauerauftrag '{da_name.strip()}' erstellt!"); st.rerun()
-
-            if not das:
-                st.markdown(
-                    "<div style='text-align:center;padding:30px 20px;'>"
-                    "<div style='font-size:36px;margin-bottom:12px;'>⚙️</div>"
-                    "<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;'>Noch keine Daueraufträge. Erstelle deinen ersten Dauerauftrag!</p></div>",
-                    unsafe_allow_html=True)
-
-    # ============================================================
-    #  ANALYSEN
-    # ============================================================
-    elif menu == "📂 Analysen":
-        import plotly.graph_objects as go
-        import calendar
-
-        user_name = st.session_state['user_name']
-        st.markdown(
-            "<div style='margin-bottom:36px;margin-top:16px;'>"
-            "<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;color:#e2e8f0;margin:0 0 6px 0;letter-spacing:-1px;'>Analysen &amp; Trends 📊</h1>"
-            "<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:15px;margin:0;'>Kaufverhalten, Zeitraumübersicht &amp; Sparziele</p></div>",
-            unsafe_allow_html=True)
-
-        try:
-            df_raw = _gs_read("transactions")
-        except Exception as e:
-            st.warning(f"Verbindung wird hergestellt... ({e})"); df_raw = pd.DataFrame()
-
-        if df_raw.empty or 'user' not in df_raw.columns:
-            st.info("Noch keine Buchungen vorhanden.")
-        else:
-            df_all = df_raw[df_raw['user']==user_name].copy()
-            if 'deleted' in df_all.columns:
-                df_all = df_all[~df_all['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0'])]
-            df_all['datum_dt']   = pd.to_datetime(df_all['datum'], errors='coerce')
-            df_all['betrag_num'] = pd.to_numeric(df_all['betrag'], errors='coerce')
-            df_all = df_all.dropna(subset=['datum_dt'])
-
-            if df_all.empty:
-                st.info("Noch keine Buchungen vorhanden.")
-            else:
-                now   = datetime.datetime.now()
-                today = now.date()
-
-                zeitraum = st.session_state['analysen_zeitraum']
-                zt1, zt2, zt3, _ = st.columns([1,1,1,3])
-                for (label,key),col in zip([("Wöchentlich","zt_weekly"),("Monatlich","zt_monthly"),("Jährlich","zt_yearly")],[zt1,zt2,zt3]):
-                    with col:
-                        if st.button(label+(" ✓" if zeitraum==label else ""), key=key, use_container_width=True, type="primary" if zeitraum==label else "secondary"):
-                            st.session_state['analysen_zeitraum'] = label; st.session_state['analysen_month_offset'] = 0; st.rerun()
-
-                st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-
-                if zeitraum == "Monatlich":
-                    an_offset  = st.session_state.get('analysen_month_offset',0)
-                    m_total    = now.year*12 + (now.month-1) + an_offset
-                    an_year, an_mi = divmod(m_total,12); an_month = an_mi+1
-                    an_label   = datetime.date(an_year, an_month, 1).strftime("%B %Y")
-                    an1,an2,an3 = st.columns([1,5,1])
-                    with an1:
-                        if st.button("‹", key="an_prev", use_container_width=True): st.session_state['analysen_month_offset']-=1; st.rerun()
-                    with an2:
-                        st.markdown(f"<div style='text-align:center;font-family:DM Sans,sans-serif;font-size:13px;color:#64748b;padding:6px 0;'>{an_label}</div>", unsafe_allow_html=True)
-                    with an3:
-                        if st.button("›", key="an_next", use_container_width=True, disabled=(an_offset>=0)): st.session_state['analysen_month_offset']+=1; st.rerun()
-                    period_mask  = (df_all['datum_dt'].dt.year==an_year)&(df_all['datum_dt'].dt.month==an_month)
-                    period_label = an_label
-                elif zeitraum == "Wöchentlich":
-                    ws = today - datetime.timedelta(days=today.weekday())
-                    we = ws + datetime.timedelta(days=6)
-                    period_mask  = (df_all['datum_dt'].dt.date>=ws)&(df_all['datum_dt'].dt.date<=we)
-                    period_label = f"{ws.strftime('%d.%m.')} – {we.strftime('%d.%m.%Y')}"
-                else:
-                    period_mask  = df_all['datum_dt'].dt.year==now.year
-                    period_label = str(now.year)
-
-                period_df = df_all[period_mask].copy()
-                st.markdown(f"<div style='font-family:DM Mono,monospace;color:#475569;font-size:11px;letter-spacing:1px;margin-bottom:18px;'>{period_label}</div>", unsafe_allow_html=True)
-
-                def make_donut(grp, palette, label, sign, center_color, key_suffix):
-                    if grp.empty: return
-                    cats   = grp['kategorie'].tolist()
-                    vals   = grp['betrag_num'].abs().tolist()
-                    colors = [palette[i%len(palette)] for i in range(len(cats))]
-                    total  = sum(vals) if sum(vals)>0 else 1
-                    fig = go.Figure(go.Pie(
-                        labels=cats, values=vals, hole=0.60,
-                        marker=dict(colors=colors, line=dict(color="rgba(5,10,20,0.9)",width=2)),
-                        textinfo="none", hoverinfo="none", direction="clockwise", sort=False, rotation=90))
-                    fig.update_traces(hovertemplate=None)
-                    fig.update_layout(
-                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", showlegend=False,
-                        margin=dict(t=10,b=10,l=10,r=10), height=240, autosize=True, dragmode=False,
-                        annotations=[dict(text=f"<b>{sign}{total:,.2f} {_currency_sym}</b>", x=0.5, y=0.5, showarrow=False,
-                                          font=dict(size=15,color=center_color,family="DM Sans, sans-serif"), xref="paper", yref="paper")])
-                    rows = "".join(
-                        f"<div style='display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);'>"
-                        f"<div style='display:flex;align-items:center;gap:8px;min-width:0;flex:1;'>"
-                        f"<div style='width:7px;height:7px;border-radius:50%;background:{col};flex-shrink:0;'></div>"
-                        f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>{cat}</span></div>"
-                        f"<div style='display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:10px;'>"
-                        f"<span style='font-family:DM Mono,monospace;color:{col};font-size:11px;font-weight:500;'>{sign}{val:,.2f} {_currency_sym}</span>"
-                        f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:11px;'>{val/total*100:.0f}%</span></div></div>"
-                        for cat,val,col in zip(cats,vals,colors))
-                    st.markdown(
-                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:18px 22px;margin-bottom:16px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>{label}</div>",
-                        unsafe_allow_html=True)
-                    pie_col, leg_col = st.columns([1,1])
-                    with pie_col: st.plotly_chart(fig, use_container_width=True, key=f"donut_{key_suffix}_{zeitraum}_{period_label}", config={"displayModeBar":False,"staticPlot":True})
-                    with leg_col: st.markdown(f"<div style='padding:4px 0;'>{rows}</div>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                if period_df.empty:
-                    st.markdown(f"<div style='text-align:center;padding:40px 20px;color:#334155;font-family:DM Sans,sans-serif;font-size:15px;'>Keine Buchungen im gewählten Zeitraum.</div>", unsafe_allow_html=True)
-                else:
-                    aus_p = period_df[period_df['typ']=='Ausgabe'].copy(); aus_p['betrag_num'] = aus_p['betrag_num'].abs()
-                    make_donut(aus_p.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num',ascending=False), PALETTE_AUS, "Ausgaben","−","#f87171","aus")
-                    ein_p = period_df[period_df['typ']=='Einnahme'].copy()
-                    make_donut(ein_p.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num',ascending=False), PALETTE_EIN, "Einnahmen","+","#4ade80","ein")
-                    dep_p = period_df[period_df['typ']=='Depot'].copy(); dep_p['betrag_num'] = dep_p['betrag_num'].abs()
-                    make_donut(dep_p.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num',ascending=False), PALETTE_DEP, "Depot","","#38bdf8","dep")
-
-                st.markdown("<hr>", unsafe_allow_html=True)
-
-                st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Kaufverhalten</p>", unsafe_allow_html=True)
-                kv_l, kv_r = st.columns(2)
-                with kv_l:
-                    aus_all = df_all[df_all['typ']=='Ausgabe'].copy(); aus_all['betrag_num'] = aus_all['betrag_num'].abs()
-                    kat_grp = aus_all.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num',ascending=True).tail(8)
-                    if not kat_grp.empty:
-                        REDS = ['#7f1d1d','#991b1b','#b91c1c','#dc2626','#ef4444','#f87171','#fca5a5','#fecaca']
-                        fig_kat = go.Figure(go.Bar(
-                            x=kat_grp['betrag_num'], y=kat_grp['kategorie'], orientation='h',
-                            marker=dict(color=REDS[:len(kat_grp)], cornerradius=6),
-                            text=[f"{v:,.0f} {_currency_sym}" for v in kat_grp['betrag_num']], textposition='outside',
-                            textfont=dict(size=11,color='#64748b',family='DM Mono, monospace'), hovertemplate=None))
-                        fig_kat.update_traces(hovertemplate=None)
-                        fig_kat.update_layout(
-                            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                            height=280, margin=dict(t=0,b=0,l=0,r=60), dragmode=False,
-                            xaxis=dict(showgrid=False,showticklabels=False,showline=False,fixedrange=True),
-                            yaxis=dict(tickfont=dict(size=12,color='#94a3b8',family='DM Sans, sans-serif'),showgrid=False,showline=False,fixedrange=True,automargin=True))
-                        st.markdown("<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:8px;'>Top Ausgabe-Kategorien (gesamt)</p>", unsafe_allow_html=True)
-                        st.plotly_chart(fig_kat, use_container_width=True, key="kat_chart", config={"displayModeBar":False,"staticPlot":True})
-                    else: st.info("Keine Ausgaben vorhanden.")
-                with kv_r:
-                    aus_all2 = df_all[df_all['typ']=='Ausgabe'].copy(); aus_all2['betrag_num'] = aus_all2['betrag_num'].abs()
-                    aus_all2['wochentag'] = aus_all2['datum_dt'].dt.day_name()
-                    wt_order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
-                    wt_de    = {'Monday':'Mo','Tuesday':'Di','Wednesday':'Mi','Thursday':'Do','Friday':'Fr','Saturday':'Sa','Sunday':'So'}
-                    if not aus_all2.empty:
-                        heat = aus_all2.groupby('wochentag')['betrag_num'].mean().reindex(wt_order).fillna(0)
-                        fig_heat = go.Figure(go.Bar(
-                            x=[wt_de.get(d,d) for d in heat.index], y=heat.values,
-                            marker=dict(color=heat.values,colorscale=[[0,'#1a0505'],[0.5,'#dc2626'],[1,'#ff5232']],showscale=False,cornerradius=6),
-                            text=[f"{v:,.0f} {_currency_sym}" if v>0 else "" for v in heat.values],
-                            textposition='inside', insidetextanchor='middle',
-                            textfont=dict(size=10,color='rgba(255,255,255,0.7)',family='DM Mono, monospace'), hovertemplate=None))
-                        fig_heat.update_traces(hovertemplate=None)
-                        fig_heat.update_layout(
-                            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                            height=280, margin=dict(t=0,b=0,l=0,r=0), dragmode=False,
-                            xaxis=dict(tickfont=dict(size=13,color='#94a3b8',family='DM Sans, sans-serif'),showgrid=False,showline=False,fixedrange=True),
-                            yaxis=dict(showgrid=False,showticklabels=False,showline=False,fixedrange=True))
-                        st.markdown("<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:8px;'>Ø Ausgaben nach Wochentag</p>", unsafe_allow_html=True)
-                        st.plotly_chart(fig_heat, use_container_width=True, key="heat_chart", config={"displayModeBar":False,"staticPlot":True})
-
-                st.markdown("<hr>", unsafe_allow_html=True)
-
-                st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Kalender-Heatmap</p>", unsafe_allow_html=True)
-                hm_offset = st.session_state.get('heatmap_month_offset',0)
-                hm_m_total = now.year*12+(now.month-1)+hm_offset
-                hm_year, hm_mi = divmod(hm_m_total,12); hm_month = hm_mi+1
-                hm_label = datetime.date(hm_year, hm_month, 1).strftime("%B %Y")
-                hn1,hn2,hn3 = st.columns([1,5,1])
-                with hn1:
-                    if st.button("‹", key="hm_prev", use_container_width=True): st.session_state['heatmap_month_offset']-=1; st.rerun()
-                with hn2:
-                    st.markdown(f"<div style='text-align:center;font-family:DM Sans,sans-serif;font-size:13px;color:#64748b;padding:6px 0;'>{hm_label}</div>", unsafe_allow_html=True)
-                with hn3:
-                    if st.button("›", key="hm_next", use_container_width=True, disabled=(hm_offset>=0)): st.session_state['heatmap_month_offset']+=1; st.rerun()
-
-                hm_df = df_all[(df_all['datum_dt'].dt.year==hm_year)&(df_all['datum_dt'].dt.month==hm_month)&(df_all['typ']=='Ausgabe')].copy()
-                hm_df['betrag_num'] = hm_df['betrag_num'].abs()
-                tages_summen  = hm_df.groupby(hm_df['datum_dt'].dt.day)['betrag_num'].sum()
-                max_val       = max(tages_summen.max() if not tages_summen.empty else 1, 1)
-                days_in_month = calendar.monthrange(hm_year, hm_month)[1]
-                first_weekday = calendar.monthrange(hm_year, hm_month)[0]
-
-                header_html = "".join(f"<div style='width:42px;text-align:center;font-family:DM Mono,monospace;font-size:10px;color:#334155;padding-bottom:4px;'>{d}</div>" for d in ['Mo','Di','Mi','Do','Fr','Sa','So'])
-                cal_cells = "<div style='width:42px;height:42px;'></div>" * first_weekday
-                for day in range(1, days_in_month+1):
-                    val = tages_summen.get(day,0); intensity = val/max_val if max_val>0 else 0
-                    is_today = (hm_year==now.year and hm_month==now.month and day==now.day)
-                    if val==0: bg,text_color = "rgba(15,23,42,0.6)","#1e293b"
-                    else:
-                        r,g,b = int(20+intensity*235),int(5+(1-intensity)*30),int(5+(1-intensity)*10)
-                        bg = f"rgba({r},{g},{b},0.85)"; text_color = "#ffffff" if intensity>0.3 else "#94a3b8"
-                    border = "2px solid #38bdf8" if is_today else "1px solid rgba(148,163,184,0.06)"
-                    cal_cells += (f"<div title='{day}. {hm_label}: {val:.2f} {_currency_sym}' style='width:42px;height:42px;border-radius:8px;background:{bg};border:{border};display:flex;flex-direction:column;align-items:center;justify-content:center;'>"
-                                  f"<span style='font-family:DM Mono,monospace;font-size:11px;color:#334155;line-height:1;'>{day}</span>"
-                                  + (f"<span style='font-family:DM Mono,monospace;font-size:8px;color:{text_color};line-height:1;margin-top:2px;'>{val:.0f}{_currency_sym}</span>" if val>0 else "")
-                                  + "</div>")
-                st.markdown(
-                    f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
-                    f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:14px;'>Ausgaben pro Tag — dunklere Felder = höhere Ausgaben</div>"
-                    f"<div style='display:flex;gap:6px;margin-bottom:6px;'>{header_html}</div>"
-                    f"<div style='display:flex;flex-wrap:wrap;gap:6px;'>{cal_cells}</div>"
-                    f"<div style='display:flex;align-items:center;gap:8px;margin-top:14px;'>"
-                    f"<span style='font-family:DM Mono,monospace;font-size:10px;color:#334155;'>0 {_currency_sym}</span>"
-                    f"<div style='height:6px;flex:1;max-width:120px;border-radius:3px;background:linear-gradient(to right,rgba(15,23,42,0.6),#ff0000);'></div>"
-                    f"<span style='font-family:DM Mono,monospace;font-size:10px;color:#64748b;'>{max_val:.0f} {_currency_sym}</span></div></div>",
-                    unsafe_allow_html=True)
-
-                st.markdown("<hr>", unsafe_allow_html=True)
-
-                st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Monatsende-Prognose</p>", unsafe_allow_html=True)
-                curr_month_df = df_all[(df_all['datum_dt'].dt.year==now.year)&(df_all['datum_dt'].dt.month==now.month)].copy()
-                today_day     = now.day
-                days_in_cur   = calendar.monthrange(now.year, now.month)[1]
-                days_left     = days_in_cur - today_day
-                curr_ein      = curr_month_df[curr_month_df['typ']=='Einnahme']['betrag_num'].sum()
-                curr_aus      = curr_month_df[curr_month_df['typ']=='Ausgabe']['betrag_num'].abs().sum()
-                curr_dep      = curr_month_df[curr_month_df['typ']=='Depot']['betrag_num'].abs().sum()
-                curr_sp_netto = curr_month_df[curr_month_df['typ']=='Spartopf']['betrag_num'].sum()
-                daily_rate    = curr_aus/today_day if today_day>0 else 0
-                fc_aus_total  = daily_rate*days_in_cur
-                fc_remaining  = daily_rate*days_left
-                fc_bank       = curr_ein - fc_aus_total - curr_dep + curr_sp_netto
-                curr_bank     = curr_ein - curr_aus - curr_dep + curr_sp_netto
-                fc_color  = "#4ade80" if fc_bank>=0 else "#f87171"
-                fc_str    = f"+{fc_bank:,.2f} {_currency_sym}" if fc_bank>=0 else f"-{abs(fc_bank):,.2f} {_currency_sym}"
-                curr_color= "#4ade80" if curr_bank>=0 else "#f87171"
-                curr_str  = f"+{curr_bank:,.2f} {_currency_sym}" if curr_bank>=0 else f"-{abs(curr_bank):,.2f} {_currency_sym}"
-                month_pct     = today_day/days_in_cur*100
-
-                fc_col_l, fc_col_r = st.columns(2)
-                with fc_col_l:
-                    st.markdown(
-                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;'>Prognose für {now.strftime('%B %Y')}</div>"
-                        f"<div style='display:flex;justify-content:space-between;margin-bottom:4px;'>"
-                        f"<span style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Monatsverlauf</span>"
-                        f"<span style='font-family:DM Mono,monospace;color:#64748b;font-size:12px;'>Tag {today_day}/{days_in_cur}</span></div>"
-                        f"<div style='background:rgba(30,41,59,0.8);border-radius:99px;height:5px;margin-bottom:16px;'>"
-                        f"<div style='width:{month_pct:.0f}%;height:100%;background:#475569;border-radius:99px;'></div></div>"
-                        f"<div style='display:flex;flex-direction:column;gap:8px;'>"
-                        f"<div style='display:flex;justify-content:space-between;'>"
-                        f"<span style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Ø Tagesausgaben</span>"
-                        f"<span style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>{daily_rate:,.2f} {_currency_sym}/Tag</span></div>"
-                        f"<div style='display:flex;justify-content:space-between;'>"
-                        f"<span style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Noch {days_left} Tage → ca.</span>"
-                        f"<span style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>-{fc_remaining:,.2f} {_currency_sym}</span></div>"
-                        f"<div style='border-top:1px solid rgba(148,163,184,0.08);padding-top:10px;display:flex;justify-content:space-between;align-items:baseline;'>"
-                        f"<span style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;font-weight:500;'>Prognose Monatsende</span>"
-                        f"<span style='font-family:DM Mono,monospace;color:{fc_color};font-size:18px;font-weight:600;'>{fc_str}</span>"
-                        f"</div></div></div>", unsafe_allow_html=True)
-                with fc_col_r:
-                    goal_fc = load_goal(user_name)
-                    goal_html = ""
-                    if goal_fc>0:
-                        diff_goal = fc_bank - goal_fc; on_track = fc_bank >= goal_fc
-                        _g_bg    = "rgba(74,222,128,0.06)"  if on_track else "rgba(248,113,113,0.06)"
-                        _g_bor   = "rgba(74,222,128,0.15)"  if on_track else "rgba(248,113,113,0.15)"
-                        _g_icon  = "✅" if on_track else "⚠️"
-                        _g_col   = "#4ade80" if on_track else "#fca5a5"
-                        _g_lbl   = "Sparziel erreichbar!" if on_track else "Sparziel in Gefahr"
-                        _g_pre   = "Puffer: +" if diff_goal >= 0 else "Fehlbetrag: "
-                        goal_html = (
-                            f"<div style='margin-top:12px;padding:10px 14px;border-radius:10px;"
-                            f"background:{_g_bg};border:1px solid {_g_bor};display:flex;align-items:center;gap:10px;'>"
-                            f"<span style='font-size:16px;'>{_g_icon}</span>"
-                            f"<div><div style='font-family:DM Sans,sans-serif;color:{_g_col};font-size:13px;font-weight:500;'>{_g_lbl}</div>"
-                            f"<div style='font-family:DM Mono,monospace;color:#475569;font-size:11px;'>{_g_pre}{abs(diff_goal):,.2f} {_currency_sym}</div></div></div>")
-                    st.markdown(
-                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;'>Jetzt vs. Prognose</div>"
-                        f"<div style='display:flex;gap:12px;'>"
-                        f"<div style='flex:1;background:rgba(10,16,30,0.5);border-radius:12px;padding:14px;border:1px solid rgba(148,163,184,0.06);text-align:center;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;'>Aktuell</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:{curr_color};font-size:20px;font-weight:600;'>{curr_str}</div>"
-                        f"<div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;margin-top:4px;'>Tag {today_day}</div></div>"
-                        f"<div style='display:flex;align-items:center;color:#334155;font-size:18px;'>→</div>"
-                        f"<div style='flex:1;background:rgba(10,16,30,0.5);border-radius:12px;padding:14px;border:1px solid rgba(148,163,184,0.06);text-align:center;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;'>Prognose</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:{fc_color};font-size:20px;font-weight:600;'>{fc_str}</div>"
-                        f"<div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;margin-top:4px;'>Tag {days_in_cur}</div></div></div>"
-                        f"{goal_html}</div>", unsafe_allow_html=True)
-
-                st.markdown("<hr>", unsafe_allow_html=True)
-
-                st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Spar-Potenzial</p>", unsafe_allow_html=True)
-                hist_df = df_all[~((df_all['datum_dt'].dt.year==now.year)&(df_all['datum_dt'].dt.month==now.month))&(df_all['typ']=='Ausgabe')].copy()
-                hist_df['betrag_num'] = hist_df['betrag_num'].abs()
-                hist_df = hist_df[hist_df['datum_dt'] >= now - datetime.timedelta(days=90)]
-
-                if not hist_df.empty and not curr_month_df.empty:
-                    hist_months  = max(hist_df['datum_dt'].dt.to_period('M').nunique(),1)
-                    avg_per_kat  = hist_df.groupby('kategorie')['betrag_num'].sum() / hist_months
-                    curr_aus_df  = curr_month_df[curr_month_df['typ']=='Ausgabe'].copy(); curr_aus_df['betrag_num'] = curr_aus_df['betrag_num'].abs()
-                    curr_per_kat = curr_aus_df.groupby('kategorie')['betrag_num'].sum()
-                    potenzial_rows = sorted([
-                        {'kategorie':kat,'aktuell':curr_per_kat.get(kat,0),'durchschn':avg_per_kat.get(kat,0),
-                         'diff_pct':(curr_per_kat.get(kat,0)-avg_per_kat.get(kat,0))/avg_per_kat.get(kat,0)*100,
-                         'diff_eur':curr_per_kat.get(kat,0)-avg_per_kat.get(kat,0)}
-                        for kat in curr_per_kat.index
-                        if avg_per_kat.get(kat,0)>0 and curr_per_kat.get(kat,0)>avg_per_kat.get(kat,0)*1.1
-                    ], key=lambda x: x['diff_eur'], reverse=True)
-
-                    if potenzial_rows:
-                        total_potenzial = sum(r['diff_eur'] for r in potenzial_rows)
-                        st.markdown(
-                            f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;margin-bottom:12px;'>"
-                            f"<div style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:14px;margin-bottom:16px;'>Diesen Monat hast du in <b style='color:#e2e8f0;'>{len(potenzial_rows)} Kategorien</b> mehr ausgegeben als im Durchschnitt. Spar-Potenzial: <span style='color:#4ade80;font-weight:600;'>{total_potenzial:,.2f} {_currency_sym}</span></div>",
-                            unsafe_allow_html=True)
-                        for r in potenzial_rows:
-                            bar_pct = min(r['diff_pct'],200)/200*100
-                            st.markdown(
-                                f"<div style='margin-bottom:14px;'>"
-                                f"<div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;'>"
-                                f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:13px;'>{r['kategorie']}</span>"
-                                f"<div style='display:flex;gap:14px;'>"
-                                f"<span style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>{r['aktuell']:,.2f} {_currency_sym}</span>"
-                                f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:11px;'>Ø {r['durchschn']:,.2f} {_currency_sym}</span>"
-                                f"<span style='font-family:DM Mono,monospace;color:#facc15;font-size:12px;font-weight:600;'>+{r['diff_pct']:.0f}%</span>"
-                                f"</div></div>"
-                                f"<div style='background:rgba(30,41,59,0.6);border-radius:99px;height:4px;'>"
-                                f"<div style='width:{bar_pct:.0f}%;height:100%;border-radius:99px;background:linear-gradient(to right,#facc15,#f87171);'></div></div>"
-                                f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;margin-top:4px;'>Da könntest du ca. <span style='color:#4ade80;font-weight:500;'>{r['diff_eur']:,.2f} {_currency_sym}</span> sparen</div></div>",
-                                unsafe_allow_html=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    else:
-                        st.markdown(
-                            "<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(74,222,128,0.12);border-left:3px solid #4ade80;border-radius:16px;padding:18px 22px;'>"
-                            "<div style='font-family:DM Sans,sans-serif;color:#4ade80;font-size:14px;font-weight:500;'>🎉 Alles im grünen Bereich!</div>"
-                            "<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-top:6px;'>Deine Ausgaben liegen diesen Monat im normalen Rahmen.</div></div>",
-                            unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='color:#334155;font-family:DM Sans,sans-serif;font-size:14px;padding:16px;'>Zu wenig Daten für Vergleich.</div>", unsafe_allow_html=True)
-
-                st.markdown("<hr>", unsafe_allow_html=True)
-
-                st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Sparziel</p>", unsafe_allow_html=True)
-                current_goal = load_goal(user_name)
-                df_month = df_all[(df_all['datum_dt'].dt.year==now.year)&(df_all['datum_dt'].dt.month==now.month)].copy()
-                df_month['betrag_num'] = pd.to_numeric(df_month['betrag'], errors='coerce')
-                monat_ein        = df_month[df_month['typ']=='Einnahme']['betrag_num'].sum()
-                monat_aus        = df_month[df_month['typ']=='Ausgabe']['betrag_num'].abs().sum()
-                monat_dep        = df_month[df_month['typ']=='Depot']['betrag_num'].abs().sum()
-                monat_sp_einzahl = abs(df_month[(df_month['typ']=='Spartopf')&(df_month['betrag_num']<0)]['betrag_num'].sum())
-                monat_sp_netto   = df_month[df_month['typ']=='Spartopf']['betrag_num'].sum()
-                bank_aktuell     = monat_ein - monat_aus - monat_dep + monat_sp_netto
-                akt_spar         = bank_aktuell + monat_sp_einzahl
-
-                sg_col_l, sg_col_r = st.columns([1,1])
-                with sg_col_l:
-                    with st.form("sparziel_form"):
-                        goal_input = st.number_input(f"Monatliches Sparziel ({_currency_sym})", min_value=0.0, value=float(current_goal), step=50.0, format="%.2f")
-                        if st.form_submit_button("Sparziel speichern", use_container_width=True, type="primary"):
-                            save_goal(user_name, goal_input); st.success("✅ Sparziel gespeichert!"); st.rerun()
-                    spar_color = '#4ade80' if akt_spar>=0 else '#f87171'
-                    spar_str   = f"{akt_spar:,.2f} {_currency_sym}" if akt_spar>=0 else f"-{abs(akt_spar):,.2f} {_currency_sym}"
-                    st.markdown(
-                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.8),rgba(10,16,30,0.9));border:1px solid rgba(148,163,184,0.06);border-radius:12px;padding:16px 18px;margin-top:10px;'>"
-                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;'>{now.strftime('%B %Y')}</div>"
-                        f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Einnahmen</div><div style='font-family:DM Mono,monospace;color:#4ade80;font-size:12px;'>+{monat_ein:,.2f} {_currency_sym}</div></div>"
-                        f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Ausgaben</div><div style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>-{monat_aus:,.2f} {_currency_sym}</div></div>"
-                        + (f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Depot</div><div style='font-family:DM Mono,monospace;color:#38bdf8;font-size:12px;'>-{monat_dep:,.2f} {_currency_sym}</div></div>" if monat_dep>0 else "")
-                        + (f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Spartöpfe</div><div style='font-family:DM Mono,monospace;color:#a78bfa;font-size:12px;'>🪣 {monat_sp_einzahl:,.2f} {_currency_sym}</div></div>" if monat_sp_einzahl>0 else "")
-                        + f"<div style='border-top:1px solid rgba(148,163,184,0.08);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;'>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:12px;font-weight:500;'>Gespart (inkl. Töpfe)</div>"
-                        f"<div style='font-family:DM Mono,monospace;color:{spar_color};font-size:13px;font-weight:600;'>{spar_str}</div></div></div>",
-                        unsafe_allow_html=True)
-                with sg_col_r:
-                    if current_goal>0:
-                        fehlbetrag  = current_goal - akt_spar; erreicht = akt_spar >= current_goal
-                        pct_display = max(0, min(akt_spar/current_goal*100,100))
-                        bar_color   = '#4ade80' if erreicht else ('#facc15' if pct_display>=60 else '#f87171')
-                        spar_color2 = '#4ade80' if akt_spar>=0 else '#f87171'
-                        spar_str2   = f"{akt_spar:,.2f} {_currency_sym}" if akt_spar>=0 else f"-{abs(akt_spar):,.2f} {_currency_sym}"
-                        st.markdown(
-                            f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
-                            f"<div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;'>"
-                            f"<span style='font-family:DM Mono,monospace;font-size:10px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;'>Fortschritt</span>"
-                            f"<span style='font-family:DM Mono,monospace;font-size:13px;color:{bar_color};font-weight:600;'>{pct_display:.0f}%</span></div>"
-                            f"<div style='background:rgba(30,41,59,0.8);border-radius:99px;height:6px;overflow:hidden;margin-bottom:16px;'>"
-                            f"<div style='height:100%;width:{pct_display}%;background:{bar_color};border-radius:99px;'></div></div>"
-                            f"<div style='display:flex;justify-content:space-between;'>"
-                            f"<div><div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;'>Aktuell gespart</div>"
-                            f"<div style='font-family:DM Sans,sans-serif;color:{spar_color2};font-size:18px;font-weight:600;'>{spar_str2}</div></div>"
-                            f"<div style='text-align:right;'><div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;'>Ziel</div>"
-                            f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;font-size:18px;font-weight:600;'>{current_goal:,.2f} {_currency_sym}</div></div></div></div>",
-                            unsafe_allow_html=True)
-                        if not erreicht and fehlbetrag>0:
-                            aus_monat = df_month[df_month['typ']=='Ausgabe'].copy(); aus_monat['betrag_num'] = aus_monat['betrag_num'].abs()
-                            kat_monat = aus_monat.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num',ascending=False)
-                            if not kat_monat.empty:
-                                remaining = fehlbetrag; rows_html = ""
-                                for _,kr in kat_monat.iterrows():
-                                    if remaining<=0: break
-                                    cut = min(kr['betrag_num'],remaining)
-                                    rows_html += (f"<div style='display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04);'>"
-                                                  f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:13px;'>{kr['kategorie']}</span>"
-                                                  f"<div><span style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>−{cut:,.2f} {_currency_sym}</span>"
-                                                  f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:11px;margin-left:8px;'>({cut/kr['betrag_num']*100:.0f}%)</span></div></div>")
-                                    remaining -= cut
-                                st.markdown(
-                                    f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(248,113,113,0.1);border-left:3px solid #f87171;border-radius:16px;padding:18px 20px;margin-top:12px;'>"
-                                    f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#ef4444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Noch {fehlbetrag:,.2f} {_currency_sym} bis zum Ziel</div>"
-                                    f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin-bottom:12px;'>Diese Kategorien könntest du reduzieren:</div>"
-                                    f"{rows_html}</div>", unsafe_allow_html=True)
-                        elif erreicht:
-                            st.markdown(
-                                f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(74,222,128,0.15);border-left:3px solid #4ade80;border-radius:16px;padding:18px 20px;margin-top:12px;'>"
-                                f"<div style='font-family:DM Sans,sans-serif;color:#4ade80;font-size:14px;font-weight:500;'>🎉 Sparziel diesen Monat erreicht!</div>"
-                                f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-top:6px;'>Du hast {akt_spar-current_goal:,.2f} {_currency_sym} mehr gespart als geplant.</div></div>",
-                                unsafe_allow_html=True)
-                    else:
-                        st.markdown("<div style='background:rgba(15,23,42,0.5);border:1px solid rgba(148,163,184,0.06);border-radius:12px;padding:20px 22px;color:#334155;font-family:DM Sans,sans-serif;font-size:14px;'>Trage links ein Sparziel ein, um Empfehlungen zu erhalten.</div>", unsafe_allow_html=True)
-
-    # ============================================================
-    #  SPARTÖPFE
-    # ============================================================
-    elif menu == "🪣 Spartöpfe":
-        user_name = st.session_state['user_name']
-        st.markdown(
-            "<div style='margin-bottom:36px;margin-top:16px;'>"
-            "<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;color:#e2e8f0;margin:0 0 6px 0;letter-spacing:-1px;'>Spartöpfe 🪣</h1>"
-            "<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:15px;margin:0;'>Virtuelle Töpfe für deine Sparziele</p></div>",
-            unsafe_allow_html=True)
-
-        toepfe = load_toepfe(user_name)
-        if toepfe:
-            total_gespart = sum(t['gespart'] for t in toepfe)
-            total_ziel    = sum(t['ziel'] for t in toepfe if t['ziel']>0)
-            st.markdown(
-                f"<div style='display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;'>"
-                f"<div style='flex:1;min-width:140px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(56,189,248,0.12);border-radius:14px;padding:16px 18px;'>"
-                f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#1e40af;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Gesamt gespart</div>"
-                f"<div style='font-family:DM Sans,sans-serif;color:#38bdf8;font-size:22px;font-weight:600;'>{total_gespart:,.2f} {_currency_sym}</div></div>"
-                f"<div style='flex:1;min-width:140px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:14px;padding:16px 18px;'>"
-                f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Anzahl Töpfe</div>"
-                f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;font-size:22px;font-weight:600;'>{len(toepfe)}</div></div>"
-                + (f"<div style='flex:1;min-width:140px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:14px;padding:16px 18px;'>"
-                   f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Gesamt-Ziel</div>"
-                   f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:22px;font-weight:600;'>{total_ziel:,.2f} {_currency_sym}</div></div>" if total_ziel>0 else "")
-                + "</div>", unsafe_allow_html=True)
-
-            col_a, col_b = st.columns(2)
-            for i, topf in enumerate(toepfe):
-                col    = col_a if i%2==0 else col_b
-                farbe  = topf.get('farbe','#38bdf8'); gespart = topf['gespart']; ziel = topf['ziel']
-                emoji  = topf.get('emoji','🪣'); topf_id = topf['id']
-                with col:
-                    if ziel>0:
-                        pct = min(gespart/ziel*100,100)
-                        ziel_html = (f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;margin-top:10px;'>"
-                                     f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:10px;'>{gespart:,.2f} / {ziel:,.2f} {_currency_sym}</span>"
-                                     f"<span style='font-family:DM Mono,monospace;color:{farbe};font-size:10px;font-weight:600;'>{pct:.0f}%</span></div>"
-                                     f"<div style='background:rgba(30,41,59,0.8);border-radius:99px;height:5px;overflow:hidden;'>"
-                                     f"<div style='width:{pct:.0f}%;height:100%;background:{farbe};border-radius:99px;'></div></div>")
-                        badge_html = (f"<span style='background:rgba(74,222,128,0.1);color:#4ade80;font-family:DM Mono,monospace;font-size:9px;padding:2px 8px;border-radius:99px;border:1px solid rgba(74,222,128,0.2);'>✓ ERREICHT</span>" if pct>=100 else f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:10px;'>noch {ziel-gespart:,.2f} {_currency_sym} fehlen</span>")
-                    else:
-                        ziel_html = ""; badge_html = f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:10px;'>kein Ziel gesetzt</span>"
-
-                    st.markdown(
-                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid {farbe}20;border-top:2px solid {farbe};border-radius:16px;padding:18px 20px;margin-bottom:14px;'>"
-                        f"<div style='display:flex;justify-content:space-between;align-items:flex-start;'>"
-                        f"<div><div style='font-size:22px;margin-bottom:4px;'>{emoji}</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;font-weight:600;font-size:16px;'>{topf['name']}</div></div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:{farbe};font-size:22px;font-weight:600;'>{gespart:,.2f} {_currency_sym}</div></div>"
-                        f"{ziel_html}<div style='margin-top:10px;'>{badge_html}</div></div>", unsafe_allow_html=True)
-
-                    with st.expander(f"💰 Ein/Auszahlen — {topf['name']}"):
-                        tz1, tz2 = st.columns(2)
-                        with tz1:
-                            einzahl_val = st.number_input(f"Einzahlen ({_currency_sym})", min_value=0.01, step=1.0, format="%.2f", key=f"einzahl_{topf_id}")
-                            if st.button("+ Einzahlen", key=f"do_einzahl_{topf_id}", use_container_width=True, type="primary"):
-                                update_topf_gespart(user_name, topf_id, topf['name'], einzahl_val); st.rerun()
-                        with tz2:
-                            auszahl_val = st.number_input(f"Auszahlen ({_currency_sym})", min_value=0.01, step=1.0, format="%.2f", key=f"auszahl_{topf_id}")
-                            if st.button("− Auszahlen", key=f"do_auszahl_{topf_id}", use_container_width=True, type="secondary"):
-                                update_topf_gespart(user_name, topf_id, topf['name'], -auszahl_val); st.rerun()
-
-                    te1, te2 = st.columns(2)
-                    with te1:
-                        if st.button("✏️", key=f"edit_topf_{topf_id}", use_container_width=True, type="secondary"):
-                            st.session_state['topf_edit_data'] = topf; st.session_state['_dialog_just_opened'] = True; st.rerun()
-                    with te2:
-                        if st.button("🗑️", key=f"del_topf_{topf_id}", use_container_width=True, type="secondary"):
-                            st.session_state['topf_delete_id'] = topf_id; st.session_state['topf_delete_name'] = topf['name']
-                            st.session_state['_dialog_just_opened'] = True; st.rerun()
-        else:
-            st.markdown(
-                "<div style='text-align:center;padding:60px 20px;'>"
-                "<div style='font-size:48px;margin-bottom:16px;'>🪣</div>"
-                "<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:15px;'>Noch keine Spartöpfe. Erstelle deinen ersten Topf!</p></div>",
-                unsafe_allow_html=True)
-
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;'>Neuen Topf erstellen</p>", unsafe_allow_html=True)
-        with st.form("neuer_topf_form", clear_on_submit=True):
-            nt1, nt2, nt3 = st.columns([1,3,2])
-            with nt1: nt_emoji = st.text_input("Emoji", placeholder="✈️", max_chars=4)
-            with nt2: nt_name  = st.text_input("Name", placeholder="z.B. Urlaub, Neues Auto, Laptop...")
-            with nt3: nt_ziel  = st.number_input(f"Sparziel ({_currency_sym}, optional)", min_value=0.0, step=50.0, format="%.2f", value=0.0)
-            if st.form_submit_button("Topf erstellen", use_container_width=True, type="primary"):
-                if not nt_name.strip(): st.error("Bitte einen Namen eingeben.")
-                else:
-                    save_topf(user=user_name, name=nt_name.strip(), ziel=nt_ziel, emoji=nt_emoji.strip() if nt_emoji.strip() else "🪣")
-                    st.success(f"✅ Topf '{nt_name.strip()}' erstellt!"); st.rerun()
-
-        if st.session_state.get('topf_edit_data'):
-            @st.dialog("✏️ Topf bearbeiten")
-            def topf_edit_dialog():
-                t = st.session_state['topf_edit_data']
-                e1, e2 = st.columns([1,3])
-                with e1: new_emoji = st.text_input("Emoji", value=t['emoji'], max_chars=4)
-                with e2: new_name  = st.text_input("Name", value=t['name'])
-                new_ziel = st.number_input(f"Sparziel ({_currency_sym})", min_value=0.0, value=float(t['ziel']), step=50.0, format="%.2f")
-                cs, cc = st.columns(2)
-                with cs:
-                    if st.button("Speichern", use_container_width=True, type="primary"):
-                        update_topf_meta(user_name, t['id'], new_name.strip() or t['name'], new_ziel, new_emoji.strip() or t['emoji'])
-                        st.session_state['topf_edit_data'] = None; st.rerun()
-                with cc:
-                    if st.button("Abbrechen", use_container_width=True):
-                        st.session_state['topf_edit_data'] = None; st.rerun()
-            topf_edit_dialog()
-
-        if st.session_state.get('topf_delete_id'):
-            @st.dialog("Topf löschen")
-            def topf_delete_dialog():
-                name = st.session_state.get('topf_delete_name','')
-                st.markdown(f"<p style='color:#e2e8f0;font-size:15px;'>Topf <b>'{name}'</b> wirklich löschen?</p>", unsafe_allow_html=True)
-                d1, d2 = st.columns(2)
-                with d1:
-                    if st.button("Löschen", use_container_width=True, type="primary"):
-                        delete_topf(user_name, st.session_state['topf_delete_id'])
-                        st.session_state['topf_delete_id'] = None; st.session_state['topf_delete_name'] = None; st.rerun()
-                with d2:
-                    if st.button("Abbrechen", use_container_width=True):
-                        st.session_state['topf_delete_id'] = None; st.session_state['topf_delete_name'] = None; st.rerun()
-            topf_delete_dialog()
-
-    # ============================================================
-    #  EINSTELLUNGEN
-    # ============================================================
-    elif menu == "⚙️ Einstellungen":
-        user_name = st.session_state['user_name']
-        st.markdown(
-            "<div style='margin-bottom:28px;margin-top:16px;'>"
-            "<h1 style='font-family:DM Sans,sans-serif;font-size:36px;font-weight:700;color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-1px;'>Einstellungen ⚙️</h1>"
-            "<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:14px;margin:0;'>Profil, Finanzen, Design und Konto</p></div>",
-            unsafe_allow_html=True)
-
-        SETTINGS_TABS = [("👤","Profil"),("💰","Finanzen"),("🎨","Design"),("🔐","Sicherheit"),("📦","Daten")]
-        active_tab    = st.session_state.get('settings_tab','Profil')
-        tab_cols = st.columns(len(SETTINGS_TABS))
-        for i,(icon,label) in enumerate(SETTINGS_TABS):
-            with tab_cols[i]:
-                if st.button(f"{icon} {label}", key=f"stab_{label}", use_container_width=True, type="primary" if active_tab==label else "secondary"):
-                    st.session_state['settings_tab'] = label; st.rerun()
-        st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-
-        if active_tab == "Profil":
-            col_main, col_preview = st.columns([2,1])
-            with col_main:
-                section_header("Profilbild", "URL zu einem öffentlich zugänglichen Bild")
-                with st.form("avatar_form"):
-                    new_avatar = st.text_input("Bild-URL", value=_user_settings.get('avatar_url',''), placeholder="https://beispiel.de/foto.jpg")
-                    if st.form_submit_button("Profilbild speichern", use_container_width=True, type="primary"):
-                        save_user_settings(user_name, avatar_url=new_avatar.strip()); st.success("✅ Profilbild gespeichert!"); st.rerun()
-            with col_preview:
-                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                _av = _user_settings.get('avatar_url','')
-                if _av and _av.startswith('http'):
-                    st.markdown(f"<div style='text-align:center;'><img src='{_av}' style='width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid {_t['primary']}60;'><p style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;margin-top:8px;'>Aktuelles Profilbild</p></div>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<div style='text-align:center;'><div style='width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,{_t['accent']},{_t['accent2']});display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600;color:#fff;margin:0 auto;'>{user_name[:2].upper()}</div><p style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;margin-top:8px;'>Initialen-Avatar</p></div>", unsafe_allow_html=True)
-            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-            section_header("Benutzername ändern", "Kann nur alle 30 Tage geändert werden")
-            try:
-                df_u_name = _gs_read("users"); idx_un = df_u_name[df_u_name['username']==user_name].index
-                last_change_raw = str(df_u_name.loc[idx_un[0],'username_changed_at']) if (not idx_un.empty and 'username_changed_at' in df_u_name.columns) else ''
-                last_change = None
-                try: last_change = datetime.date.fromisoformat(last_change_raw.strip()) if last_change_raw.strip() not in ('','nan','None') else None
-                except: pass
-                days_since = (datetime.date.today() - last_change).days if last_change else 999
-                can_change = days_since >= 30
-                days_left  = max(0, 30 - days_since)
-                primary_color = _t['primary']
-                st.markdown(f"<div style='background:rgba(10,16,30,0.5);border:1px solid rgba(148,163,184,0.06);border-radius:10px;padding:12px 16px;display:inline-block;margin-bottom:12px;'><span style='font-family:DM Mono,monospace;color:{primary_color};font-size:15px;font-weight:500;'>@{user_name}</span></div>", unsafe_allow_html=True)
-                if not can_change:
-                    st.markdown(f"<div style='background:rgba(250,204,21,0.06);border:1px solid rgba(250,204,21,0.15);border-radius:10px;padding:10px 14px;'><span style='font-family:DM Sans,sans-serif;color:#fbbf24;font-size:13px;'>⏳ Nächste Änderung möglich in <b>{days_left}</b> Tag{'en' if days_left!=1 else ''}.</span></div>", unsafe_allow_html=True)
-                else:
-                    with st.form("username_change_form"):
-                        new_uname = st.text_input("Neuer Benutzername", placeholder="Mindestens 3 Zeichen, keine Leerzeichen")
-                        if st.form_submit_button("Benutzername ändern", use_container_width=True, type="primary"):
-                            new_uname = new_uname.strip()
-                            if len(new_uname) < 3: st.error("❌ Mindestens 3 Zeichen erforderlich.")
-                            elif ' ' in new_uname: st.error("❌ Keine Leerzeichen erlaubt.")
-                            elif new_uname == user_name: st.error("❌ Das ist bereits dein Benutzername.")
-                            elif not df_u_name[df_u_name['username']==new_uname].empty: st.error("❌ Benutzername bereits vergeben.")
+                        try:
+                            df = _gs_read("users")
+                            if not df.empty and 'username' in df.columns and ru in df['username'].values:
+                                st.error("Benutzername bereits vergeben.")
                             else:
-                                df_u_name.loc[idx_un[0],'username'] = new_uname
-                                if 'username_changed_at' not in df_u_name.columns: df_u_name['username_changed_at'] = ''
-                                df_u_name.loc[idx_un[0],'username_changed_at'] = str(datetime.date.today())
-                                _gs_update("users", df_u_name)
-                                for ws,col in [("transactions","user"),("toepfe","user"),("goals","user"),("settings","user"),("dauerauftraege","user")]:
-                                    try:
-                                        df_ws = _gs_read(ws)
-                                        if col in df_ws.columns:
-                                            df_ws.loc[df_ws[col]==user_name, col] = new_uname; _gs_update(ws, df_ws)
-                                    except: pass
-                                for k in [k for k in st.session_state if k.startswith("_gs_cache_")]: del st.session_state[k]
-                                st.session_state['user_name'] = new_uname
-                                st.success(f"✅ Benutzername geändert zu @{new_uname}!"); st.rerun()
+                                code = generate_code()
+                                expiry = (datetime.datetime.now() + datetime.timedelta(minutes=10)).isoformat()
+                                st.session_state.pending_user = {'username':ru,'email':re_mail,'password':make_hashes(rp),'verified':0}
+                                st.session_state.verify_code = make_hashes(code)
+                                st.session_state.verify_expiry = expiry
+                                if send_email(re_mail,"✅ Balancely E-Mail bestätigen", email_html("Dein Bestätigungs-Code:", code)):
+                                    st.session_state.auth_mode = 'verify'; st.success("Code gesendet!"); st.rerun()
+                        except Exception as e: st.error(f"Fehler: {e}")
+    if st.session_state.auth_mode == 'verify' and st.session_state.pending_user:
+        col2 = st.columns([1,2,1])[1]
+        with col2:
+            st.info(f"Code an {st.session_state.pending_user.get('email','')} gesendet.")
+            code_in = st.text_input("Bestätigungs-Code", key="verify_code_inp")
+            if st.button("✅ Bestätigen", use_container_width=True, type="primary"):
+                if datetime.datetime.now().isoformat() > st.session_state.verify_expiry:
+                    st.error("Code abgelaufen.")
+                elif make_hashes(code_in) != st.session_state.verify_code:
+                    st.error("Falscher Code.")
+                else:
+                    try:
+                        df = _gs_read("users")
+                        new_user = {**st.session_state.pending_user, 'verified':1}
+                        _gs_update("users", pd.concat([df, pd.DataFrame([new_user])], ignore_index=True))
+                        st.session_state.auth_mode = 'login'; st.session_state.pending_user = {}
+                        st.success("Account bestätigt! Bitte anmelden."); st.rerun()
+                    except Exception as e: st.error(f"Fehler: {e}")
+
+# ── DASHBOARD ────────────────────────────────────────────────
+def show_dashboard(user, df_all, settings):
+    sym = CURRENCY_SYMBOLS.get(settings.get('currency','EUR'),'€')
+    t = THEMES.get(st.session_state.get('theme','Ocean Blue'), THEMES['Ocean Blue'])
+    pri = t['primary']; acc2 = t['accent2']
+    section_header("🏠","Dashboard","Dein finanzieller Überblick")
+
+    offset = st.session_state.dash_month_offset
+    now = datetime.date.today()
+    target = (now.replace(day=1) + datetime.timedelta(days=32*(-offset))).replace(day=1) if offset else now.replace(day=1)
+    month_label = target.strftime("%B %Y") if offset else "Aktueller Monat"
+
+    col_nav = st.columns([1,3,1])
+    with col_nav[0]:
+        if st.button("◀ Vorheriger", use_container_width=True): st.session_state.dash_month_offset += 1; st.rerun()
+    with col_nav[1]:
+        st.markdown(f'<div style="text-align:center;padding:8px;color:#94a3b8;font-weight:600;">{month_label}</div>', unsafe_allow_html=True)
+    with col_nav[2]:
+        if offset > 0:
+            if st.button("Nächster ▶", use_container_width=True): st.session_state.dash_month_offset -= 1; st.rerun()
+
+    if df_all.empty or 'datum' not in df_all.columns:
+        st.info("Noch keine Transaktionen vorhanden."); return
+
+    df_all = df_all.copy()
+    df_all['datum_dt'] = pd.to_datetime(df_all['datum'], errors='coerce')
+    df_all['betrag_num'] = pd.to_numeric(df_all['betrag'], errors='coerce').fillna(0)
+    df_month = df_all[(df_all['datum_dt'].dt.year==target.year)&(df_all['datum_dt'].dt.month==target.month)]
+
+    ein_m = df_month[df_month['typ']=='Einnahme']['betrag_num'].sum()
+    aus_m = abs(df_month[df_month['typ']=='Ausgabe']['betrag_num'].sum())
+    dep_m = df_month[df_month['typ']=='Depot']['betrag_num'].sum()
+    sp_m  = df_month[df_month['typ']=='Spartopf']['betrag_num'].sum()
+    bal_m = ein_m - aus_m - abs(dep_m) - abs(sp_m)
+    budget = float(settings.get('budget',0) or 0)
+
+    m1,m2,m3,m4 = st.columns(4)
+    def metric_card(col, icon, label, value, color, delta=None):
+        delta_html = f'<p style="font-size:12px;color:{"#4ade80" if delta>=0 else "#f87171"};margin:2px 0 0;">{("+" if delta>=0 else "")}{delta:.2f} {sym}</p>' if delta is not None else ""
+        col.markdown(f'''<div style="background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;text-align:center;">
+            <div style="font-size:28px;">{icon}</div>
+            <p style="color:#64748b;font-size:12px;margin:4px 0;">{label}</p>
+            <h2 style="font-size:22px;font-weight:800;color:{color};margin:4px 0;">{value}</h2>
+            {delta_html}</div>''', unsafe_allow_html=True)
+    metric_card(m1,"💰","Einnahmen",f"{ein_m:,.2f} {sym}","#4ade80")
+    metric_card(m2,"💸","Ausgaben",f"{aus_m:,.2f} {sym}","#f87171")
+    metric_card(m3,"📈","Depot",f"{abs(dep_m):,.2f} {sym}","#38bdf8")
+    metric_card(m4,"⚖️","Bilanz",f"{bal_m:,.2f} {sym}",pri)
+    
+    if budget > 0:
+        pct = min(aus_m / budget, 1.0)
+        bar_color = "#f87171" if pct > 0.9 else "#fb923c" if pct > 0.7 else "#4ade80"
+        st.markdown(f'''<div style="margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#94a3b8;font-size:13px;">📊 Budget {month_label}</span>
+                <span style="color:#f1f5f9;font-size:13px;font-weight:600;">{aus_m:.2f} / {budget:.2f} {sym}</span>
+            </div>
+            <div style="background:#1e293b;border-radius:6px;height:8px;">
+                <div style="width:{pct*100:.1f}%;background:{bar_color};border-radius:6px;height:8px;transition:width .5s;"></div>
+            </div></div>''', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2 = st.columns([3,2])
+    with c1:
+        st.markdown(f'<h3 style="color:#94a3b8;font-size:14px;font-weight:600;margin-bottom:12px;">📋 LETZTE TRANSAKTIONEN</h3>', unsafe_allow_html=True)
+        recent = df_month.sort_values('datum_dt', ascending=False).head(8)
+        if recent.empty:
+            st.markdown('<p style="color:#475569;text-align:center;padding:30px;">Keine Transaktionen diesen Monat</p>', unsafe_allow_html=True)
+        else:
+            for _, row in recent.iterrows():
+                typ = str(row.get('typ',''))
+                betrag_num = float(row.get('betrag_num',0))
+                if typ == 'Einnahme': col_b, sign = '#4ade80', '+'
+                elif typ == 'Depot': col_b, sign = '#38bdf8', '-'
+                elif typ == 'Spartopf': col_b, sign = '#a78bfa', '-'
+                else: col_b, sign = '#f87171', '-'
+                display_b = abs(betrag_num)
+                ts = format_timestamp(row.get('timestamp',''), row.get('datum',''))
+                notiz = str(row.get('notiz',''))
+                notiz_html = f' <span style="color:#475569;font-size:11px;">· {notiz[:25]}{"..." if len(notiz)>25 else ""}</span>' if notiz else ""
+                st.markdown(f'''<div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:10px 14px;margin-bottom:6px;background:#0f172a;border-radius:10px;border-left:3px solid {col_b};">
+                    <div>
+                        <span style="font-size:13px;font-weight:600;color:#f1f5f9;">{row.get("kategorie","")}</span>
+                        {notiz_html}
+                        <br><span style="font-size:11px;color:#475569;">{ts}</span>
+                    </div>
+                    <span style="font-size:14px;font-weight:800;color:{col_b};">{sign}{display_b:.2f} {sym}</span>
+                </div>''', unsafe_allow_html=True)
+    with c2:
+        st.markdown(f'<h3 style="color:#94a3b8;font-size:14px;font-weight:600;margin-bottom:12px;">🥧 MONATSVERTEILUNG</h3>', unsafe_allow_html=True)
+        try:
+            import plotly.express as px
+            pie_data = {'Einnahmen':ein_m,'Ausgaben':aus_m,'Depot':abs(dep_m),'Sparen':abs(sp_m)}
+            pie_data = {k:v for k,v in pie_data.items() if v > 0}
+            if pie_data:
+                fig = px.pie(values=list(pie_data.values()), names=list(pie_data.keys()),
+                             color_discrete_sequence=['#4ade80','#f87171','#38bdf8','#a78bfa'],
+                             hole=0.4)
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                  font_color='#94a3b8', margin=dict(t=10,b=10,l=10,r=10),
+                                  legend=dict(font=dict(color='#94a3b8')))
+                fig.update_traces(textfont_color='#f1f5f9')
+                st.plotly_chart(fig, use_container_width=True)
+        except: pass
+
+# ── TRANSAKTIONEN ────────────────────────────────────────────
+def show_transaktionen(user, df_all, settings):
+    sym = CURRENCY_SYMBOLS.get(settings.get('currency','EUR'),'€')
+    t = THEMES.get(st.session_state.get('theme','Ocean Blue'), THEMES['Ocean Blue'])
+    pri = t['primary']
+    section_header("💸","Transaktionen","Einnahmen, Ausgaben und Depot-Transaktionen")
+
+    all_cats = DEFAULT_CATS.copy()
+    for typ in ('Einnahme','Ausgabe','Depot'):
+        custom = load_custom_cats(user, typ)
+        all_cats[typ] = all_cats.get(typ,[]) + [c for c in custom if c not in all_cats.get(typ,[])]
+
+    # ── New transaction form ──
+    with st.expander("➕ Neue Transaktion hinzufügen", expanded=False):
+        c1,c2,c3,c4 = st.columns(4)
+        with c1: typ = st.selectbox("Typ", ['Einnahme','Ausgabe','Depot'], key="new_tx_typ")
+        with c2: kat = st.selectbox("Kategorie", all_cats.get(typ,[]), key="new_tx_kat")
+        with c3: datum = st.date_input("Datum", value=datetime.date.today(), key="new_tx_datum")
+        with c4: betrag = st.number_input(f"Betrag ({sym})", min_value=0.01, step=0.5, key="new_tx_betrag")
+        notiz = st.text_input("Notiz (optional)", key="new_tx_notiz")
+        if st.button("💾 Transaktion speichern", type="primary", use_container_width=True):
+            betrag_save = betrag if typ == 'Einnahme' else -betrag
+            try:
+                df = _gs_read("transactions")
+                new_row = pd.DataFrame([{'user':user,'datum':str(datum),
+                    'timestamp':datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    'typ':typ,'kategorie':kat,'betrag':betrag_save,'notiz':notiz,'deleted':''}])
+                _gs_update("transactions", pd.concat([df, new_row], ignore_index=True))
+                _gs_invalidate("transactions"); st.success("✅ Gespeichert!"); st.rerun()
             except Exception as e: st.error(f"Fehler: {e}")
 
-        elif active_tab == "Finanzen":
-            col_l, col_r = st.columns(2)
-            with col_l:
-                section_header("Monatliches Budget-Limit")
-                with st.form("budget_form"):
-                    new_budget = st.number_input(f"Budget ({_currency_sym})", min_value=0.0, value=float(_user_settings.get('budget',0.0)), step=50.0, format="%.2f")
-                    if st.form_submit_button("Budget speichern", use_container_width=True, type="primary"):
-                        save_user_settings(user_name, budget=new_budget); st.success("✅ Budget-Limit gespeichert!"); st.rerun()
-            with col_r:
-                section_header("Währung")
-                with st.form("currency_form"):
-                    curr_options = list(CURRENCY_SYMBOLS.keys())
-                    curr_current = _user_settings.get('currency','EUR')
-                    curr_idx     = curr_options.index(curr_current) if curr_current in curr_options else 0
-                    curr_labels  = [f"{sym} ({CURRENCY_SYMBOLS[sym]})" for sym in curr_options]
-                    new_curr_lbl = st.selectbox("Währung wählen", curr_labels, index=curr_idx)
-                    new_currency = curr_options[curr_labels.index(new_curr_lbl)]
-                    if st.form_submit_button("Währung speichern", use_container_width=True, type="primary"):
-                        save_user_settings(user_name, currency=new_currency); _gs_invalidate("settings")
-                        st.success(f"✅ Währung auf {new_currency} gesetzt!"); st.rerun()
+    # ── Daueraufträge ──
+    with st.expander("⚙️ Daueraufträge verwalten", expanded=False):
+        das = load_dauerauftraege(user)
+        if st.button("▶ Daueraufträge jetzt anwenden", use_container_width=True):
+            booked = apply_dauerauftraege(user)
+            if booked: st.success(f"{booked} Dauerauftrag/Aufträge gebucht!"); _gs_invalidate("transactions"); st.rerun()
+            else: st.info("Keine neuen Buchungen (bereits gebucht oder keine aktiven Aufträge).")
+        if das:
+            for da in das:
+                dc1,dc2,dc3 = st.columns([3,1,1])
+                with dc1:
+                    color = TYPE_COLORS.get(da['typ'],'#94a3b8')
+                    st.markdown(f'<div style="padding:8px 12px;background:#0f172a;border-radius:8px;border-left:3px solid {color};">'
+                        f'<span style="font-weight:600;color:#f1f5f9;">{da["name"]}</span> '
+                        f'<span style="color:#64748b;font-size:12px;">{da["typ"]} · {da["kategorie"]} · {da["betrag"]} {sym}/Monat</span></div>',
+                        unsafe_allow_html=True)
+                with dc3:
+                    if st.button("🗑️", key=f"del_da_{da['id']}"): delete_dauerauftrag(user, da['id']); st.rerun()
+        else: st.markdown('<p style="color:#475569;">Noch keine Daueraufträge.</p>', unsafe_allow_html=True)
+        if st.button("➕ Dauerauftrag hinzufügen"): add_dauerauftrag_dialog()
 
-        elif active_tab == "Design":
-            section_header("Farbschema")
-            theme_cols = st.columns(3)
-            theme_icons = {"Ocean Blue":"🌊","Emerald Green":"🌿","Deep Purple":"🔮"}
-            theme_descs = {"Ocean Blue":"Dunkles Marineblau mit Sky-Akzenten","Emerald Green":"Tiefes Waldgrün mit Smaragd-Akzenten","Deep Purple":"Samtiges Dunkelviolett mit Amethyst-Akzenten"}
-            for i,tname in enumerate(THEMES.keys()):
-                t_data = THEMES[tname]; is_active = (_theme_name==tname)
-                with theme_cols[i]:
-                    _tc_bor = t_data['primary']+'ff' if is_active else t_data['primary']+'30'
-                    _tc_sha = f"box-shadow:0 0 20px {t_data['primary']}30;" if is_active else ""
-                    _tc_badge = f"<div style='margin-top:8px;font-family:DM Mono,monospace;color:{t_data['primary']};font-size:9px;letter-spacing:1.5px;'>✓ AKTIV</div>" if is_active else ""
-                    st.markdown(
-                        f"<div style='background:linear-gradient(135deg,{t_data['bg1']},{t_data['bg2']});border:2px solid {_tc_bor};border-radius:14px;padding:16px;margin-bottom:10px;text-align:center;{_tc_sha}'>"
-                        f"<div style='font-size:24px;margin-bottom:8px;'>{theme_icons[tname]}</div>"
-                        f"<div style='display:flex;justify-content:center;gap:6px;margin-bottom:10px;'>"
-                        f"<div style='width:16px;height:16px;border-radius:50%;background:{t_data['primary']};'></div>"
-                        f"<div style='width:16px;height:16px;border-radius:50%;background:{t_data['accent']};'></div>"
-                        f"<div style='width:16px;height:16px;border-radius:50%;background:{t_data['accent2']};'></div></div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;font-size:13px;font-weight:600;margin-bottom:4px;'>{tname}</div>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:11px;'>{theme_descs[tname]}</div>"
-                        f"{_tc_badge}</div>", unsafe_allow_html=True)
-                    if st.button("Auswählen" if not is_active else "✓ Aktiv", key=f"theme_btn_{tname}", use_container_width=True, type="primary" if is_active else "secondary", disabled=is_active):
-                        st.session_state['theme'] = tname; save_user_settings(user_name, theme=tname); st.rerun()
+    # ── Transaction list ──
+    if df_all.empty or 'datum' not in df_all.columns:
+        st.info("Noch keine Transaktionen."); return
 
-        elif active_tab == "Sicherheit":
-            col_l, col_r = st.columns(2)
-            with col_l:
-                section_header("Passwort ändern")
-                with st.form("pw_form"):
-                    pw_alt = st.text_input("Aktuelles Passwort", type="password")
-                    pw_neu = st.text_input("Neues Passwort", type="password")
-                    pw_neu2= st.text_input("Neues Passwort wiederholen", type="password")
-                    if st.form_submit_button("Passwort ändern", use_container_width=True, type="primary"):
-                        df_u = _gs_read("users"); idx = df_u[df_u['username']==user_name].index
-                        if idx.empty: st.error("❌ Benutzer nicht gefunden.")
-                        elif make_hashes(pw_alt) != str(df_u.loc[idx[0],'password']): st.error("❌ Aktuelles Passwort ist falsch.")
-                        elif pw_neu == pw_alt: st.error("❌ Das neue Passwort darf nicht dem alten entsprechen.")
-                        else:
-                            ok, msg = check_password_strength(pw_neu)
-                            if not ok: st.error(f"❌ {msg}")
-                            elif pw_neu != pw_neu2: st.error("❌ Die neuen Passwörter stimmen nicht überein.")
-                            else:
-                                df_u.loc[idx[0],'password'] = make_hashes(pw_neu); _gs_update("users", df_u)
-                                st.success("✅ Passwort erfolgreich geändert!")
-            with col_r:
-                section_header("E-Mail-Adresse ändern")
-                try:
-                    df_u_em = _gs_read("users"); idx_em = df_u_em[df_u_em['username']==user_name].index
-                    curr_email = str(df_u_em.loc[idx_em[0],'email']) if not idx_em.empty else "–"
-                except: curr_email = "–"
-                st.markdown(f"<div style='background:rgba(10,16,30,0.5);border:1px solid rgba(148,163,184,0.06);border-radius:10px;padding:10px 14px;margin-bottom:14px;'><span style='font-family:DM Mono,monospace;color:#475569;font-size:11px;'>Aktuell: </span><span style='font-family:DM Mono,monospace;color:{_t['primary']};font-size:12px;'>{curr_email}</span></div>", unsafe_allow_html=True)
-                if not st.session_state.get('email_verify_code'):
-                    with st.form("email_change_form"):
-                        new_email_input = st.text_input("Neue E-Mail-Adresse", placeholder="neu@beispiel.de")
-                        if st.form_submit_button("Code senden", use_container_width=True, type="primary"):
-                            if not is_valid_email(new_email_input.strip()): st.error("❌ Bitte gib eine gültige E-Mail ein.")
-                            elif new_email_input.strip().lower() == curr_email.lower(): st.error("❌ Das ist bereits deine E-Mail-Adresse.")
-                            else:
-                                code = generate_code(); expiry = datetime.datetime.now() + datetime.timedelta(minutes=10)
-                                if send_email(new_email_input.strip().lower(), "Balancely – E-Mail-Adresse bestätigen", email_html("Dein Code zum Ändern der E-Mail-Adresse lautet:", code)):
-                                    st.session_state.update({'email_verify_code':code,'email_verify_expiry':expiry,'email_verify_new':new_email_input.strip().lower()}); st.rerun()
-                                else: st.error("❌ E-Mail konnte nicht gesendet werden.")
+    df_all = df_all.copy()
+    df_all['datum_dt'] = pd.to_datetime(df_all['datum'], errors='coerce')
+    df_all['betrag_num'] = pd.to_numeric(df_all['betrag'], errors='coerce').fillna(0)
+    df_sorted = df_all.sort_values(['datum_dt','timestamp'], ascending=[False,False])
+
+    search = st.text_input("🔍 Suche...", value=st.session_state.tx_search, key="tx_search_inp", placeholder="Kategorie, Notiz...")
+    st.session_state.tx_search = search
+
+    if search.strip():
+        mask = (df_sorted['kategorie'].str.contains(search, case=False, na=False) |
+                df_sorted['notiz'].str.contains(search, case=False, na=False))
+        df_sorted = df_sorted[mask]
+
+    PAGE_SIZE = 20
+    total = len(df_sorted); pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    st.session_state.tx_page = min(st.session_state.tx_page, pages-1)
+    page = st.session_state.tx_page
+    df_page = df_sorted.iloc[page*PAGE_SIZE:(page+1)*PAGE_SIZE]
+
+    st.markdown(f'<p style="color:#64748b;font-size:13px;margin-bottom:12px;">{total} Transaktionen · Seite {page+1}/{pages}</p>', unsafe_allow_html=True)
+
+    for i, (_, row) in enumerate(df_page.iterrows()):
+        typ = str(row.get('typ',''))
+        bnum = float(row.get('betrag_num',0))
+        if typ=='Einnahme': col_b,sign='#4ade80','+'
+        elif typ=='Depot': col_b,sign='#38bdf8','-'
+        elif typ=='Spartopf': col_b,sign='#a78bfa','-'
+        else: col_b,sign='#f87171','-'
+        display_b = abs(bnum); ts = format_timestamp(row.get('timestamp',''),row.get('datum',''))
+        notiz = str(row.get('notiz',''))
+        notiz_html = f' · <span style="color:#475569;font-size:11px;">{notiz[:30]}{"..." if len(notiz)>30 else ""}</span>' if notiz else ""
+        rc1,rc2,rc3 = st.columns([6,1,1])
+        with rc1:
+            st.markdown(f'''<div style="display:flex;justify-content:space-between;align-items:center;
+                padding:10px 14px;background:#0f172a;border-radius:10px;border-left:3px solid {col_b};">
+                <div><span style="font-size:13px;font-weight:600;color:#f1f5f9;">{row.get("kategorie","")}</span>
+                {notiz_html}<br><span style="font-size:11px;color:#475569;">{ts}</span></div>
+                <span style="font-size:14px;font-weight:800;color:{col_b};">{sign}{display_b:.2f} {sym}</span>
+            </div>''', unsafe_allow_html=True)
+        with rc2:
+            if st.button("✏️", key=f"edit_tx_{page}_{i}"): st.session_state.edit_idx = row.to_dict(); edit_transaction_dialog(row.to_dict())
+        with rc3:
+            if st.button("🗑️", key=f"del_tx_{page}_{i}"): delete_transaction_dialog(row.to_dict())
+
+    if pages > 1:
+        pc1,pc2,pc3 = st.columns(3)
+        with pc1:
+            if page > 0 and st.button("◀ Zurück", use_container_width=True): st.session_state.tx_page -= 1; st.rerun()
+        with pc2:
+            st.markdown(f'<div style="text-align:center;color:#64748b;font-size:13px;padding:8px;">{page+1} / {pages}</div>', unsafe_allow_html=True)
+        with pc3:
+            if page < pages-1 and st.button("Weiter ▶", use_container_width=True): st.session_state.tx_page += 1; st.rerun()
+
+# ── ANALYSEN ─────────────────────────────────────────────────
+def show_analysen(user, df_all, settings):
+    sym = CURRENCY_SYMBOLS.get(settings.get('currency','EUR'),'€')
+    t = THEMES.get(st.session_state.get('theme','Ocean Blue'), THEMES['Ocean Blue'])
+    pri = t['primary']; acc2 = t['accent2']
+    section_header("📊","Analysen","Interaktive Charts und Visualisierungen")
+
+    if df_all.empty or 'datum' not in df_all.columns:
+        st.info("Noch keine Transaktionen vorhanden."); return
+
+    df_all = df_all.copy()
+    df_all['datum_dt'] = pd.to_datetime(df_all['datum'], errors='coerce')
+    df_all['betrag_num'] = pd.to_numeric(df_all['betrag'], errors='coerce').fillna(0)
+
+    now = datetime.date.today()
+    offset = st.session_state.analysen_month_offset
+    target = (now.replace(day=1) + datetime.timedelta(days=32*(-offset))).replace(day=1) if offset else now.replace(day=1)
+
+    col_nav = st.columns([1,3,1])
+    with col_nav[0]:
+        if st.button("◀", key="an_prev"): st.session_state.analysen_month_offset += 1; st.rerun()
+    with col_nav[1]:
+        st.markdown(f'<div style="text-align:center;color:#94a3b8;font-weight:600;padding:8px;">{target.strftime("%B %Y")}</div>', unsafe_allow_html=True)
+    with col_nav[2]:
+        if offset > 0 and st.button("▶", key="an_next"): st.session_state.analysen_month_offset -= 1; st.rerun()
+
+    df_month = df_all[(df_all['datum_dt'].dt.year==target.year)&(df_all['datum_dt'].dt.month==target.month)]
+
+    try:
+        import plotly.graph_objects as go
+        import plotly.express as px
+
+        # ── 1. SPARZIEL ──────────────────────────────────────────
+        st.markdown("---")
+        st.markdown(f'<h3 style="color:{pri};font-size:16px;font-weight:700;">🎯 Sparziel diesen Monat</h3>', unsafe_allow_html=True)
+
+        spar_goal = load_goal(user)
+        ein_m = df_month[df_month['typ']=='Einnahme']['betrag_num'].sum()
+        aus_m = abs(df_month[df_month['typ']=='Ausgabe']['betrag_num'].sum())
+        # Depot and Spartopf einzahlungen count as "gespart" (v5 change)
+        monat_dep = abs(df_month[df_month['typ']=='Depot']['betrag_num'].sum())
+        monat_sp_einzahl = abs(df_month[(df_month['typ']=='Spartopf')&(df_month['betrag_num']<0)]['betrag_num'].sum())
+        bank_aktuell = ein_m - aus_m - monat_dep - monat_sp_einzahl
+        akt_spar = bank_aktuell + monat_dep + monat_sp_einzahl  # = ein_m - aus_m
+
+        sg1, sg2, sg3 = st.columns(3)
+        def spar_metric(col, label, value, color):
+            col.markdown(f'''<div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;text-align:center;">
+                <p style="color:#64748b;font-size:12px;margin:0;">{label}</p>
+                <h3 style="color:{color};font-size:20px;font-weight:800;margin:4px 0;">{value:.2f} {sym}</h3>
+            </div>''', unsafe_allow_html=True)
+        spar_metric(sg1, "🏦 Kontostand (Bank)", bank_aktuell, '#38bdf8')
+        spar_metric(sg2, "📈 Depot (gespart)", monat_dep, '#4ade80')
+        spar_metric(sg3, "🪣 Spartöpfe (gespart)", monat_sp_einzahl, '#a78bfa')
+
+        if spar_goal > 0:
+            pct = min(akt_spar / spar_goal, 1.0) if spar_goal else 0
+            bar_color = "#4ade80" if pct >= 1.0 else "#fb923c" if pct >= 0.5 else "#f87171"
+            st.markdown(f'''<div style="margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                    <span style="color:#94a3b8;font-size:13px;">Sparziel-Fortschritt</span>
+                    <span style="color:#f1f5f9;font-size:13px;font-weight:600;">{akt_spar:.2f} / {spar_goal:.2f} {sym} ({pct*100:.0f}%)</span>
+                </div>
+                <div style="background:#1e293b;border-radius:6px;height:10px;">
+                    <div style="width:{pct*100:.1f}%;background:{bar_color};border-radius:6px;height:10px;"></div>
+                </div></div>''', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<p style="color:#475569;font-size:13px;margin-top:8px;">Gesamt gespart: <strong style="color:{pri}">{akt_spar:.2f} {sym}</strong> · Kein Sparziel gesetzt.</p>', unsafe_allow_html=True)
+
+        if st.button("✏️ Sparziel bearbeiten"): edit_goal_dialog(spar_goal)
+
+        # ── 2. AUSGABEN nach Kategorie (Balken) ──────────────────
+        st.markdown("---")
+        df_aus = df_all[df_all['typ']=='Ausgabe'].copy()
+        df_aus_year = df_aus[df_aus['datum_dt'].dt.year == now.year].copy()
+        year_months = max(1, now.month if now.year == target.year else 12)
+
+        if not df_aus_year.empty:
+            kat_grp_year = df_aus_year.groupby('kategorie')['betrag_num'].apply(lambda x: abs(x.sum())).reset_index()
+            kat_grp_year.columns = ['kategorie','betrag_num']
+            kat_grp_year['avg_monthly'] = kat_grp_year['betrag_num'] / year_months
+            kat_grp_year = kat_grp_year.sort_values('avg_monthly', ascending=True).tail(10)
+
+            n = len(kat_grp_year)
+            colors = PALETTE_AUS[:n] if n <= len(PALETTE_AUS) else PALETTE_AUS * (n // len(PALETTE_AUS) + 1)
+            colors = colors[:n]
+
+            fig_bar = go.Figure(go.Bar(
+                y=kat_grp_year['kategorie'],
+                x=kat_grp_year['avg_monthly'],
+                orientation='h',
+                marker_color=colors,
+                text=[f"Ø {v:.2f} {sym}/Mo" for v in kat_grp_year['avg_monthly']],
+                textposition='inside',
+                insidetextanchor='middle',
+                textfont=dict(color='#ffffff', size=12),
+            ))
+            fig_bar.update_layout(
+                title=f"Top Ausgaben-Kategorien (Ø pro Monat · {now.year})",
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#94a3b8'), height=350,
+                xaxis=dict(showgrid=False, color='#475569', title=f"Ø {sym}/Monat"),
+                yaxis=dict(showgrid=False, color='#94a3b8'),
+                margin=dict(l=20,r=20,t=40,b=20),
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
+
+        # ── 3. EINNAHMEN vs AUSGABEN (linie) ─────────────────────
+        st.markdown("---")
+        df_trend = df_all[df_all['typ'].isin(['Einnahme','Ausgabe'])].copy()
+        if not df_trend.empty:
+            df_trend['month'] = df_trend['datum_dt'].dt.to_period('M').astype(str)
+            monthly = df_trend.groupby(['month','typ'])['betrag_num'].sum().reset_index()
+            monthly['betrag_num'] = monthly.apply(lambda r: r['betrag_num'] if r['typ']=='Einnahme' else abs(r['betrag_num']), axis=1)
+            monthly = monthly.sort_values('month').tail(24)
+            fig_line = go.Figure()
+            for typ_name, color in [('Einnahme','#4ade80'),('Ausgabe','#f87171')]:
+                sub = monthly[monthly['typ']==typ_name]
+                if not sub.empty:
+                    fig_line.add_trace(go.Scatter(x=sub['month'], y=sub['betrag_num'],
+                        name=typ_name, line=dict(color=color, width=2), fill='tozeroy',
+                        fillcolor=color.replace(')',',0.1)').replace('rgb','rgba') if 'rgb' in color else color + '1a'))
+            fig_line.update_layout(
+                title="Einnahmen vs. Ausgaben (letzte 24 Monate)",
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#94a3b8'), height=300,
+                xaxis=dict(showgrid=False, color='#475569'),
+                yaxis=dict(showgrid=False, color='#475569', title=sym),
+                legend=dict(font=dict(color='#94a3b8')),
+                margin=dict(l=20,r=20,t=40,b=20),
+            )
+            st.plotly_chart(fig_line, use_container_width=True)
+
+        # ── 4. HEATMAP ───────────────────────────────────────────
+        st.markdown("---")
+        st.markdown(f'<h3 style="color:{pri};font-size:16px;font-weight:700;">🗓️ Ausgaben-Heatmap</h3>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#64748b;font-size:13px;margin-bottom:16px;">Hellere Felder = höhere Ausgaben an diesem Tag.</p>', unsafe_allow_html=True)
+
+        h_offset = st.session_state.heatmap_month_offset
+        hmap_target = (now.replace(day=1) + datetime.timedelta(days=32*(-h_offset))).replace(day=1) if h_offset else now.replace(day=1)
+        hcol1,hcol2,hcol3 = st.columns([1,3,1])
+        with hcol1:
+            if st.button("◀", key="hm_prev"): st.session_state.heatmap_month_offset += 1; st.rerun()
+        with hcol2:
+            st.markdown(f'<div style="text-align:center;color:#94a3b8;font-weight:600;padding:8px;">{hmap_target.strftime("%B %Y")}</div>', unsafe_allow_html=True)
+        with hcol3:
+            if h_offset > 0 and st.button("▶", key="hm_next"): st.session_state.heatmap_month_offset -= 1; st.rerun()
+
+        df_hm = df_all[(df_all['typ']=='Ausgabe')&(df_all['datum_dt'].dt.year==hmap_target.year)&(df_all['datum_dt'].dt.month==hmap_target.month)].copy()
+        import calendar
+        cal = calendar.monthcalendar(hmap_target.year, hmap_target.month)
+        day_spend = {}
+        if not df_hm.empty:
+            for _, row in df_hm.iterrows():
+                d = row['datum_dt'].day if pd.notna(row['datum_dt']) else None
+                if d: day_spend[d] = day_spend.get(d, 0) + abs(float(row['betrag_num']))
+        max_val = max(day_spend.values()) if day_spend else 1
+        day_names = ['Mo','Di','Mi','Do','Fr','Sa','So']
+        hm_html = '<div style="overflow-x:auto;"><table style="border-collapse:separate;border-spacing:4px;width:100%;">'
+        hm_html += '<tr>' + ''.join(f'<th style="color:#475569;font-size:11px;text-align:center;padding:4px;">{d}</th>' for d in day_names) + '</tr>'
+        for week in cal:
+            hm_html += '<tr>'
+            for day in week:
+                if day == 0:
+                    hm_html += '<td style="background:#0a1020;border-radius:6px;height:44px;"></td>'
                 else:
-                    st.markdown(f"<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin-bottom:12px;'>Code gesendet an <span style='color:{_t['primary']};'>{st.session_state['email_verify_new']}</span></p>", unsafe_allow_html=True)
-                    with st.form("email_verify_form"):
-                        code_in = st.text_input("6-stelliger Code", placeholder="123456", max_chars=6)
-                        cv1, cv2 = st.columns(2)
-                        with cv1: confirm = st.form_submit_button("Bestätigen", use_container_width=True, type="primary")
-                        with cv2: cancel  = st.form_submit_button("Abbrechen",  use_container_width=True)
-                        if confirm:
-                            if st.session_state['email_verify_expiry'] and datetime.datetime.now() > st.session_state['email_verify_expiry']:
-                                st.error("⏰ Code abgelaufen."); st.session_state['email_verify_code'] = ""; st.rerun()
-                            elif code_in.strip() != st.session_state['email_verify_code']: st.error("❌ Falscher Code.")
-                            else:
-                                df_u2 = _gs_read("users"); idx2 = df_u2[df_u2['username']==user_name].index
-                                if not idx2.empty:
-                                    df_u2.loc[idx2[0],'email'] = st.session_state['email_verify_new']; _gs_update("users", df_u2)
-                                st.session_state.update({'email_verify_code':"",'email_verify_expiry':None,'email_verify_new':""})
-                                st.success("✅ E-Mail-Adresse erfolgreich geändert!"); st.rerun()
-                        if cancel:
-                            st.session_state.update({'email_verify_code':"",'email_verify_new':""}); st.rerun()
-
-        # ── Daten Tab — alles untereinander, sauber ──────────────
-        elif active_tab == "Daten":
-
-            # ── Excel-Export ──────────────────────────────────────
-            section_header("Excel-Export")
-            try:
-                import io
-                df_export = _gs_read("transactions")
-                if 'user' in df_export.columns:
-                    df_export = df_export[df_export['user']==user_name]
-                    if 'deleted' in df_export.columns:
-                        df_export = df_export[~df_export['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0'])]
-                    df_export = df_export.drop(columns=['deleted','user'], errors='ignore')
-                buffer = io.BytesIO()
-                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                    df_export.to_excel(writer, index=False, sheet_name='Transaktionen')
-                excel_bytes = buffer.getvalue()
-                st.markdown(f"<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin-bottom:12px;'>{len(df_export)} Transaktionen bereit</p>", unsafe_allow_html=True)
-                _, dl_col, _ = st.columns([1, 2, 1])
-                with dl_col:
-                    st.download_button(
-                        label="⬇️ Transaktionen exportieren (Excel)",
-                        data=excel_bytes,
-                        file_name=f"balancely_{user_name}_{datetime.date.today()}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True, type="primary")
-            except Exception as e:
-                st.error(f"Export fehlgeschlagen: {e}")
-
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-
-            # ── Daten zurücksetzen ────────────────────────────────
-            section_header("Daten zurücksetzen")
-            if not st.session_state['confirm_reset']:
-                _, rst_col, _ = st.columns([1, 2, 1])
-                with rst_col:
-                    if st.button("🔄 Alle Transaktionen löschen", use_container_width=True, type="secondary"):
-                        st.session_state['confirm_reset'] = True; st.rerun()
-            else:
-                st.markdown(
-                    "<div style='background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:14px;margin-bottom:10px;'>"
-                    "<p style='font-family:DM Sans,sans-serif;color:#fca5a5;font-size:14px;font-weight:500;margin:0 0 4px 0;'>⚠️ Wirklich alle Transaktionen löschen?</p>"
-                    "<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin:0;'>Diese Aktion kann nicht rückgängig gemacht werden.</p></div>",
-                    unsafe_allow_html=True)
-                _, rc1, rc2, _ = st.columns([1, 1, 1, 1])
-                with rc1:
-                    if st.button("Ja, löschen", use_container_width=True, type="primary"):
-                        try:
-                            df_all_t = _gs_read("transactions")
-                            if 'deleted' not in df_all_t.columns: df_all_t['deleted'] = ''
-                            df_all_t.loc[df_all_t['user']==user_name,'deleted'] = 'True'
-                            _gs_update("transactions", df_all_t)
-                            st.session_state['confirm_reset'] = False; st.success("✅ Alle Transaktionen gelöscht."); st.rerun()
-                        except Exception as e: st.error(f"Fehler: {e}")
-                with rc2:
-                    if st.button("Abbrechen", use_container_width=True):
-                        st.session_state['confirm_reset'] = False; st.rerun()
-
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-
-            # ── Account löschen ───────────────────────────────────
-            section_header("Account löschen")
-            if not st.session_state['confirm_delete_account']:
-                _, del_col, _ = st.columns([1, 2, 1])
-                with del_col:
-                    if st.button("🗑️ Account und alle Daten löschen", use_container_width=True, type="secondary"):
-                        st.session_state['confirm_delete_account'] = True; st.rerun()
-            else:
-                st.markdown(
-                    "<div style='background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);border-left:3px solid #f87171;border-radius:10px;padding:14px;margin-bottom:10px;'>"
-                    "<p style='font-family:DM Sans,sans-serif;color:#fca5a5;font-size:14px;font-weight:600;margin:0 0 4px 0;'>🔴 Account unwiderruflich löschen?</p>"
-                    "<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin:0;'>Alle Transaktionen, Spartöpfe, Sparziele und Einstellungen werden gelöscht.</p></div>",
-                    unsafe_allow_html=True)
-                _, da1, da2, _ = st.columns([1, 1, 1, 1])
-                with da1:
-                    if st.button("Ja, Account löschen", use_container_width=True, type="primary"):
-                        try:
-                            for ws,col_name in [("transactions","user"),("toepfe","user")]:
-                                df_ws = _gs_read(ws)
-                                if 'deleted' not in df_ws.columns: df_ws['deleted'] = ''
-                                df_ws.loc[df_ws[col_name]==user_name,'deleted'] = 'True'; _gs_update(ws, df_ws)
-                            for ws in ["goals","settings"]:
-                                df_ws = _gs_read(ws); _gs_update(ws, df_ws[df_ws['user']!=user_name])
-                            df_u3 = _gs_read("users")
-                            if 'deleted' not in df_u3.columns: df_u3['deleted'] = ''
-                            df_u3.loc[df_u3['username']==user_name,'deleted'] = 'True'; _gs_update("users", df_u3)
-                            for k in [k for k in st.session_state if k.startswith("_gs_cache_")]: del st.session_state[k]
-                            st.session_state.update({'logged_in':False,'user_name':"",'confirm_delete_account':False}); st.rerun()
-                        except Exception as e: st.error(f"Fehler beim Löschen: {e}")
-                with da2:
-                    if st.button("Abbrechen", use_container_width=True, key="cancel_del_acc"):
-                        st.session_state['confirm_delete_account'] = False; st.rerun()
-
-# ============================================================
-#  AUTH
-# ============================================================
-
-else:
-    st.markdown("<div style='height:10vh;'></div>", unsafe_allow_html=True)
-    st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
-
-    _, center_col, _ = st.columns([1,1.2,1])
-    with center_col:
-        mode = st.session_state['auth_mode']
-
-        if mode == 'login':
-            with st.form("login_form"):
-                st.markdown("<h3 style='text-align:center;color:#e2e8f0;font-family:DM Sans,sans-serif;font-weight:600;font-size:22px;letter-spacing:-0.5px;margin-bottom:24px;'>Anmelden</h3>", unsafe_allow_html=True)
-                u_in = st.text_input("Username", placeholder="Benutzername")
-                p_in = st.text_input("Passwort", type="password")
-                if st.form_submit_button("Anmelden", use_container_width=True):
-                    time.sleep(1)
-                    df_u = _gs_read("users"); matching = df_u[df_u['username']==u_in]
-                    user_row = matching.iloc[[-1]] if not matching.empty else matching
-                    if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
-                        if not is_verified(user_row.iloc[0].get('verified','True')):
-                            st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
-                        else:
-                            st.session_state.update({'logged_in':True,'user_name':u_in}); st.rerun()
-                    else: st.error("❌ Login ungültig.")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Konto erstellen", use_container_width=True):
-                    st.session_state['auth_mode'] = 'signup'; st.rerun()
-            with col2:
-                if st.button("Passwort vergessen?", use_container_width=True, type="secondary"):
-                    st.session_state['auth_mode'] = 'forgot'; st.rerun()
-
-        elif mode == 'signup':
-            with st.form("signup_form"):
-                st.markdown("<h3 style='text-align:center;color:#e2e8f0;font-family:DM Sans,sans-serif;font-weight:600;font-size:22px;letter-spacing:-0.5px;margin-bottom:24px;'>Registrierung</h3>", unsafe_allow_html=True)
-                s_name  = st.text_input("Name", placeholder="Max Mustermann")
-                s_user  = st.text_input("Username", placeholder="max123")
-                s_email = st.text_input("E-Mail", placeholder="max@beispiel.de")
-                s_pass  = st.text_input("Passwort", type="password")
-                c_pass  = st.text_input("Passwort wiederholen", type="password")
-                if st.form_submit_button("Konto erstellen", use_container_width=True):
-                    if not all([s_name,s_user,s_email,s_pass]): st.error("❌ Bitte fülle alle Felder aus!")
-                    elif len(s_name.strip().split())<2: st.error("❌ Bitte gib deinen vollständigen Vor- und Nachnamen an.")
-                    elif not is_valid_email(s_email): st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
+                    val = day_spend.get(day, 0)
+                    if val > 0:
+                        # v5: lighter = more spending
+                        intensity = val / max_val
+                        r = int(100 + intensity * 155)  # 100→255 as intensity increases
+                        g = int(10 + intensity * 90)    # 10→100
+                        b = int(10 + intensity * 5)     # 10→15
+                        bg = f"rgba({r},{g},{b},0.90)"
+                        text_color = "#fff"
                     else:
-                        ok, msg = check_password_strength(s_pass)
-                        if not ok: st.error(f"❌ {msg}")
-                        elif s_pass != c_pass: st.error("❌ Die Passwörter stimmen nicht überein.")
-                        else:
-                            df_u = _gs_read("users")
-                            if s_user in df_u['username'].values: st.error("⚠️ Dieser Username ist bereits vergeben.")
-                            elif s_email.strip().lower() in df_u['email'].values: st.error("⚠️ Diese E-Mail ist bereits registriert.")
-                            else:
-                                code = generate_code(); expiry = datetime.datetime.now() + datetime.timedelta(minutes=10)
-                                if send_email(s_email.strip().lower(), "Balancely – E-Mail verifizieren", email_html("Willkommen bei Balancely! Dein Verifizierungscode lautet:", code)):
-                                    st.session_state.update({
-                                        'pending_user':{"name":make_hashes(s_name.strip()),"username":s_user,"email":s_email.strip().lower(),"password":make_hashes(s_pass)},
-                                        'verify_code':code,'verify_expiry':expiry,'auth_mode':'verify_email'})
-                                    st.rerun()
-                                else: st.error("❌ E-Mail konnte nicht gesendet werden.")
-            if st.button("Zurück zum Login", use_container_width=True):
-                st.session_state['auth_mode'] = 'login'; st.rerun()
+                        bg = "#0f172a"; text_color = "#334155"
+                    hm_html += (f'<td style="background:{bg};border-radius:6px;text-align:center;height:44px;vertical-align:middle;cursor:default;"'
+                        f' title="{val:.2f} {sym}"><span style="font-size:12px;font-weight:600;color:{text_color};">{day}</span>'
+                        + (f'<br><span style="font-size:9px;color:{text_color};opacity:0.8;">{val:.0f}</span>' if val > 0 else "")
+                        + '</td>')
+            hm_html += '</tr>'
+        hm_html += '</table></div>'
+        st.markdown(hm_html, unsafe_allow_html=True)
 
-        elif mode == 'verify_email':
-            pending_email = st.session_state['pending_user'].get('email','')
-            with st.form("verify_form"):
-                st.markdown(f"<h3 style='text-align:center;color:#e2e8f0;font-size:22px;font-weight:600;margin-bottom:12px;'>E-Mail verifizieren</h3><p style='text-align:center;color:#475569;font-size:14px;margin-bottom:20px;'>Code gesendet an <span style='color:#38bdf8;'>{pending_email}</span></p>", unsafe_allow_html=True)
-                code_input = st.text_input("Code eingeben", placeholder="123456", max_chars=6)
-                if st.form_submit_button("Bestätigen", use_container_width=True):
-                    if st.session_state['verify_expiry'] and datetime.datetime.now() > st.session_state['verify_expiry']:
-                        st.error("⏰ Code abgelaufen."); st.session_state['auth_mode'] = 'signup'; st.rerun()
-                    elif code_input.strip() != st.session_state['verify_code']: st.error("❌ Falscher Code.")
-                    else:
-                        df_u = _gs_read("users")
-                        new_u = pd.DataFrame([{**st.session_state['pending_user'],"verified":"True","token":"","token_expiry":""}])
-                        _gs_update("users", pd.concat([df_u, new_u], ignore_index=True))
-                        st.session_state.update({'pending_user':{},'verify_code':"",'verify_expiry':None,'auth_mode':'login'})
-                        st.success("✅ E-Mail verifiziert! Du kannst dich jetzt einloggen.")
-            if st.button("Zum Login", use_container_width=True, type="primary"):
-                st.session_state['auth_mode'] = 'login'; st.rerun()
+    except ImportError:
+        st.warning("Plotly nicht installiert.")
+    except Exception as e:
+        st.error(f"Fehler in Analysen: {e}")
 
-        elif mode == 'forgot':
-            with st.form("forgot_form"):
-                st.markdown("<h3 style='text-align:center;color:#e2e8f0;font-size:22px;font-weight:600;margin-bottom:12px;'>Passwort vergessen</h3>", unsafe_allow_html=True)
-                forgot_email = st.text_input("E-Mail", placeholder="deine@email.de")
-                if st.form_submit_button("Code senden", use_container_width=True):
-                    if not is_valid_email(forgot_email): st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
-                    else:
-                        df_u = _gs_read("users"); idx = df_u[df_u['email']==forgot_email.strip().lower()].index
-                        if idx.empty:
-                            st.success("✅ Falls diese E-Mail registriert ist, wurde ein Code gesendet.")
-                        else:
-                            code = generate_code(); expiry = datetime.datetime.now() + datetime.timedelta(minutes=10)
-                            if send_email(forgot_email.strip().lower(), "Balancely – Passwort zurücksetzen", email_html("Dein Code zum Zurücksetzen des Passworts lautet:", code)):
-                                st.session_state.update({'reset_email':forgot_email.strip().lower(),'reset_code':code,'reset_expiry':expiry,'auth_mode':'reset_password'}); st.rerun()
-            if st.button("Zurück zum Login", use_container_width=True):
-                st.session_state['auth_mode'] = 'login'; st.rerun()
+# ── SPARTÖPFE ────────────────────────────────────────────────
+def show_spartoepfe(user, df_all, settings):
+    sym = CURRENCY_SYMBOLS.get(settings.get('currency','EUR'),'€')
+    t = THEMES.get(st.session_state.get('theme','Ocean Blue'), THEMES['Ocean Blue'])
+    pri = t['primary']
+    section_header("🪣","Spartöpfe","Spare gezielt für deine Ziele")
 
-        elif mode == 'reset_password':
-            with st.form("reset_form"):
-                st.markdown(f"<h3 style='text-align:center;color:#e2e8f0;font-size:22px;font-weight:600;margin-bottom:12px;'>Passwort zurücksetzen</h3><p style='text-align:center;color:#475569;font-size:14px;margin-bottom:20px;'>Code gesendet an <span style='color:#38bdf8;'>{st.session_state['reset_email']}</span></p>", unsafe_allow_html=True)
-                code_input = st.text_input("6-stelliger Code", placeholder="123456", max_chars=6)
-                pw_neu  = st.text_input("Neues Passwort", type="password")
-                pw_neu2 = st.text_input("Passwort wiederholen", type="password")
-                if st.form_submit_button("Passwort speichern", use_container_width=True):
-                    if st.session_state['reset_expiry'] and datetime.datetime.now() > st.session_state['reset_expiry']:
-                        st.error("⏰ Code abgelaufen."); st.session_state['auth_mode'] = 'forgot'; st.rerun()
-                    elif code_input.strip() != st.session_state['reset_code']: st.error("❌ Falscher Code.")
+    toepfe = load_toepfe(user)
+
+    if st.button("➕ Neuen Spartopf erstellen", type="primary"): add_topf_dialog()
+
+    if not toepfe:
+        st.markdown('<div style="text-align:center;padding:60px;color:#475569;">Noch keine Spartöpfe. Erstelle deinen ersten!</div>', unsafe_allow_html=True)
+        return
+
+    cols = st.columns(min(3, len(toepfe)))
+    for i, topf in enumerate(toepfe):
+        with cols[i % 3]:
+            pct = min(topf['gespart'] / topf['ziel'], 1.0) if topf['ziel'] > 0 else 0
+            bar_color = "#4ade80" if pct >= 1.0 else topf['farbe']
+            st.markdown(f'''<div style="background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <span style="font-size:28px;">{topf["emoji"]}</span>
+                    <span style="font-size:13px;font-weight:700;color:#f1f5f9;">{topf["name"]}</span>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                        <span style="font-size:12px;color:#64748b;">{topf["gespart"]:.2f} {sym}</span>
+                        <span style="font-size:12px;color:#64748b;">{topf["ziel"]:.2f} {sym}</span>
+                    </div>
+                    <div style="background:#1e293b;border-radius:6px;height:8px;">
+                        <div style="width:{pct*100:.1f}%;background:{bar_color};border-radius:6px;height:8px;"></div>
+                    </div>
+                    <p style="text-align:right;font-size:11px;color:#475569;margin:4px 0 0;">{pct*100:.0f}%</p>
+                </div></div>''', unsafe_allow_html=True)
+
+            d_in = st.number_input(f"Einzahlen ({sym})", min_value=0.01, step=5.0, key=f"topf_in_{topf['id']}")
+            c1,c2,c3 = st.columns(3)
+            with c1:
+                if st.button("↓ Einzahlen", key=f"topf_dep_{topf['id']}", use_container_width=True, type="primary"):
+                    update_topf_gespart(user, topf['id'], topf['name'], d_in); _gs_invalidate("toepfe","transactions"); st.rerun()
+            with c2:
+                if st.button("✏️", key=f"topf_edit_{topf['id']}", use_container_width=True):
+                    st.session_state.topf_edit_data = topf; st.rerun()
+            with c3:
+                if st.button("🗑️", key=f"topf_del_{topf['id']}", use_container_width=True):
+                    st.session_state.topf_delete_id = topf['id']
+                    st.session_state.topf_delete_name = topf['name']; st.rerun()
+
+    if st.session_state.topf_edit_data:
+        edit_topf_dialog(st.session_state.topf_edit_data)
+    if st.session_state.topf_delete_id:
+        delete_topf_dialog(st.session_state.topf_delete_id, st.session_state.topf_delete_name)
+
+# ── EINSTELLUNGEN ────────────────────────────────────────────
+def show_einstellungen(user, settings):
+    sym = CURRENCY_SYMBOLS.get(settings.get('currency','EUR'),'€')
+    t = THEMES.get(st.session_state.get('theme','Ocean Blue'), THEMES['Ocean Blue'])
+    pri = t['primary']
+    section_header("⚙️","Einstellungen","Personalisiere deine Erfahrung")
+
+    tab_profil, tab_aussehen, tab_kategorien, tab_budget = st.tabs(["👤 Profil","🎨 Aussehen","🏷️ Kategorien","💰 Budget"])
+
+    with tab_profil:
+        st.markdown("#### Benutzerprofil")
+        try:
+            df_users = _gs_read("users")
+            user_row = df_users[df_users['username']==user]
+            email_val = user_row.iloc[-1].get('email','') if not user_row.empty else ''
+        except: email_val = ''
+        st.markdown(f'<div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px;">'
+            f'<p style="color:#64748b;font-size:12px;margin:0;">Benutzername</p>'
+            f'<p style="color:#f1f5f9;font-size:16px;font-weight:700;margin:4px 0 0;">{user}</p>'
+            f'<p style="color:#64748b;font-size:12px;margin:8px 0 0;">E-Mail</p>'
+            f'<p style="color:#f1f5f9;font-size:14px;margin:4px 0 0;">{email_val}</p></div>', unsafe_allow_html=True)
+
+        with st.expander("🔑 Passwort ändern"):
+            old_pw = st.text_input("Altes Passwort", type="password", key="chg_old")
+            new_pw1 = st.text_input("Neues Passwort", type="password", key="chg_new1")
+            new_pw2 = st.text_input("Neues Passwort bestätigen", type="password", key="chg_new2")
+            if st.button("💾 Passwort speichern", use_container_width=True):
+                try:
+                    df = _gs_read("users"); match = df[(df['username']==user)&(df['password']==make_hashes(old_pw))]
+                    if match.empty: st.error("Altes Passwort falsch.")
+                    elif new_pw1 != new_pw2: st.error("Passwörter stimmen nicht überein.")
                     else:
-                        ok, msg = check_password_strength(pw_neu)
-                        if not ok: st.error(f"❌ {msg}")
-                        elif pw_neu != pw_neu2: st.error("❌ Die neuen Passwörter stimmen nicht überein.")
+                        ok, msg = check_password_strength(new_pw1)
+                        if not ok: st.error(msg)
                         else:
-                            df_u = _gs_read("users"); idx = df_u[df_u['email']==st.session_state['reset_email']].index
-                            if not idx.empty:
-                                df_u.loc[idx[0],'password'] = make_hashes(pw_neu); _gs_update("users", df_u)
-                                st.session_state.update({'reset_email':"",'reset_code':"",'reset_expiry':None,'auth_mode':'login'})
-                                st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen."); st.rerun()
-            if st.button("Zurück zum Login", use_container_width=True):
-                st.session_state['auth_mode'] = 'login'; st.rerun()
+                            df.loc[df['username']==user,'password'] = make_hashes(new_pw1)
+                            _gs_update("users", df); st.success("Passwort geändert!")
+                except Exception as e: st.error(f"Fehler: {e}")
+
+        st.markdown("---")
+        if st.button("🚪 Abmelden", use_container_width=True):
+            for k in list(st.session_state.keys()): del st.session_state[k]
+            st.rerun()
+        if not st.session_state.confirm_delete_account:
+            if st.button("🗑️ Account löschen", use_container_width=True):
+                st.session_state.confirm_delete_account = True; st.rerun()
+        else:
+            st.error("Wirklich Account und alle Daten löschen?")
+            ca,cb = st.columns(2)
+            with ca:
+                if st.button("Abbrechen", use_container_width=True):
+                    st.session_state.confirm_delete_account = False; st.rerun()
+            with cb:
+                if st.button("🗑️ Ja, löschen", use_container_width=True, type="primary"):
+                    try:
+                        for ws in ("users","transactions","categories","settings","goals","dauerauftraege","toepfe"):
+                            try:
+                                df = _gs_read(ws)
+                                if 'user' in df.columns: df = df[df['user']!=user]
+                                elif 'username' in df.columns: df = df[df['username']!=user]
+                                _gs_update(ws, df)
+                            except: pass
+                        for k in list(st.session_state.keys()): del st.session_state[k]
+                        st.rerun()
+                    except Exception as e: st.error(f"Fehler: {e}")
+
+    with tab_aussehen:
+        st.markdown("#### Theme")
+        theme_cols = st.columns(3)
+        theme_icons = {'Ocean Blue':'🌊','Emerald Green':'🌿','Deep Purple':'🔮'}
+        for i, (tc, tname) in enumerate(zip(theme_cols, THEMES.keys())):
+            with tc:
+                th = THEMES[tname]; selected = st.session_state.theme == tname
+                btn_type = "primary" if selected else "secondary"
+                if st.button(f"{theme_icons.get(tname,'🎨')} {tname}", key=f"theme_{tname}", use_container_width=True, type=btn_type):
+                    st.session_state.theme = tname
+                    save_user_settings(user, theme=tname); st.rerun()
+                st.markdown(f'<div style="height:6px;border-radius:3px;background:{th["primary"]};margin-top:4px;"></div>', unsafe_allow_html=True)
+
+    with tab_kategorien:
+        st.markdown("#### Eigene Kategorien")
+        if st.button("➕ Neue Kategorie", type="primary"): add_cat_dialog()
+        for typ in ('Einnahme','Ausgabe','Depot'):
+            custom = load_custom_cats(user, typ)
+            if custom:
+                color = '#4ade80' if typ=='Einnahme' else '#f87171' if typ=='Ausgabe' else '#38bdf8'
+                st.markdown(f'<h4 style="color:{color};font-size:13px;margin:16px 0 8px;">{typ}</h4>', unsafe_allow_html=True)
+                for cat in custom:
+                    cc1,cc2,cc3 = st.columns([5,1,1])
+                    with cc1:
+                        st.markdown(f'<div style="padding:8px 12px;background:#0f172a;border-radius:8px;color:#f1f5f9;font-size:13px;">{cat}</div>', unsafe_allow_html=True)
+                    with cc2:
+                        if st.button("✏️", key=f"ecat_{typ}_{cat}"):
+                            st.session_state.edit_cat_data = {'user':user,'typ':typ,'kategorie':cat}; st.rerun()
+                    with cc3:
+                        if st.button("🗑️", key=f"dcat_{typ}_{cat}"):
+                            st.session_state.delete_cat_data = {'user':user,'typ':typ,'kategorie':cat}; st.rerun()
+
+        if st.session_state.edit_cat_data: edit_cat_dialog(st.session_state.edit_cat_data)
+        if st.session_state.delete_cat_data: delete_cat_dialog(st.session_state.delete_cat_data)
+
+    with tab_budget:
+        st.markdown("#### Monatliches Budget")
+        budget_curr = float(settings.get('budget',0) or 0)
+        st.markdown(f'<p style="color:#94a3b8;">Aktuelles Budget: <strong style="color:{pri}">{budget_curr:.2f} {sym}</strong></p>', unsafe_allow_html=True)
+        new_budget = st.number_input(f"Neues Budget ({sym})", min_value=0.0, value=budget_curr, step=50.0)
+        curr_list = list(CURRENCY_SYMBOLS.keys())
+        curr_curr = settings.get('currency','EUR')
+        curr_idx = curr_list.index(curr_curr) if curr_curr in curr_list else 0
+        new_curr = st.selectbox("Währung", curr_list, index=curr_idx, format_func=lambda c: f"{c} ({CURRENCY_SYMBOLS[c]})")
+        if st.button("💾 Speichern", type="primary", use_container_width=True):
+            save_user_settings(user, budget=new_budget, currency=new_curr); _gs_invalidate("settings"); st.success("Gespeichert!"); st.rerun()
+
+# ── MAIN APP ─────────────────────────────────────────────────
+def main():
+    inject_theme(st.session_state.get('theme','Ocean Blue'))
+
+    if not st.session_state.logged_in:
+        show_login(); return
+
+    user = st.session_state.user_name
+
+    # First-login onboarding
+    if st.session_state.get('show_onboarding_prefs'):
+        onboarding_prefs_dialog()
+
+    # Walkthrough
+    if st.session_state.get('show_walkthrough'):
+        walkthrough_dialog()
+
+    # Sidebar
+    with st.sidebar:
+        t = THEMES.get(st.session_state.get('theme','Ocean Blue'), THEMES['Ocean Blue'])
+        pri = t['primary']; acc2 = t['accent2']
+        st.markdown(f'''<div style="padding:20px 0 16px;text-align:center;border-bottom:1px solid #1e293b;margin-bottom:16px;">
+            <div style="font-size:32px;">⚖️</div>
+            <h2 style="font-size:18px;font-weight:800;background:linear-gradient(135deg,{pri},{acc2});
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:4px 0;">Balancely</h2>
+            <p style="font-size:12px;color:#475569;margin:0;">Hallo, {user} 👋</p>
+        </div>''', unsafe_allow_html=True)
+
+        nav_items = [("🏠","Dashboard"),("💸","Transaktionen"),("📊","Analysen"),("🪣","Spartöpfe"),("⚙️","Einstellungen")]
+        for icon, label in nav_items:
+            active = st.session_state.get('_last_menu','') == label
+            btn_style = f"background:linear-gradient(135deg,{pri},{acc2});" if active else "background:#1e293b;"
+            if st.button(f"{icon} {label}", key=f"nav_{label}", use_container_width=True,
+                         type="primary" if active else "secondary"):
+                st.session_state._last_menu = label; st.rerun()
+
+        st.markdown("---")
+        if st.button("🗺️ App-Tour starten", use_container_width=True):
+            st.session_state.show_walkthrough = True; st.session_state.walkthrough_step = 0; st.rerun()
+
+    menu = st.session_state.get('_last_menu','Dashboard')
+
+    # Load user data
+    try:
+        df_all = _gs_read("transactions")
+        if not df_all.empty and 'user' in df_all.columns:
+            df_all = df_all[
+                (df_all['user'] == user) &
+                (~df_all['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0']))
+            ].copy()
+        else:
+            df_all = pd.DataFrame()
+    except: df_all = pd.DataFrame()
+
+    settings = load_user_settings(user)
+
+    if menu == "Dashboard": show_dashboard(user, df_all, settings)
+    elif menu == "Transaktionen": show_transaktionen(user, df_all, settings)
+    elif menu == "Analysen": show_analysen(user, df_all, settings)
+    elif menu == "Spartöpfe": show_spartoepfe(user, df_all, settings)
+    elif menu == "Einstellungen": show_einstellungen(user, settings)
+    else: show_dashboard(user, df_all, settings)
+
+main()
