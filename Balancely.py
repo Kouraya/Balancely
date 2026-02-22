@@ -43,7 +43,7 @@ def send_email(to_email, subject, html_content):
         st.error(f"Email-Fehler: {e}")
         return False
 
-def email_html(title, text, btn_label, btn_link):
+def email_html(text, btn_label, btn_link):
     return f"""
     <html><body style="font-family:sans-serif;background:#020617;color:#f1f5f9;padding:40px;">
         <div style="max-width:480px;margin:auto;background:#0f172a;border-radius:16px;
@@ -175,6 +175,7 @@ if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
 if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
+if 'verify_success' not in st.session_state: st.session_state['verify_success'] = False
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -191,7 +192,6 @@ if 'token' in qp and not st.session_state['logged_in']:
             expiry = datetime.datetime.fromisoformat(expiry_str)
             if datetime.datetime.now() < expiry:
                 if token_type == 'verify':
-                    # Email verifizieren
                     idx = match.index[0]
                     df_u.loc[idx, 'verified'] = 'True'
                     df_u.loc[idx, 'token'] = ""
@@ -199,21 +199,28 @@ if 'token' in qp and not st.session_state['logged_in']:
                     conn.update(worksheet="users", data=df_u)
                     st.query_params.clear()
                     st.session_state['auth_mode'] = 'login'
-                    st.success("✅ E-Mail erfolgreich verifiziert! Du kannst dich jetzt einloggen.")
+                    st.session_state['verify_success'] = True
+                    st.rerun()
                 else:
-                    # Passwort zurücksetzen
                     st.session_state['auth_mode'] = 'reset_password'
                     st.session_state['reset_token'] = token
                     st.query_params.clear()
+                    st.rerun()
             else:
-                st.error("⏰ Dieser Link ist abgelaufen. Bitte fordere einen neuen an.")
                 st.query_params.clear()
+                st.session_state['auth_mode'] = 'login'
+                st.session_state['token_error'] = "⏰ Dieser Link ist abgelaufen. Bitte fordere einen neuen an."
+                st.rerun()
         except:
-            st.error("❌ Ungültiger Link.")
             st.query_params.clear()
+            st.session_state['auth_mode'] = 'login'
+            st.session_state['token_error'] = "❌ Ungültiger Link."
+            st.rerun()
     else:
-        st.error("❌ Ungültiger Link.")
         st.query_params.clear()
+        st.session_state['auth_mode'] = 'login'
+        st.session_state['token_error'] = "❌ Ungültiger Link."
+        st.rerun()
 
 if st.session_state['logged_in']:
     with st.sidebar:
@@ -371,6 +378,15 @@ else:
 
         with center_col:
             if st.session_state['auth_mode'] == 'login':
+
+                # Meldungen anzeigen
+                if st.session_state.get('verify_success'):
+                    st.success("✅ E-Mail erfolgreich verifiziert! Du kannst dich jetzt einloggen.")
+                    st.session_state['verify_success'] = False
+                if st.session_state.get('token_error'):
+                    st.error(st.session_state['token_error'])
+                    st.session_state.pop('token_error', None)
+
                 with st.form("l_f"):
                     st.markdown("<h3 style='text-align:center; color:white;'>Anmelden</h3>", unsafe_allow_html=True)
                     u_in = st.text_input("Username", placeholder="Benutzername")
@@ -420,7 +436,6 @@ else:
                                 conn.update(worksheet="users", data=df_u)
                                 link = f"{APP_URL}?token={token}&type=reset"
                                 html = email_html(
-                                    "Passwort zurücksetzen",
                                     "Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.",
                                     "Passwort zurücksetzen",
                                     link
@@ -474,7 +489,6 @@ else:
                                     conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
                                     link = f"{APP_URL}?token={token}&type=verify"
                                     html = email_html(
-                                        "E-Mail verifizieren",
                                         "Willkommen bei Balancely! Bitte verifiziere deine E-Mail-Adresse um dein Konto zu aktivieren.",
                                         "E-Mail verifizieren",
                                         link
