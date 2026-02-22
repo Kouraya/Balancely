@@ -1364,9 +1364,13 @@ if st.session_state['logged_in']:
                     "notiz":     t_note,
                 }])
                 df_old = conn.read(worksheet="transactions", ttl="5")
-                conn.update(worksheet="transactions",
-                            data=pd.concat([df_old, new_row], ignore_index=True))
-                st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
+                if st.form_submit_button("Speichern", use_container_width=True):
+    conn.update(worksheet="transactions", data=df_new)
+    
+    st.cache_data.clear()  # <--- DIESE ZEILE HINZUFÜGEN
+    
+    st.success(f"✅ {selected_type} über {t_amount:.2f} € gespeichert!")
+    st.rerun()
                 st.balloons()
 
         cat_btn_col, manage_col = st.columns([1, 1])
@@ -2987,4 +2991,5 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
 
