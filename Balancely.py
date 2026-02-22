@@ -202,7 +202,11 @@ if st.session_state['logged_in']:
         try:
             df_t = conn.read(worksheet="transactions", ttl="0")
             if 'user' in df_t.columns:
-                user_df = df_t[df_t['user'] == st.session_state['user_name']]
+                user_df_all = df_t[df_t['user'] == st.session_state['user_name']].copy()
+                if 'deleted' in user_df_all.columns:
+                    user_df = user_df_all[~user_df_all['deleted'].astype(str).str.strip().str.lower().isin(['true', '1', '1.0'])]
+                else:
+                    user_df = user_df_all
                 if not user_df.empty:
                     ein = pd.to_numeric(user_df[user_df['typ'] == "Einnahme"]['betrag']).sum()
                     aus = abs(pd.to_numeric(user_df[user_df['typ'] == "Ausgabe"]['betrag']).sum())
@@ -273,7 +277,7 @@ if st.session_state['logged_in']:
                         betrag_num = pd.to_numeric(row['betrag'], errors='coerce')
 
                         # Zeile anzeigen
-                        c1, c2, c3, c4, c5 = st.columns([2, 2, 2, 3, 2])
+                        c1, c2, c3, c4, c5 = st.columns([2.5, 2, 2, 3, 1.2])
                         c1.markdown(f"<span style='color:#94a3b8'>{row['datum']}</span>", unsafe_allow_html=True)
                         farbe = '#4ade80' if row['typ'] == 'Einnahme' else '#f87171'
                         c2.markdown(f"<span style='color:{farbe}; font-weight:700'>{row['betrag_anzeige']}</span>", unsafe_allow_html=True)
@@ -314,19 +318,19 @@ if st.session_state['logged_in']:
                         if st.session_state['edit_idx'] == orig_idx:
                             with st.form(key=f"edit_form_{orig_idx}"):
                                 st.markdown("<p style='color:#38bdf8; font-weight:600; margin-bottom:8px;'>✏️ Eintrag bearbeiten</p>", unsafe_allow_html=True)
-                                ec1, ec2 = st.columns(2)
+                                ec1, ec_mid, ec2 = st.columns(3)
                                 with ec1:
                                     e_betrag = st.number_input("Betrag in €", value=abs(float(betrag_num)), min_value=0.01, step=0.01, format="%.2f")
                                     e_datum = st.date_input("Datum", value=datetime.date.fromisoformat(str(row['datum'])))
+                                with ec_mid:
+                                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                                    e_notiz = st.text_input("Notiz (optional)", value=notiz, placeholder="z.B. Supermarkt, Tankstelle...")
                                 with ec2:
                                     e_typ = st.selectbox("Typ", ["Einnahme", "Ausgabe"], index=0 if row['typ'] == "Einnahme" else 1)
                                     cats_e = ["Gehalt", "Bonus", "Verkauf"] if e_typ == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                                     current_cat = row['kategorie'] if row['kategorie'] in cats_e else cats_e[0]
                                     e_cat = st.selectbox("Kategorie", cats_e, index=cats_e.index(current_cat))
-                                    _, notiz_col, _ = st.columns([1, 2, 1])
-                                with notiz_col:
-                                    e_notiz = st.text_input("Notiz (optional)", value=notiz, placeholder="z.B. Supermarkt, Tankstelle...")
-                                col_save, col_cancel = st.columns(2)
+                                    col_save, col_cancel = st.columns([1, 1])
                                 with col_save:
                                     saved = st.form_submit_button("💾 Speichern", use_container_width=True, type="primary")
                                 with col_cancel:
