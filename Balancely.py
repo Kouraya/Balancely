@@ -384,7 +384,7 @@ if st.session_state['logged_in']:
                         betrag_num = pd.to_numeric(row['betrag'], errors='coerce')
                         farbe      = '#4ade80' if row['typ'] == 'Einnahme' else '#f87171'
 
-                        c1, c2, c3, c4, c5 = st.columns([2.5, 2, 2, 3, 0.8])
+                        c1, c2, c3, c4, c5 = st.columns([2.5, 2, 2, 3, 1.5])
                         c1.markdown(
                             f"<span style='color:#94a3b8'>{row['datum']}</span>",
                             unsafe_allow_html=True
@@ -404,17 +404,18 @@ if st.session_state['logged_in']:
                         )
 
                         with c5:
-                            # Unsichtbares Label erzeugt gleiche Höhe wie Markdown-Text in anderen Spalten
-                            st.markdown("&nbsp;", unsafe_allow_html=True)
-                            btn1, btn2 = st.columns(2)
-                            if btn1.button("✏️", key=f"edit_btn_{orig_idx}",
-                                           help="Eintrag bearbeiten", use_container_width=True):
+                            aktion = st.selectbox(
+                                ".",
+                                ["⋯", "✏️ Bearbeiten", "🗑️ Löschen"],
+                                key=f"menu_{orig_idx}",
+                                label_visibility="hidden"
+                            )
+                            if aktion == "✏️ Bearbeiten":
                                 st.session_state['edit_idx'] = (
                                     None if st.session_state['edit_idx'] == orig_idx else orig_idx
                                 )
                                 st.rerun()
-                            if btn2.button("🗑️", key=f"del_{orig_idx}",
-                                           help="Eintrag löschen", use_container_width=True):
+                            if aktion == "🗑️ Löschen":
                                 df_all = conn.read(worksheet="transactions", ttl="0")
                                 if 'deleted' not in df_all.columns:
                                     df_all['deleted'] = ''
