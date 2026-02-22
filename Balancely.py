@@ -39,7 +39,6 @@ st.markdown("""
         border-radius: 24px !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
-
     div[data-testid="stTextInputRootElement"] {
         background-color: transparent !important;
     }
@@ -69,7 +68,6 @@ st.markdown("""
     div[data-baseweb="select"] > div:first-child:focus-within {
         border-color: #38bdf8 !important;
     }
-
     button[data-testid="stNumberInputStepDown"],
     button[data-testid="stNumberInputStepUp"] {
         display: none !important;
@@ -77,7 +75,6 @@ st.markdown("""
     div[data-testid="stNumberInput"] div[data-baseweb="input"] {
         border-radius: 8px !important;
     }
-
     div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
         display: none !important;
     }
@@ -95,9 +92,7 @@ st.markdown("""
         position: absolute !important;
         pointer-events: none !important;
     }
-
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
-
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
         border-right: 1px solid #1e293b !important;
@@ -107,31 +102,13 @@ st.markdown("""
         border: none !important; height: 50px !important;
         border-radius: 12px !important; font-weight: 700 !important;
     }
-
-    /* Toggle Buttons Ausgabe aktiv */
-    [data-testid="stButton"] button[kind="primary"]:has(+ *) {
+    /* Standard-Stil für Toggle-Buttons */
+    [data-testid="stButton"] button {
         border-radius: 10px !important;
-    }
-    .ausgabe-active > div > button {
-        background: rgba(239,68,68,0.25) !important;
-        border: 2px solid #ef4444 !important;
-        color: #fca5a5 !important;
-        font-weight: 700 !important;
-        border-radius: 10px !important;
-    }
-    .einnahme-active > div > button {
-        background: rgba(16,185,129,0.25) !important;
-        border: 2px solid #10b981 !important;
-        color: #6ee7b7 !important;
-        font-weight: 700 !important;
-        border-radius: 10px !important;
-    }
-    .toggle-inactive > div > button {
-        background: transparent !important;
-        border: 1px solid #334155 !important;
-        color: #94a3b8 !important;
-        font-weight: 400 !important;
-        border-radius: 10px !important;
+        height: 42px !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -184,32 +161,46 @@ if st.session_state['logged_in']:
         st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
 
         col_a, col_e, _ = st.columns([1, 1, 3])
-
         with col_a:
-            ausgabe_active = t_type == "Ausgabe"
-            css_class = "ausgabe-active" if ausgabe_active else "toggle-inactive"
-            st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
-            if st.button(
-                "↗ Ausgabe" + (" ✓" if ausgabe_active else ""),
-                key="btn_ausgabe",
-                use_container_width=True
-            ):
+            if st.button("↗ Ausgabe" + (" ✓" if t_type == "Ausgabe" else ""), key="btn_ausgabe", use_container_width=True):
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
         with col_e:
-            einnahme_active = t_type == "Einnahme"
-            css_class = "einnahme-active" if einnahme_active else "toggle-inactive"
-            st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
-            if st.button(
-                "↙ Einnahme" + (" ✓" if einnahme_active else ""),
-                key="btn_einnahme",
-                use_container_width=True
-            ):
+            if st.button("↙ Einnahme" + (" ✓" if t_type == "Einnahme" else ""), key="btn_einnahme", use_container_width=True):
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+
+        # JS stylt die Buttons nach dem Rendern direkt im DOM
+        active_ausgabe = t_type == "Ausgabe"
+        st.markdown(f"""
+            <script>
+            (function() {{
+                function styleToggleButtons() {{
+                    const buttons = window.parent.document.querySelectorAll('[data-testid="stButton"] button');
+                    buttons.forEach(btn => {{
+                        const text = btn.innerText;
+                        if (text.includes('Ausgabe')) {{
+                            if ({'true' if active_ausgabe else 'false'}) {{
+                                btn.style.cssText = 'background: rgba(239,68,68,0.25) !important; border: 2px solid #ef4444 !important; color: #fca5a5 !important; font-weight: 700 !important;';
+                            }} else {{
+                                btn.style.cssText = 'background: transparent !important; border: 1px solid #334155 !important; color: #94a3b8 !important;';
+                            }}
+                        }} else if (text.includes('Einnahme')) {{
+                            if ({'false' if active_ausgabe else 'true'}) {{
+                                btn.style.cssText = 'background: rgba(16,185,129,0.25) !important; border: 2px solid #10b981 !important; color: #6ee7b7 !important; font-weight: 700 !important;';
+                            }} else {{
+                                btn.style.cssText = 'background: transparent !important; border: 1px solid #334155 !important; color: #94a3b8 !important;';
+                            }}
+                        }}
+                    }});
+                }}
+                // Mehrfach versuchen da Streamlit async rendert
+                setTimeout(styleToggleButtons, 50);
+                setTimeout(styleToggleButtons, 200);
+                setTimeout(styleToggleButtons, 500);
+            }})();
+            </script>
+        """, unsafe_allow_html=True)
 
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
