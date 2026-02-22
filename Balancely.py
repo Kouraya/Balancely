@@ -284,24 +284,19 @@ else:
     with center_col:
 
         # ===== LOGIN =====
-        if st.session_state['auth_mode'] == 'login':
-            with st.form("l_f"):
-                st.markdown("<h3 style='text-align:center; color:white;'>Anmelden</h3>", unsafe_allow_html=True)
-                u_in = st.text_input("Username", placeholder="Benutzername")
-                p_in = st.text_input("Passwort", type="password")
-                if st.form_submit_button("Anmelden"):
-                    df_u = conn.read(worksheet="users", ttl="0")
-                    user_row = df_u[df_u['username'] == u_in]
-                    if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
-                        verified = str(user_row.iloc[0].get('verified', 'True'))
-                        if verified != 'True':
-                            st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
-                        else:
-                            st.session_state['logged_in'] = True
-                            st.session_state['user_name'] = u_in
-                            st.rerun()
-                    else:
-                        st.error("Login ungültig.")
+        if st.form_submit_button("Anmelden"):
+    df_u = conn.read(worksheet="users", ttl="0")
+    user_row = df_u[df_u['username'] == u_in]
+    if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
+        verified = str(user_row.iloc[0].get('verified', 'True')).strip().lower()
+        if verified not in ('true', '1', 'yes'):
+            st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
+        else:
+            st.session_state['logged_in'] = True
+            st.session_state['user_name'] = u_in
+            st.rerun()
+    else:
+        st.error("Login ungültig.")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("Konto erstellen", use_container_width=True):
@@ -457,3 +452,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
