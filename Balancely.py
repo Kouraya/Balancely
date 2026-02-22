@@ -194,21 +194,6 @@ div[class*="stInputInstructions"] {
     background-color: #0b0f1a !important;
     border-right: 1px solid #1e293b !important;
 }
-/* ✏️ 🗑️ Buttons vertikal zentriert in ihrer Spalte */
-div[data-testid="stHorizontalBlock"] div[data-testid="stVerticalBlockBorderWrapper"] {
-    display: flex !important;
-    align-items: center !important;
-}
-div[data-testid="column"]:last-child div[data-testid="stVerticalBlock"] {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    height: 100% !important;
-}
-div[data-testid="column"]:last-child button {
-    margin-top: auto !important;
-    margin-bottom: auto !important;
-}
 button[kind="primaryFormSubmit"],
 button[kind="secondaryFormSubmit"] {
     height: 50px !important;
@@ -418,6 +403,7 @@ if st.session_state['logged_in']:
                             unsafe_allow_html=True
                         )
 
+                        c5.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
                         btn1, btn2 = c5.columns(2)
                         if btn1.button("✏️", key=f"edit_btn_{orig_idx}",
                                        help="Eintrag bearbeiten", use_container_width=True):
