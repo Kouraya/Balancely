@@ -1,5 +1,5 @@
 # ============================================================
-#  Balancely — Persönliche Finanzverwaltung
+#  Balancely — Persönliche Finanzverwaltung  v2
 # ============================================================
 
 import streamlit as st
@@ -45,7 +45,6 @@ def generate_code() -> str:
 
 
 def is_deleted(value) -> bool:
-    """Prüft ob ein deleted-Wert als gelöscht gilt (True / 1 / 1.0)."""
     try:
         return float(value) >= 1.0
     except (ValueError, TypeError):
@@ -53,7 +52,6 @@ def is_deleted(value) -> bool:
 
 
 def is_verified(value) -> bool:
-    """Prüft ob ein verified-Wert als verifiziert gilt."""
     try:
         return float(value) >= 1.0
     except (ValueError, TypeError):
@@ -61,7 +59,6 @@ def is_verified(value) -> bool:
 
 
 def format_timestamp(ts_str, datum_str) -> str:
-    """Zeigt 'heute HH:MM', 'gestern HH:MM' oder 'DD.MM.YYYY HH:MM'."""
     now   = datetime.datetime.now()
     today = now.date()
     try:
@@ -87,7 +84,6 @@ def format_timestamp(ts_str, datum_str) -> str:
 
 
 def find_row_mask(df: pd.DataFrame, row: pd.Series) -> pd.Series:
-    """Findet die passende (nicht-gelöschte) Zeile im DataFrame anhand von Inhalt."""
     return (
         (df['user'] == row['user']) &
         (df['datum'].astype(str) == str(row['datum'])) &
@@ -138,120 +134,201 @@ def email_html(text: str, code: str) -> str:
 
 
 # ============================================================
-#  Globales CSS
+#  Globales CSS — Premium Redesign
 # ============================================================
 
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] {
-    background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617) !important;
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+    font-family: 'DM Sans', sans-serif !important;
 }
+
+[data-testid="stAppViewContainer"] {
+    background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(56,189,248,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(99,102,241,0.05) 0%, transparent 55%),
+        linear-gradient(160deg, #070d1a 0%, #080e1c 40%, #050b16 100%) !important;
+    min-height: 100vh;
+}
+
+/* ── Typography ─────────────────────────────────────────── */
+h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: -0.5px; }
+
+/* ── Remove default padding ─────────────────────────────── */
+[data-testid="stMain"] .block-container {
+    padding-top: 2rem !important;
+    max-width: 1200px !important;
+}
+
+/* ── Branding ───────────────────────────────────────────── */
 .main-title {
-    text-align: center; color: #f8fafc; font-size: 64px; font-weight: 800;
-    letter-spacing: -2px; margin-bottom: 0;
-    text-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+    text-align: center;
+    color: #f8fafc;
+    font-size: clamp(48px, 8vw, 72px);
+    font-weight: 700;
+    letter-spacing: -3px;
+    margin-bottom: 0;
+    line-height: 1;
+    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #64748b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 .sub-title {
-    text-align: center; color: #94a3b8; font-size: 18px; margin-bottom: 40px;
+    text-align: center;
+    color: #475569;
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+    margin-bottom: 48px;
+    margin-top: 8px;
 }
+
+/* ── Forms ──────────────────────────────────────────────── */
 [data-testid="stForm"] {
-    background-color: rgba(30, 41, 59, 0.7) !important;
-    backdrop-filter: blur(15px);
+    background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(10,16,32,0.95) 100%) !important;
+    backdrop-filter: blur(20px) !important;
     padding: 40px !important;
-    border-radius: 24px !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(148,163,184,0.08) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
+
+/* ── Inputs ─────────────────────────────────────────────── */
 div[data-testid="stTextInputRootElement"] { background-color: transparent !important; }
 div[data-baseweb="input"],
 div[data-baseweb="base-input"] {
-    background-color: transparent !important;
-    border: 1px solid #1e293b !important;
-    border-radius: 8px !important;
+    background-color: rgba(15,23,42,0.6) !important;
+    border: 1px solid rgba(148,163,184,0.1) !important;
+    border-radius: 10px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
     padding-right: 0 !important;
     gap: 0 !important;
     box-shadow: none !important;
 }
 div[data-baseweb="input"]:focus-within,
 div[data-baseweb="base-input"]:focus-within {
-    background-color: transparent !important;
-    border-color: #38bdf8 !important;
-    box-shadow: none !important;
+    background-color: rgba(15,23,42,0.8) !important;
+    border-color: rgba(56,189,248,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important;
 }
-input { padding-left: 15px !important; color: #f1f5f9 !important; }
+input {
+    padding-left: 15px !important;
+    color: #e2e8f0 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 14px !important;
+}
+input::placeholder { color: #334155 !important; }
+
+/* ── Date & Select ──────────────────────────────────────── */
 div[data-testid="stDateInput"] > div {
-    background-color: transparent !important;
-    border: 1px solid #1e293b !important;
-    border-radius: 8px !important;
+    background-color: rgba(15,23,42,0.6) !important;
+    border: 1px solid rgba(148,163,184,0.1) !important;
+    border-radius: 10px !important;
     box-shadow: none !important;
     min-height: 42px !important;
+    overflow: hidden !important;
 }
 div[data-baseweb="select"] > div:first-child {
-    background-color: transparent !important;
-    border: 1px solid #1e293b !important;
-    border-radius: 8px !important;
+    background-color: rgba(15,23,42,0.6) !important;
+    border: 1px solid rgba(148,163,184,0.1) !important;
+    border-radius: 10px !important;
     box-shadow: none !important;
 }
 div[data-baseweb="select"] > div:first-child:focus-within {
-    border-color: #38bdf8 !important;
-    box-shadow: none !important;
+    border-color: rgba(56,189,248,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important;
 }
-button[data-testid="stNumberInputStepDown"],
-button[data-testid="stNumberInputStepUp"] { display: none !important; }
-div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
-    display: none !important;
-}
-[data-testid="InputInstructions"],
-[data-testid="stInputInstructions"],
-div[class*="InputInstructions"],
-div[class*="stInputInstructions"] {
-    display: none !important; visibility: hidden !important;
-    height: 0 !important; overflow: hidden !important; position: absolute !important;
-}
-[data-testid="stSidebar"] {
-    background-color: #0b0f1a !important;
-    border-right: 1px solid #1e293b !important;
-}
-button, [data-testid="stPopover"] button,
-div[data-baseweb="select"],
-div[data-baseweb="select"] *,
-div[data-testid="stDateInput"],
-[data-testid="stSelectbox"] * {
-    cursor: pointer !important;
-}
-div[data-testid="stDateInput"] {
-    overflow: hidden !important;
-}
-div[data-testid="stDateInput"] > div {
-    overflow: hidden !important;
-}
+
+/* ── Buttons ─────────────────────────────────────────────── */
 button[kind="primaryFormSubmit"],
 button[kind="secondaryFormSubmit"] {
-    height: 50px !important;
-    border-radius: 12px !important;
-    font-weight: 700 !important;
+    height: 48px !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 14px !important;
+    letter-spacing: 0.2px !important;
+    transition: all 0.2s ease !important;
 }
 button[kind="primaryFormSubmit"] {
-    background: linear-gradient(135deg, #38bdf8, #1d4ed8) !important;
+    background: linear-gradient(135deg, #0ea5e9, #2563eb) !important;
     border: none !important;
+    box-shadow: 0 4px 15px rgba(14,165,233,0.25) !important;
+}
+button[kind="primaryFormSubmit"]:hover {
+    box-shadow: 0 6px 20px rgba(14,165,233,0.35) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #070d1a 0%, #060b18 100%) !important;
+    border-right: 1px solid rgba(148,163,184,0.07) !important;
+}
+[data-testid="stSidebar"] .stMarkdown p {
+    font-family: 'DM Sans', sans-serif !important;
+    color: #475569 !important;
+    font-size: 13px !important;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label {
-    border: 1px solid #1e293b !important; border-radius: 10px !important;
-    padding: 8px 12px !important; margin-bottom: 4px !important;
-    color: #94a3b8 !important; transition: all 0.15s ease !important;
+    border: 1px solid transparent !important;
+    border-radius: 10px !important;
+    padding: 9px 14px !important;
+    margin-bottom: 3px !important;
+    color: #475569 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    transition: all 0.15s ease !important;
+    letter-spacing: 0.1px !important;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label:hover {
-    border-color: #38bdf8 !important; color: #f1f5f9 !important;
-    background: rgba(56, 189, 248, 0.08) !important;
+    border-color: rgba(56,189,248,0.15) !important;
+    color: #94a3b8 !important;
+    background: rgba(56,189,248,0.04) !important;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label:has(input:checked) {
-    border-color: #38bdf8 !important; background: rgba(56, 189, 248, 0.15) !important;
-    color: #f1f5f9 !important; font-weight: 600 !important;
+    border-color: rgba(56,189,248,0.25) !important;
+    background: rgba(56,189,248,0.08) !important;
+    color: #e2e8f0 !important;
+    font-weight: 500 !important;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div > label > div:first-child {
     display: none !important;
 }
 
-/* ── FIX: Dialoge zentriert anzeigen ───────────────────────── */
+/* ── Number input step buttons ──────────────────────────── */
+button[data-testid="stNumberInputStepDown"],
+button[data-testid="stNumberInputStepUp"] { display: none !important; }
+div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
+    display: none !important;
+}
+
+/* ── Hide input instructions ────────────────────────────── */
+[data-testid="InputInstructions"],
+[data-testid="stInputInstructions"],
+div[class*="InputInstructions"],
+div[class*="stInputInstructions"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+}
+
+/* ── Cursor ─────────────────────────────────────────────── */
+button, [data-testid="stPopover"] button,
+div[data-baseweb="select"],
+div[data-baseweb="select"] *,
+div[data-testid="stDateInput"],
+[data-testid="stSelectbox"] * { cursor: pointer !important; }
+
+/* ── Dialogs ─────────────────────────────────────────────── */
 div[data-testid="stDialog"] > div,
 div[role="dialog"] {
     position: fixed !important;
@@ -261,12 +338,52 @@ div[role="dialog"] {
     margin: 0 !important;
     max-height: 90vh !important;
     overflow-y: auto !important;
+    background: linear-gradient(145deg, #0d1729, #0a1020) !important;
+    border: 1px solid rgba(148,163,184,0.1) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6) !important;
 }
-/* Backdrop zentriert */
 div[data-testid="stDialog"] {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+}
+
+/* ── Divider ─────────────────────────────────────────────── */
+hr {
+    border-color: rgba(148,163,184,0.08) !important;
+    margin: 24px 0 !important;
+}
+
+/* ── Subheader ───────────────────────────────────────────── */
+[data-testid="stMarkdownContainer"] h3 {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+}
+
+/* ── Success / Error messages ───────────────────────────── */
+[data-testid="stAlert"] {
+    border-radius: 10px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 14px !important;
+}
+
+/* ── Popover ─────────────────────────────────────────────── */
+[data-testid="stPopover"] > div {
+    background: #0d1729 !important;
+    border: 1px solid rgba(148,163,184,0.1) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
+}
+
+/* ── Expander ─────────────────────────────────────────────── */
+[data-testid="stExpander"] {
+    border: 1px solid rgba(148,163,184,0.08) !important;
+    border-radius: 12px !important;
+    background: rgba(10,16,32,0.5) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -294,15 +411,11 @@ defaults = {
     'reset_code':      "",
     'reset_expiry':    None,
     'edit_idx':        None,
-    # FIX: show_new_cat nur True wenn explizit per Button gesetzt
     'show_new_cat':    False,
     'new_cat_typ':     'Ausgabe',
-    # FIX: letzter aktiver Tab – wird zum Erkennen von Tab-Wechseln genutzt
     '_last_menu':      "",
-    # Kategorie bearbeiten / löschen
     'edit_cat_data':      None,
     'delete_cat_data':    None,
-    # Dashboard
     'dash_month_offset':  0,
     'dash_selected_aus':  None,
     'dash_selected_ein':  None,
@@ -315,7 +428,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 
 def load_custom_cats(user: str, typ: str) -> list:
-    """Lädt eigene Kategorien des Users aus Google Sheets."""
     try:
         df = conn.read(worksheet="categories", ttl="0")
         if df.empty or 'user' not in df.columns:
@@ -327,7 +439,6 @@ def load_custom_cats(user: str, typ: str) -> list:
 
 
 def save_custom_cat(user: str, typ: str, kategorie: str):
-    """Speichert eine neue Kategorie in Google Sheets."""
     try:
         df = conn.read(worksheet="categories", ttl="0")
     except Exception:
@@ -337,7 +448,6 @@ def save_custom_cat(user: str, typ: str, kategorie: str):
 
 
 def delete_custom_cat(user: str, typ: str, kategorie: str):
-    """Löscht eine eigene Kategorie aus Google Sheets."""
     try:
         df = conn.read(worksheet="categories", ttl="0")
         df = df[~((df['user'] == user) & (df['typ'] == typ) & (df['kategorie'] == kategorie))]
@@ -347,7 +457,6 @@ def delete_custom_cat(user: str, typ: str, kategorie: str):
 
 
 def update_custom_cat(user: str, typ: str, old_label: str, new_label: str):
-    """Benennt eine eigene Kategorie um."""
     try:
         df = conn.read(worksheet="categories", ttl="0")
         mask = (df['user'] == user) & (df['typ'] == typ) & (df['kategorie'] == old_label)
@@ -357,11 +466,12 @@ def update_custom_cat(user: str, typ: str, old_label: str, new_label: str):
         pass
 
 
-@st.dialog("➕ Neue Kategorie erstellen")
+@st.dialog("➕ Neue Kategorie")
 def new_category_dialog():
     typ = st.session_state.get('new_cat_typ', 'Ausgabe')
     st.markdown(
-        f"<p style='color:#94a3b8;font-size:13px;'>Für: <b style='color:#38bdf8;'>{typ}</b></p>",
+        f"<p style='color:#64748b;font-size:13px;margin-bottom:20px;font-family:DM Sans,sans-serif;'>"
+        f"Für Typ: <span style='color:#38bdf8;font-weight:500;'>{typ}</span></p>",
         unsafe_allow_html=True
     )
     nc1, nc2 = st.columns([1, 3])
@@ -370,28 +480,26 @@ def new_category_dialog():
                                   help="Windows: **Win + .** | Mac: **Ctrl+Cmd+Space**")
     with nc2:
         new_name = st.text_input("Name", placeholder="z.B. Musik")
-
     nc_typ = st.selectbox("Typ", ["Ausgabe", "Einnahme"],
                           index=0 if typ == "Ausgabe" else 1)
-
     col_save, col_cancel = st.columns(2)
     with col_save:
-        if st.button("✅ Speichern", use_container_width=True, type="primary"):
+        if st.button("Speichern", use_container_width=True, type="primary"):
             if not new_name.strip():
-                st.error("❌ Bitte einen Namen eingeben.")
+                st.error("Bitte einen Namen eingeben.")
             else:
                 label    = f"{new_emoji.strip()} {new_name.strip()}" \
                            if new_emoji.strip() else new_name.strip()
                 existing = load_custom_cats(st.session_state['user_name'], nc_typ) \
                            + DEFAULT_CATS[nc_typ]
                 if label in existing:
-                    st.error("⚠️ Diese Kategorie existiert bereits.")
+                    st.error("Diese Kategorie existiert bereits.")
                 else:
                     save_custom_cat(st.session_state['user_name'], nc_typ, label)
                     st.session_state['show_new_cat'] = False
                     st.rerun()
     with col_cancel:
-        if st.button("❌ Abbrechen", use_container_width=True):
+        if st.button("Abbrechen", use_container_width=True):
             st.session_state['show_new_cat'] = False
             st.rerun()
 
@@ -405,58 +513,37 @@ def edit_category_dialog():
     old_label = data['old_label']
     typ       = data['typ']
     user      = data['user']
-
-    # Emoji und Name aus altem Label trennen
     parts = old_label.split(' ', 1)
     if len(parts) == 2 and len(parts[0]) <= 4:
         init_emoji, init_name = parts[0], parts[1]
     else:
         init_emoji, init_name = '', old_label
-
     st.markdown(
-        f"<p style='color:#94a3b8;font-size:13px;margin-bottom:12px;'>"
-        f"Kategorie bearbeiten – aktuell: <b style='color:#38bdf8;'>{old_label}</b></p>",
+        f"<p style='color:#64748b;font-size:13px;margin-bottom:16px;font-family:DM Sans,sans-serif;'>"
+        f"Aktuell: <span style='color:#38bdf8;'>{old_label}</span></p>",
         unsafe_allow_html=True
     )
-
-    # CSS: gleiche Label-Höhe → Inputs auf identischer Pixelhöhe
-    st.markdown("""
-    <style>
-    div[data-testid="stDialog"] div[data-testid="column"] .stTextInput {
-        margin-top: 0 !important;
-    }
-    div[data-testid="stDialog"] div[data-testid="column"] .stTextInput label {
-        min-height: 1.4rem !important;
-        line-height: 1.4rem !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     nc1, nc2 = st.columns([1, 3])
     with nc1:
-        new_emoji = st.text_input("Emoji", value=init_emoji, max_chars=4,
-                                  placeholder="🎵",
+        new_emoji = st.text_input("Emoji", value=init_emoji, max_chars=4, placeholder="🎵",
                                   help="Windows: **Win + .** | Mac: **Ctrl+Cmd+Space**")
     with nc2:
         new_name = st.text_input("Name", value=init_name, placeholder="z.B. Musik")
-
     new_typ = st.selectbox("Typ", ["Ausgabe", "Einnahme"],
                            index=0 if typ == "Ausgabe" else 1)
-
     col_save, col_cancel = st.columns(2)
     with col_save:
-        if st.button("💾 Speichern", use_container_width=True, type="primary"):
+        if st.button("Speichern", use_container_width=True, type="primary"):
             if not new_name.strip():
-                st.error("❌ Bitte einen Namen eingeben.")
+                st.error("Bitte einen Namen eingeben.")
             else:
                 new_label = f"{new_emoji.strip()} {new_name.strip()}" \
                             if new_emoji.strip() else new_name.strip()
                 existing = load_custom_cats(user, new_typ) + DEFAULT_CATS[new_typ]
                 if new_label != old_label and new_label in existing:
-                    st.error("⚠️ Diese Kategorie existiert bereits.")
+                    st.error("Diese Kategorie existiert bereits.")
                 else:
                     if new_typ != typ:
-                        # Typ hat sich geändert: alten Eintrag löschen + neuen anlegen
                         delete_custom_cat(user, typ, old_label)
                         save_custom_cat(user, new_typ, new_label)
                     else:
@@ -464,33 +551,31 @@ def edit_category_dialog():
                     st.session_state['edit_cat_data'] = None
                     st.rerun()
     with col_cancel:
-        if st.button("❌ Abbrechen", use_container_width=True):
+        if st.button("Abbrechen", use_container_width=True):
             st.session_state['edit_cat_data'] = None
             st.rerun()
 
 
-@st.dialog("🗑️ Kategorie löschen")
+@st.dialog("Kategorie löschen")
 def confirm_delete_cat():
     data = st.session_state.get('delete_cat_data')
     if not data:
         st.rerun()
         return
     st.markdown(
-        "<p style='color:#f1f5f9;font-size:16px;'>Kategorie wirklich löschen?</p>",
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        f"<p style='color:#94a3b8;font-size:14px;'>{data['label']}</p>",
+        f"<p style='color:#e2e8f0;font-size:15px;margin-bottom:8px;font-family:DM Sans,sans-serif;'>"
+        f"Kategorie wirklich löschen?</p>"
+        f"<p style='color:#64748b;font-size:14px;'>{data['label']}</p>",
         unsafe_allow_html=True
     )
     col_ja, col_nein = st.columns(2)
     with col_ja:
-        if st.button("✅ Ja, löschen", use_container_width=True, type="primary"):
+        if st.button("Löschen", use_container_width=True, type="primary"):
             delete_custom_cat(data['user'], data['typ'], data['label'])
             st.session_state['delete_cat_data'] = None
             st.rerun()
     with col_nein:
-        if st.button("❌ Abbrechen", use_container_width=True):
+        if st.button("Abbrechen", use_container_width=True):
             st.session_state['delete_cat_data'] = None
             st.rerun()
 
@@ -498,17 +583,15 @@ def confirm_delete_cat():
 @st.dialog("Eintrag löschen")
 def confirm_delete(row_data):
     st.markdown(
-        "<p style='color:#f1f5f9;font-size:16px;'>Wollen Sie diesen Eintrag wirklich löschen?</p>",
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        f"<p style='color:#94a3b8;font-size:13px;'>"
+        f"<p style='color:#e2e8f0;font-size:15px;margin-bottom:6px;font-family:DM Sans,sans-serif;'>"
+        f"Eintrag wirklich löschen?</p>"
+        f"<p style='color:#475569;font-size:13px;'>"
         f"{row_data['datum']} · {row_data['betrag_anzeige']} · {row_data['kategorie']}</p>",
         unsafe_allow_html=True
     )
     col_ja, col_nein = st.columns(2)
     with col_ja:
-        if st.button("✅ Ja, löschen", use_container_width=True, type="primary"):
+        if st.button("Löschen", use_container_width=True, type="primary"):
             df_all = conn.read(worksheet="transactions", ttl="0")
             if 'deleted' not in df_all.columns:
                 df_all['deleted'] = ''
@@ -528,9 +611,9 @@ def confirm_delete(row_data):
                 st.session_state['edit_idx'] = None
                 st.rerun()
             else:
-                st.error("❌ Eintrag nicht gefunden.")
+                st.error("Eintrag nicht gefunden.")
     with col_nein:
-        if st.button("❌ Abbrechen", use_container_width=True):
+        if st.button("Abbrechen", use_container_width=True):
             st.rerun()
 
 
@@ -542,25 +625,37 @@ if st.session_state['logged_in']:
 
     # ── Sidebar ─────────────────────────────────────────────
     with st.sidebar:
-        st.markdown("<h2 style='color:white;'>Balancely ⚖️</h2>", unsafe_allow_html=True)
-        st.markdown(f"👤 Eingeloggt: **{st.session_state['user_name']}**")
-        st.markdown("---")
+        st.markdown(
+            "<div style='padding:8px 0 24px 0;'>"
+            "<span style='font-family:DM Sans,sans-serif;font-size:20px;font-weight:600;"
+            "color:#e2e8f0;letter-spacing:-0.5px;'>Balancely</span>"
+            "<span style='color:#38bdf8;font-size:20px;'> ⚖️</span>"
+            "</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"<div style='font-family:DM Sans,sans-serif;font-size:12px;color:#334155;"
+            f"margin-bottom:20px;letter-spacing:0.3px;'>"
+            f"<span style='color:#475569;'>Eingeloggt als</span><br>"
+            f"<span style='color:#64748b;font-weight:500;'>{st.session_state['user_name']}</span>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         menu = st.radio(
             "Navigation",
             ["📈 Dashboard", "💸 Transaktionen", "📂 Analysen", "⚙️ Einstellungen"],
             label_visibility="collapsed"
         )
-        st.markdown("<div style='height:30vh;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:28vh;'></div>", unsafe_allow_html=True)
         if st.button("Logout ➜", use_container_width=True, type="secondary"):
             st.session_state['logged_in'] = False
             st.rerun()
 
-    # FIX: Dialog-States nur beibehalten wenn explizit geöffnet (_dialog_just_opened).
-    # Bei jedem anderen Render (Tab-Wechsel, Typ-Wechsel, normaler Reload) alles zurücksetzen.
+    # Dialog-State Management
     if st.session_state.pop('_dialog_just_opened', False):
-        pass  # Dialog wurde gerade explizit geöffnet → States stehen lassen
+        pass
     else:
-        # Kein explizites Öffnen → alle Dialog-States zurücksetzen
         st.session_state['show_new_cat']    = False
         st.session_state['edit_cat_data']   = None
         st.session_state['delete_cat_data'] = None
@@ -572,11 +667,15 @@ if st.session_state['logged_in']:
 
         now = datetime.datetime.now()
 
+        # Page header
         st.markdown(
-            f"<h1 style='margin-bottom:2px;font-size:32px;'>Deine Übersicht, "
-            f"{st.session_state['user_name']}! ⚖️</h1>"
-            f"<p style='color:#475569;font-size:13px;margin-bottom:16px;'>"
-            f"Monatliche Finanzübersicht</p>",
+            f"<div style='margin-bottom:28px;'>"
+            f"<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
+            f"color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-0.5px;'>"
+            f"Guten Tag, {st.session_state['user_name']}</h1>"
+            f"<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;margin:0;'>"
+            f"Hier ist deine Finanzübersicht</p>"
+            f"</div>",
             unsafe_allow_html=True
         )
 
@@ -590,19 +689,20 @@ if st.session_state['logged_in']:
         t_month += 1
         monat_label = datetime.date(t_year, t_month, 1).strftime("%B %Y")
 
-        nav1, nav2, nav3 = st.columns([1, 4, 1])
+        nav1, nav2, nav3 = st.columns([1, 5, 1])
         with nav1:
-            if st.button("◀", use_container_width=True, key="dash_prev"):
+            if st.button("‹", use_container_width=True, key="dash_prev"):
                 st.session_state['dash_month_offset'] -= 1
                 st.rerun()
         with nav2:
             st.markdown(
-                f"<div style='text-align:center;font-size:15px;font-weight:600;"
-                f"color:#94a3b8;padding:6px 0;'>{monat_label}</div>",
+                f"<div style='text-align:center;font-family:DM Sans,sans-serif;"
+                f"font-size:14px;font-weight:500;color:#64748b;padding:6px 0;'>"
+                f"{monat_label}</div>",
                 unsafe_allow_html=True
             )
         with nav3:
-            if st.button("▶", use_container_width=True, key="dash_next",
+            if st.button("›", use_container_width=True, key="dash_next",
                          disabled=(offset >= 0)):
                 st.session_state['dash_month_offset'] += 1
                 st.rerun()
@@ -624,40 +724,55 @@ if st.session_state['logged_in']:
                 ].copy()
 
                 if monat_df.empty:
-                    st.info(f"Keine Buchungen im {monat_label}.")
+                    st.markdown(
+                        f"<div style='text-align:center;padding:60px 20px;color:#334155;"
+                        f"font-family:DM Sans,sans-serif;font-size:15px;'>"
+                        f"Keine Buchungen im {monat_label}</div>",
+                        unsafe_allow_html=True
+                    )
                 else:
                     monat_df["betrag_num"] = pd.to_numeric(monat_df["betrag"], errors="coerce")
                     ein = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
                     aus = abs(monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].sum())
                     bal = ein - aus
                     bal_color = "#4ade80" if bal >= 0 else "#f87171"
+                    bal_sign  = "+" if bal >= 0 else ""
 
-                    # ── Kompakte KPI-Leiste ───────────────────
+                    # ── KPI Cards ─────────────────────────────
                     st.markdown(
-                        f"<div style='display:flex;gap:12px;margin:12px 0 24px 0;'>"
-                        f"<div style='flex:1;background:rgba(15,23,42,0.6);"
-                        f"border:1px solid #1e293b;border-radius:12px;padding:12px 16px;'>"
-                        f"<div style='color:#475569;font-size:10px;font-weight:700;"
-                        f"letter-spacing:1.2px;text-transform:uppercase;'>Kontostand</div>"
-                        f"<div style='color:{bal_color};font-size:20px;font-weight:800;"
-                        f"margin-top:4px;'>{bal:+,.2f} €</div></div>"
-                        f"<div style='flex:1;background:rgba(15,23,42,0.6);"
-                        f"border:1px solid #1e293b;border-radius:12px;padding:12px 16px;'>"
-                        f"<div style='color:#475569;font-size:10px;font-weight:700;"
-                        f"letter-spacing:1.2px;text-transform:uppercase;'>Einnahmen</div>"
-                        f"<div style='color:#4ade80;font-size:20px;font-weight:800;"
-                        f"margin-top:4px;'>+{ein:,.2f} €</div></div>"
-                        f"<div style='flex:1;background:rgba(15,23,42,0.6);"
-                        f"border:1px solid #1e293b;border-radius:12px;padding:12px 16px;'>"
-                        f"<div style='color:#475569;font-size:10px;font-weight:700;"
-                        f"letter-spacing:1.2px;text-transform:uppercase;'>Ausgaben</div>"
-                        f"<div style='color:#f87171;font-size:20px;font-weight:800;"
-                        f"margin-top:4px;'>-{aus:,.2f} €</div></div>"
+                        f"<div style='display:flex;gap:14px;margin:0 0 28px 0;'>"
+                        # Kontostand
+                        f"<div style='flex:1;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;"
+                        f"box-shadow:0 4px 20px rgba(0,0,0,0.2);'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Kontostand</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:{bal_color};font-size:24px;"
+                        f"font-weight:600;letter-spacing:-0.5px;'>{bal_sign}{bal:,.2f} €</div>"
+                        f"</div>"
+                        # Einnahmen
+                        f"<div style='flex:1;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;"
+                        f"box-shadow:0 4px 20px rgba(0,0,0,0.2);'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Einnahmen</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#4ade80;font-size:24px;"
+                        f"font-weight:600;letter-spacing:-0.5px;'>+{ein:,.2f} €</div>"
+                        f"</div>"
+                        # Ausgaben
+                        f"<div style='flex:1;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                        f"border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;"
+                        f"box-shadow:0 4px 20px rgba(0,0,0,0.2);'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>Ausgaben</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#f87171;font-size:24px;"
+                        f"font-weight:600;letter-spacing:-0.5px;'>-{aus:,.2f} €</div>"
+                        f"</div>"
                         f"</div>",
                         unsafe_allow_html=True
                     )
 
-                    # ── Kategorien ────────────────────────────
+                    # ── Kategorie-Daten aufbereiten ────────────
                     ausg_df = monat_df[monat_df["typ"] == "Ausgabe"].copy()
                     ausg_df["betrag_num"] = ausg_df["betrag_num"].abs()
                     ausg_grp = (ausg_df.groupby("kategorie")["betrag_num"]
@@ -679,72 +794,85 @@ if st.session_state['logged_in']:
                     all_cats, all_vals, all_colors, all_types = [], [], [], []
                     for i, (_, row) in enumerate(ausg_grp.iterrows()):
                         all_cats.append(row["kategorie"])
-                        all_vals.append(row["betrag_num"])
+                        all_vals.append(float(row["betrag_num"]))
                         all_colors.append(PALETTE_AUS[i % len(PALETTE_AUS)])
                         all_types.append("Ausgabe")
                     for i, (_, row) in enumerate(ein_grp.iterrows()):
                         all_cats.append(row["kategorie"])
-                        all_vals.append(row["betrag_num"])
+                        all_vals.append(float(row["betrag_num"]))
                         all_colors.append(PALETTE_EIN[i % len(PALETTE_EIN)])
                         all_types.append("Einnahme")
 
-                    total_sum = sum(all_vals)
+                    total_sum = sum(all_vals) if sum(all_vals) > 0 else 1
+
+                    # ── FIX: customdata als separate Listen für korrektes Plotly-Mapping ──
+                    # customdata muss ein 2D-Array sein: [[typ, pct], [typ, pct], ...]
+                    customdata_list = [
+                        [typ, val / total_sum * 100]
+                        for typ, val in zip(all_types, all_vals)
+                    ]
 
                     fig = go.Figure(go.Pie(
                         labels=all_cats,
                         values=all_vals,
-                        hole=0.60,
+                        hole=0.62,
                         marker=dict(
                             colors=all_colors,
-                            line=dict(color="#060d1a", width=2),
+                            line=dict(color="rgba(5,10,20,0.8)", width=2),
                         ),
                         textinfo="none",
-                        # Saubere Hover-Tooltips: nur plaintext, kein HTML
-                        customdata=[
-                            [t, v, v/total_sum*100]
-                            for t, v in zip(all_types, all_vals)
-                        ],
+                        customdata=customdata_list,
+                        # FIX: %{value} für den tatsächlichen Euro-Betrag (direkt aus values)
+                        # %{customdata[0]} = Typ (Einnahme/Ausgabe)
+                        # %{customdata[1]:.1f} = Prozent (selbst berechnet, korrekt)
                         hovertemplate=(
-                            "<b>%{label}</b><br>"
-                            "%{customdata[0]}<br>"
-                            "%{customdata[1]:,.2f} €  ·  %{customdata[2]:.1f}%"
+                            "<b style='font-size:15px'>%{label}</b><br>"
+                            "<span style='color:#94a3b8'>%{customdata[0]}</span><br>"
+                            "<b>%{value:,.2f} €</b>  ·  <span>%{customdata[1]:.1f}%</span>"
                             "<extra></extra>"
                         ),
                         direction="clockwise",
                         sort=False,
                         rotation=90,
+                        pull=[0.03] * len(all_cats),
                     ))
 
                     fig.update_layout(
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)",
                         showlegend=False,
-                        margin=dict(t=10, b=10, l=10, r=10),
-                        height=400,
+                        margin=dict(t=16, b=16, l=16, r=16),
+                        height=380,
                         hoverlabel=dict(
-                            bgcolor="#1e293b",
-                            bordercolor="#38bdf8",
-                            font=dict(color="#f8fafc", size=14, family="monospace"),
+                            bgcolor="#0d1729",
+                            bordercolor="rgba(148,163,184,0.3)",
+                            font=dict(
+                                color="#e2e8f0",
+                                size=13,
+                                family="DM Sans, sans-serif",
+                            ),
                             namelength=0,
                             align="left",
                         ),
                         annotations=[
                             dict(
-                                text="Kontostand",
-                                x=0.5, y=0.60, showarrow=False,
-                                font=dict(size=12, color="#64748b"),
+                                text="<span style='font-size:11px'>KONTOSTAND</span>",
+                                x=0.5, y=0.62, showarrow=False,
+                                font=dict(size=10, color="#334155", family="DM Mono, monospace"),
                                 xref="paper", yref="paper",
                             ),
                             dict(
-                                text=f"<b>{bal:+,.2f} €</b>",
-                                x=0.5, y=0.48, showarrow=False,
-                                font=dict(size=20, color=bal_color),
+                                text=f"<b>{bal_sign}{bal:,.2f} €</b>",
+                                x=0.5, y=0.50, showarrow=False,
+                                font=dict(size=22, color=bal_color, family="DM Sans, sans-serif"),
                                 xref="paper", yref="paper",
                             ),
                             dict(
-                                text=f"+{ein:,.0f} €  /  -{aus:,.0f} €",
-                                x=0.5, y=0.37, showarrow=False,
-                                font=dict(size=11, color="#475569"),
+                                text=f"<span style='color:#22c55e'>+{ein:,.0f}</span>"
+                                     f"<span style='color:#334155'>  /  </span>"
+                                     f"<span style='color:#f87171'>-{aus:,.0f} €</span>",
+                                x=0.5, y=0.38, showarrow=False,
+                                font=dict(size=11, color="#475569", family="DM Sans, sans-serif"),
                                 xref="paper", yref="paper",
                             ),
                         ],
@@ -778,37 +906,43 @@ if st.session_state['logged_in']:
                             src_df  = ausg_df if sel_typ == "Ausgabe" else ein_df
                             detail  = src_df[src_df["kategorie"] == sel_cat]
                             total_d = detail["betrag_num"].sum()
-                            sign    = "-" if sel_typ == "Ausgabe" else "+"
+                            sign    = "−" if sel_typ == "Ausgabe" else "+"
                             rows_html = ""
                             for _, tr in detail.sort_values("datum_dt", ascending=False).iterrows():
                                 notiz = str(tr.get("notiz", ""))
                                 notiz = "" if notiz.lower() == "nan" else notiz
                                 rows_html += (
                                     f"<div style='display:flex;justify-content:space-between;"
-                                    f"align-items:center;padding:7px 0;"
-                                    f"border-bottom:1px solid #1e293b;'>"
-                                    f"<div>"
-                                    f"<span style='color:#64748b;font-size:13px;'>"
-                                    f"{tr['datum_dt'].strftime('%d.%m.')}</span>"
+                                    f"align-items:center;padding:9px 0;"
+                                    f"border-bottom:1px solid rgba(148,163,184,0.06);'>"
+                                    f"<div style='min-width:0;'>"
+                                    f"<span style='font-family:DM Mono,monospace;color:#475569;"
+                                    f"font-size:12px;'>{tr['datum_dt'].strftime('%d.%m.')}</span>"
                                     + (f"<span style='color:#334155;font-size:12px;"
-                                       f"margin-left:8px;'>{notiz}</span>" if notiz else "")
+                                       f"margin-left:10px;font-family:DM Sans,sans-serif;'>"
+                                       f"{notiz}</span>" if notiz else "")
                                     + f"</div>"
-                                    f"<span style='color:{sel_color};font-weight:700;"
-                                    f"font-size:14px;'>{sign}{tr['betrag_num']:,.2f} €</span>"
+                                    f"<span style='color:{sel_color};font-weight:600;"
+                                    f"font-size:13px;font-family:DM Mono,monospace;"
+                                    f"flex-shrink:0;margin-left:12px;'>"
+                                    f"{sign}{tr['betrag_num']:,.2f} €</span>"
                                     f"</div>"
                                 )
                             st.markdown(
-                                f"<div style='background:rgba(15,23,42,0.8);"
-                                f"border:1px solid {sel_color}44;"
+                                f"<div style='background:linear-gradient(145deg,rgba(13,23,41,0.95),rgba(10,16,30,0.98));"
+                                f"border:1px solid {sel_color}30;"
                                 f"border-top:2px solid {sel_color};"
-                                f"border-radius:12px;padding:16px 18px;'>"
-                                f"<div style='color:{sel_color};font-size:11px;"
-                                f"font-weight:700;letter-spacing:1px;"
-                                f"text-transform:uppercase;margin-bottom:4px;'>{sel_typ}</div>"
-                                f"<div style='color:#f1f5f9;font-weight:700;"
-                                f"font-size:18px;margin-bottom:2px;'>{sel_cat}</div>"
-                                f"<div style='color:{sel_color};font-size:22px;"
-                                f"font-weight:800;margin-bottom:14px;'>"
+                                f"border-radius:14px;padding:18px 20px;"
+                                f"box-shadow:0 8px 30px rgba(0,0,0,0.3);'>"
+                                f"<div style='font-family:DM Mono,monospace;color:{sel_color};"
+                                f"font-size:9px;font-weight:500;letter-spacing:2px;"
+                                f"text-transform:uppercase;margin-bottom:6px;'>{sel_typ}</div>"
+                                f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;"
+                                f"font-weight:600;font-size:16px;margin-bottom:4px;"
+                                f"letter-spacing:-0.3px;'>{sel_cat}</div>"
+                                f"<div style='font-family:DM Mono,monospace;color:{sel_color};"
+                                f"font-size:22px;font-weight:500;margin-bottom:18px;"
+                                f"letter-spacing:-0.5px;'>"
                                 f"{sign}{total_d:,.2f} €</div>"
                                 f"{rows_html}</div>",
                                 unsafe_allow_html=True
@@ -819,38 +953,41 @@ if st.session_state['logged_in']:
                             for cat, val, color, typ in zip(
                                     all_cats, all_vals, all_colors, all_types):
                                 pct  = val / total_sum * 100
-                                sign = "-" if typ == "Ausgabe" else "+"
+                                sign = "−" if typ == "Ausgabe" else "+"
                                 legend_rows += (
                                     f"<div style='display:flex;align-items:center;"
                                     f"justify-content:space-between;"
-                                    f"padding:8px 0;border-bottom:1px solid #0f172a;'>"
-                                    f"<div style='display:flex;align-items:center;gap:10px;"
-                                    f"min-width:0;'>"
-                                    f"<div style='width:8px;height:8px;border-radius:50%;"
+                                    f"padding:9px 0;border-bottom:1px solid rgba(148,163,184,0.05);'>"
+                                    f"<div style='display:flex;align-items:center;gap:10px;min-width:0;'>"
+                                    f"<div style='width:6px;height:6px;border-radius:50%;"
                                     f"background:{color};flex-shrink:0;'></div>"
-                                    f"<span style='color:#cbd5e1;font-size:13px;"
-                                    f"white-space:nowrap;overflow:hidden;"
-                                    f"text-overflow:ellipsis;'>{cat}</span>"
+                                    f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;"
+                                    f"font-size:13px;white-space:nowrap;overflow:hidden;"
+                                    f"text-overflow:ellipsis;font-weight:400;'>{cat}</span>"
                                     f"</div>"
                                     f"<div style='display:flex;align-items:center;"
-                                    f"gap:8px;flex-shrink:0;margin-left:8px;'>"
-                                    f"<span style='color:{color};font-weight:700;"
-                                    f"font-size:13px;'>{sign}{val:,.2f} €</span>"
-                                    f"<span style='color:#334155;font-size:11px;"
-                                    f"min-width:28px;text-align:right;'>{pct:.0f}%</span>"
+                                    f"gap:10px;flex-shrink:0;margin-left:10px;'>"
+                                    f"<span style='font-family:DM Mono,monospace;color:{color};"
+                                    f"font-weight:500;font-size:12px;'>{sign}{val:,.2f} €</span>"
+                                    f"<span style='font-family:DM Mono,monospace;color:#1e293b;"
+                                    f"font-size:11px;min-width:32px;text-align:right;'>"
+                                    f"{pct:.0f}%</span>"
                                     f"</div></div>"
                                 )
                             st.markdown(
-                                f"<div style='padding:4px 0;'>"
-                                f"<div style='color:#475569;font-size:10px;font-weight:700;"
-                                f"letter-spacing:1.5px;text-transform:uppercase;"
-                                f"margin-bottom:10px;'>Kategorien</div>"
+                                f"<div style='background:linear-gradient(145deg,rgba(13,23,41,0.9),rgba(10,16,30,0.95));"
+                                f"border:1px solid rgba(148,163,184,0.07);border-radius:14px;"
+                                f"padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.2);'>"
+                                f"<div style='font-family:DM Mono,monospace;color:#1e293b;"
+                                f"font-size:9px;font-weight:500;letter-spacing:2px;"
+                                f"text-transform:uppercase;margin-bottom:14px;'>Kategorien</div>"
                                 f"{legend_rows}</div>",
                                 unsafe_allow_html=True
                             )
 
         except Exception as e:
             st.warning(f"Verbindung wird hergestellt... ({e})")
+
     # ── Transaktionen ────────────────────────────────────────
     elif menu == "💸 Transaktionen":
         user_name   = st.session_state['user_name']
@@ -859,28 +996,28 @@ if st.session_state['logged_in']:
         custom_cats = load_custom_cats(user_name, t_type)
         all_cats    = std_cats + custom_cats
 
-        # FIX: Dialog NUR aufrufen wenn show_new_cat explizit True ist
         if st.session_state.get('show_new_cat') is True:
             new_category_dialog()
-
-        # Kategorie-Dialoge
         if st.session_state.get('edit_cat_data') is not None:
             edit_category_dialog()
         if st.session_state.get('delete_cat_data') is not None:
             confirm_delete_cat()
 
-        # ── Header ──────────────────────────────────────────
+        # Header
         st.markdown(
-            "<h1 style='margin-bottom:4px;'>Neue Buchung</h1>"
-            "<p style='color:#64748b;font-size:14px;margin-bottom:24px;'>"
-            "Erfasse Einnahmen und Ausgaben</p>",
+            "<div style='margin-bottom:28px;'>"
+            "<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
+            "color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-0.5px;'>Neue Buchung</h1>"
+            "<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;margin:0;'>"
+            "Erfasse Einnahmen und Ausgaben</p>"
+            "</div>",
             unsafe_allow_html=True
         )
 
-        # ── Typ-Toggle ───────────────────────────────────────
+        # Typ-Toggle
         st.markdown(
-            "<p style='color:#64748b;font-size:12px;font-weight:600;"
-            "letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;'>"
+            "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+            "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;'>"
             "Typ</p>",
             unsafe_allow_html=True
         )
@@ -891,7 +1028,6 @@ if st.session_state['logged_in']:
                 key="btn_ausgabe", use_container_width=True,
                 type="primary" if t_type == "Ausgabe" else "secondary"
             ):
-                # FIX: show_new_cat beim Typ-Wechsel zurücksetzen
                 st.session_state['t_type'] = "Ausgabe"
                 st.rerun()
         with te:
@@ -900,13 +1036,12 @@ if st.session_state['logged_in']:
                 key="btn_einnahme", use_container_width=True,
                 type="primary" if t_type == "Einnahme" else "secondary"
             ):
-                # FIX: show_new_cat beim Typ-Wechsel zurücksetzen
                 st.session_state['t_type'] = "Einnahme"
                 st.rerun()
 
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-        # ── Buchungsformular ─────────────────────────────────
+        # Buchungsformular
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -914,16 +1049,14 @@ if st.session_state['logged_in']:
                 t_date   = st.date_input("Datum", datetime.date.today())
             with col2:
                 st.markdown(
-                    "<div style='display:flex;justify-content:space-between;"
-                    "align-items:center;margin-bottom:4px;'>"
-                    "<span style='font-size:14px;color:#f1f5f9;'>Kategorie</span>"
-                    "</div>",
+                    "<div style='font-family:DM Sans,sans-serif;font-size:14px;"
+                    "color:#e2e8f0;margin-bottom:4px;'>Kategorie</div>",
                     unsafe_allow_html=True
                 )
                 t_cat  = st.selectbox("Kategorie", all_cats, label_visibility="collapsed")
                 t_note = st.text_input("Notiz (optional)", placeholder="z.B. Supermarkt, Tankstelle...")
 
-            saved = st.form_submit_button("💾 Speichern", use_container_width=True)
+            saved = st.form_submit_button("Speichern", use_container_width=True)
             if saved:
                 new_row = pd.DataFrame([{
                     "user":      user_name,
@@ -940,22 +1073,22 @@ if st.session_state['logged_in']:
                 st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
 
-        # ── Neue Kategorie + Verwaltung (nur einmal) ─────────
+        # Neue Kategorie + Verwaltung
         cat_btn_col, manage_col = st.columns([1, 1])
         with cat_btn_col:
-            if st.button("➕ Neue Kategorie erstellen", use_container_width=True, type="secondary"):
-                # FIX: Nur hier wird show_new_cat auf True gesetzt
+            if st.button("+ Neue Kategorie", use_container_width=True, type="secondary"):
                 st.session_state['show_new_cat']      = True
                 st.session_state['new_cat_typ']       = t_type
                 st.session_state['_dialog_just_opened'] = True
                 st.rerun()
         if custom_cats:
             with manage_col:
-                with st.expander(f"🗂️ Eigene {t_type}-Kategorien"):
+                with st.expander(f"Eigene {t_type}-Kategorien"):
                     for cat in custom_cats:
                         cc1, cc2 = st.columns([5, 1])
                         cc1.markdown(
-                            f"<span style='color:#cbd5e1;font-size:14px;'>{cat}</span>",
+                            f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;"
+                            f"font-size:14px;'>{cat}</span>",
                             unsafe_allow_html=True
                         )
                         with cc2:
@@ -979,9 +1112,14 @@ if st.session_state['logged_in']:
                                     st.session_state['_dialog_just_opened'] = True
                                     st.rerun()
 
-        # ── Buchungstabelle ──────────────────────────────────
-        st.markdown("---")
-        st.subheader("📋 Meine Buchungen")
+        # Buchungstabelle
+        st.markdown(
+            "<div style='height:8px'></div>"
+            "<div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+            "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+            "margin:20px 0 16px 0;'>Meine Buchungen</div>",
+            unsafe_allow_html=True
+        )
         try:
             df_t = conn.read(worksheet="transactions", ttl="0")
             if 'user' not in df_t.columns:
@@ -1018,20 +1156,23 @@ if st.session_state['logged_in']:
 
                         c1, c2, c3, c4, c5 = st.columns([2.5, 2, 2, 3, 1.5])
                         c1.markdown(
-                            f"<span style='color:#94a3b8'>{zeit_label}</span>",
+                            f"<span style='font-family:DM Mono,monospace;color:#334155;"
+                            f"font-size:12px;'>{zeit_label}</span>",
                             unsafe_allow_html=True
                         )
                         c2.markdown(
-                            f"<span style='color:{farbe};font-weight:700'>"
-                            f"{row['betrag_anzeige']}</span>",
+                            f"<span style='font-family:DM Mono,monospace;color:{farbe};"
+                            f"font-weight:500;font-size:13px;'>{row['betrag_anzeige']}</span>",
                             unsafe_allow_html=True
                         )
                         c3.markdown(
-                            f"<span style='color:#cbd5e1'>{row['kategorie']}</span>",
+                            f"<span style='font-family:DM Sans,sans-serif;color:#64748b;"
+                            f"font-size:13px;'>{row['kategorie']}</span>",
                             unsafe_allow_html=True
                         )
                         c4.markdown(
-                            f"<span style='color:#64748b'>{notiz}</span>",
+                            f"<span style='font-family:DM Sans,sans-serif;color:#334155;"
+                            f"font-size:13px;'>{notiz}</span>",
                             unsafe_allow_html=True
                         )
 
@@ -1040,7 +1181,6 @@ if st.session_state['logged_in']:
                                 if st.button("✏️ Bearbeiten", key=f"edit_btn_{orig_idx}",
                                              use_container_width=True):
                                     st.session_state['edit_idx'] = orig_idx
-                                    # FIX: show_new_cat beim Bearbeiten nicht triggern
                                     st.session_state['show_new_cat'] = False
                                     st.rerun()
                                 if st.button("🗑️ Löschen", key=f"del_btn_{orig_idx}",
@@ -1053,12 +1193,12 @@ if st.session_state['logged_in']:
                                         "kategorie":      row['kategorie'],
                                     })
 
-                        # Bearbeitungsformular
                         if st.session_state['edit_idx'] == orig_idx:
                             with st.form(key=f"edit_form_{orig_idx}"):
                                 st.markdown(
-                                    "<p style='color:#38bdf8;font-weight:600;margin-bottom:8px;'>"
-                                    "✏️ Eintrag bearbeiten</p>",
+                                    "<p style='font-family:DM Sans,sans-serif;color:#38bdf8;"
+                                    "font-weight:500;font-size:14px;margin-bottom:12px;'>"
+                                    "Eintrag bearbeiten</p>",
                                     unsafe_allow_html=True
                                 )
                                 ec1, ec2 = st.columns(2)
@@ -1092,11 +1232,11 @@ if st.session_state['logged_in']:
                                 col_save, col_cancel = st.columns(2)
                                 with col_save:
                                     saved = st.form_submit_button(
-                                        "💾 Speichern", use_container_width=True, type="primary"
+                                        "Speichern", use_container_width=True, type="primary"
                                     )
                                 with col_cancel:
                                     cancelled = st.form_submit_button(
-                                        "🚫 Abbrechen", use_container_width=True
+                                        "Abbrechen", use_container_width=True
                                     )
 
                                 if saved:
@@ -1127,8 +1267,21 @@ if st.session_state['logged_in']:
 
     # ── Einstellungen ────────────────────────────────────────
     elif menu == "⚙️ Einstellungen":
-        st.title("Einstellungen ⚙️")
-        st.subheader("Passwort ändern")
+        st.markdown(
+            "<div style='margin-bottom:28px;'>"
+            "<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
+            "color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-0.5px;'>Einstellungen</h1>"
+            "<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;margin:0;'>"
+            "Konto und Sicherheit</p>"
+            "</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+            "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+            "margin-bottom:16px;'>Passwort ändern</p>",
+            unsafe_allow_html=True
+        )
         with st.form("pw_form"):
             pw_alt  = st.text_input("Aktuelles Passwort", type="password")
             pw_neu  = st.text_input("Neues Passwort", type="password")
@@ -1160,7 +1313,7 @@ if st.session_state['logged_in']:
 # ============================================================
 
 else:
-    st.markdown("<div style='height:8vh;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:10vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown(
         "<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>",
@@ -1175,13 +1328,15 @@ else:
         if mode == 'login':
             with st.form("login_form"):
                 st.markdown(
-                    "<h3 style='text-align:center;color:white;'>Anmelden</h3>",
+                    "<h3 style='text-align:center;color:#e2e8f0;font-family:DM Sans,sans-serif;"
+                    "font-weight:600;font-size:22px;letter-spacing:-0.5px;margin-bottom:24px;'>"
+                    "Anmelden</h3>",
                     unsafe_allow_html=True
                 )
                 u_in = st.text_input("Username", placeholder="Benutzername")
                 p_in = st.text_input("Passwort", type="password")
 
-                if st.form_submit_button("Anmelden"):
+                if st.form_submit_button("Anmelden", use_container_width=True):
                     time.sleep(1)
                     df_u     = conn.read(worksheet="users", ttl="0")
                     matching = df_u[df_u['username'] == u_in]
@@ -1212,7 +1367,9 @@ else:
         elif mode == 'signup':
             with st.form("signup_form"):
                 st.markdown(
-                    "<h3 style='text-align:center;color:white;'>Registrierung</h3>",
+                    "<h3 style='text-align:center;color:#e2e8f0;font-family:DM Sans,sans-serif;"
+                    "font-weight:600;font-size:22px;letter-spacing:-0.5px;margin-bottom:24px;'>"
+                    "Registrierung</h3>",
                     unsafe_allow_html=True
                 )
                 s_name  = st.text_input("Name",     placeholder="Max Mustermann")
@@ -1221,7 +1378,7 @@ else:
                 s_pass  = st.text_input("Passwort", type="password")
                 c_pass  = st.text_input("Passwort wiederholen", type="password")
 
-                if st.form_submit_button("Konto erstellen"):
+                if st.form_submit_button("Konto erstellen", use_container_width=True):
                     if not all([s_name, s_user, s_email, s_pass]):
                         st.error("❌ Bitte fülle alle Felder aus!")
                     elif len(s_name.strip().split()) < 2:
@@ -1271,12 +1428,15 @@ else:
             pending_email = st.session_state['pending_user'].get('email', '')
             with st.form("verify_form"):
                 st.markdown(
-                    "<h3 style='text-align:center;color:white;'>E-Mail verifizieren</h3>",
+                    "<h3 style='text-align:center;color:#e2e8f0;font-family:DM Sans,sans-serif;"
+                    "font-weight:600;font-size:22px;letter-spacing:-0.5px;margin-bottom:12px;'>"
+                    "E-Mail verifizieren</h3>",
                     unsafe_allow_html=True
                 )
                 st.markdown(
-                    f"<p style='text-align:center;color:#94a3b8;'>Wir haben einen 6-stelligen "
-                    f"Code an <b style='color:#38bdf8;'>{pending_email}</b> gesendet.</p>",
+                    f"<p style='text-align:center;color:#475569;font-family:DM Sans,sans-serif;"
+                    f"font-size:14px;margin-bottom:20px;'>Code gesendet an "
+                    f"<span style='color:#38bdf8;'>{pending_email}</span></p>",
                     unsafe_allow_html=True
                 )
                 code_input = st.text_input("Code eingeben", placeholder="123456", max_chars=6)
@@ -1284,11 +1444,11 @@ else:
                 if st.form_submit_button("Bestätigen", use_container_width=True):
                     if st.session_state['verify_expiry'] and \
                        datetime.datetime.now() > st.session_state['verify_expiry']:
-                        st.error("⏰ Der Code ist abgelaufen. Bitte registriere dich erneut.")
+                        st.error("⏰ Code abgelaufen. Bitte erneut registrieren.")
                         st.session_state['auth_mode'] = 'signup'
                         st.rerun()
                     elif code_input.strip() != st.session_state['verify_code']:
-                        st.error("❌ Falscher Code. Bitte versuche es erneut.")
+                        st.error("❌ Falscher Code.")
                     else:
                         df_u  = conn.read(worksheet="users", ttl="0")
                         new_u = pd.DataFrame([{
@@ -1305,7 +1465,7 @@ else:
                         st.session_state['auth_mode']     = 'login'
                         st.success("✅ E-Mail verifiziert! Du kannst dich jetzt einloggen.")
 
-            if st.button("➡️ Zum Login", use_container_width=True, type="primary"):
+            if st.button("Zum Login", use_container_width=True, type="primary"):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
 
@@ -1313,11 +1473,14 @@ else:
         elif mode == 'forgot':
             with st.form("forgot_form"):
                 st.markdown(
-                    "<h3 style='text-align:center;color:white;'>Passwort vergessen</h3>",
+                    "<h3 style='text-align:center;color:#e2e8f0;font-family:DM Sans,sans-serif;"
+                    "font-weight:600;font-size:22px;letter-spacing:-0.5px;margin-bottom:12px;'>"
+                    "Passwort vergessen</h3>",
                     unsafe_allow_html=True
                 )
                 st.markdown(
-                    "<p style='text-align:center;color:#94a3b8;'>Gib deine E-Mail-Adresse ein.</p>",
+                    "<p style='text-align:center;color:#475569;font-family:DM Sans,sans-serif;"
+                    "font-size:14px;margin-bottom:20px;'>Gib deine E-Mail-Adresse ein.</p>",
                     unsafe_allow_html=True
                 )
                 forgot_email = st.text_input("E-Mail", placeholder="deine@email.de")
@@ -1352,13 +1515,15 @@ else:
         elif mode == 'reset_password':
             with st.form("reset_form"):
                 st.markdown(
-                    "<h3 style='text-align:center;color:white;'>Passwort zurücksetzen</h3>",
+                    "<h3 style='text-align:center;color:#e2e8f0;font-family:DM Sans,sans-serif;"
+                    "font-weight:600;font-size:22px;letter-spacing:-0.5px;margin-bottom:12px;'>"
+                    "Passwort zurücksetzen</h3>",
                     unsafe_allow_html=True
                 )
                 st.markdown(
-                    f"<p style='text-align:center;color:#94a3b8;'>Code wurde an "
-                    f"<b style='color:#38bdf8;'>{st.session_state['reset_email']}</b>"
-                    f" gesendet.</p>",
+                    f"<p style='text-align:center;color:#475569;font-family:DM Sans,sans-serif;"
+                    f"font-size:14px;margin-bottom:20px;'>Code gesendet an "
+                    f"<span style='color:#38bdf8;'>{st.session_state['reset_email']}</span></p>",
                     unsafe_allow_html=True
                 )
                 code_input = st.text_input("6-stelliger Code", placeholder="123456", max_chars=6)
@@ -1368,7 +1533,7 @@ else:
                 if st.form_submit_button("Passwort speichern", use_container_width=True):
                     if st.session_state['reset_expiry'] and \
                        datetime.datetime.now() > st.session_state['reset_expiry']:
-                        st.error("⏰ Der Code ist abgelaufen. Bitte fordere einen neuen an.")
+                        st.error("⏰ Code abgelaufen. Bitte neu anfordern.")
                         st.session_state['auth_mode'] = 'forgot'
                         st.rerun()
                     elif code_input.strip() != st.session_state['reset_code']:
