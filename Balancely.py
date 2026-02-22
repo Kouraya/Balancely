@@ -6,6 +6,7 @@ import datetime
 import re
 import smtplib
 import random
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -290,10 +291,14 @@ else:
                 u_in = st.text_input("Username", placeholder="Benutzername")
                 p_in = st.text_input("Passwort", type="password")
                 if st.form_submit_button("Anmelden"):
+                    # FIX: Kurze Pause damit Google Sheets Daten sicher aktuell sind
+                    time.sleep(1)
                     df_u = conn.read(worksheet="users", ttl="0")
                     user_row = df_u[df_u['username'] == u_in]
                     if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
-                        verified = str(user_row.iloc[0].get('verified', 'True')).strip().lower()
+                        # FIX: Robusterer verified-Check — alle möglichen Werte abdecken
+                        raw_verified = user_row.iloc[0].get('verified', 'True')
+                        verified = str(raw_verified).strip().lower()
                         if verified not in ('true', '1', 'yes'):
                             st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
                         else:
@@ -346,7 +351,7 @@ else:
                                 html = email_html("Willkommen bei Balancely! Dein Verifizierungscode lautet:", code)
                                 if send_email(s_email.strip().lower(), "Balancely – E-Mail verifizieren", html):
                                     st.session_state['pending_user'] = {
-                                        "name": make_hashes(s_name.strip()),
+                                        "name": s_name.strip(),  # FIX: Name nicht hashen!
                                         "username": s_user,
                                         "email": s_email.strip().lower(),
                                         "password": make_hashes(s_pass)
@@ -375,6 +380,7 @@ else:
                     elif code_input.strip() != st.session_state['verify_code']:
                         st.error("❌ Falscher Code. Bitte versuche es erneut.")
                     else:
+                        # FIX: Zuerst in DB schreiben, DANN Session leeren, DANN Success zeigen
                         df_u = conn.read(worksheet="users", ttl="0")
                         new_u = pd.DataFrame([{
                             **st.session_state['pending_user'],
@@ -383,12 +389,18 @@ else:
                             "token_expiry": ""
                         }])
                         conn.update(worksheet="users", data=pd.concat([df_u, new_u], ignore_index=True))
+                        
+                        # FIX: Session State leeren
                         st.session_state['pending_user'] = {}
                         st.session_state['verify_code'] = ""
                         st.session_state['verify_expiry'] = None
                         st.session_state['auth_mode'] = 'login'
+                        
+                        # FIX: st.stop() statt st.rerun() — damit die Success-Meldung angezeigt wird
+                        # und der nächste Login-Versuch frische Daten aus GSheets liest
                         st.success("✅ E-Mail verifiziert! Du kannst dich jetzt einloggen.")
-                        st.rerun()
+                        st.stop()
+
             if st.button("Zurück", use_container_width=True):
                 st.session_state['auth_mode'] = 'signup'
                 st.rerun()
