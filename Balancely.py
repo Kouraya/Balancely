@@ -176,12 +176,14 @@ if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
 if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
 if 'verify_success' not in st.session_state: st.session_state['verify_success'] = False
+if 'token_processed' not in st.session_state: st.session_state['token_processed'] = False
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # ===== TOKEN-CHECK beim Seitenaufruf =====
 qp = st.query_params
-if 'token' in qp and not st.session_state['logged_in']:
+if 'token' in qp and not st.session_state['logged_in'] and not st.session_state['token_processed']:
+    st.session_state['token_processed'] = True
     token = qp['token']
     token_type = qp.get('type', 'reset')
     df_u = conn.read(worksheet="users", ttl="0")
@@ -217,10 +219,11 @@ if 'token' in qp and not st.session_state['logged_in']:
             st.session_state['token_error'] = "❌ Ungültiger Link."
             st.rerun()
     else:
-        st.query_params.clear()
-        st.session_state['auth_mode'] = 'login'
-        st.session_state['token_error'] = "❌ Ungültiger Link."
-        st.rerun()
+        if not st.session_state.get('verify_success'):
+            st.query_params.clear()
+            st.session_state['auth_mode'] = 'login'
+            st.session_state['token_error'] = "❌ Ungültiger Link."
+            st.rerun()
 
 if st.session_state['logged_in']:
     with st.sidebar:
@@ -231,6 +234,7 @@ if st.session_state['logged_in']:
         st.markdown("<div style='height: 30vh;'></div>", unsafe_allow_html=True)
         if st.button("Logout ➜", use_container_width=True, type="secondary"):
             st.session_state['logged_in'] = False
+            st.session_state['token_processed'] = False
             st.rerun()
 
     if menu == "📈 Dashboard":
@@ -337,7 +341,6 @@ if st.session_state['logged_in']:
                         st.success("✅ Passwort erfolgreich geändert!")
 
 else:
-    # ===== PASSWORT ZURÜCKSETZEN =====
     if st.session_state.get('auth_mode') == 'reset_password':
         st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
         st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
@@ -364,6 +367,7 @@ else:
                             conn.update(worksheet="users", data=df_u)
                             st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen.")
                             st.session_state['auth_mode'] = 'login'
+                            st.session_state['token_processed'] = False
                             st.session_state.pop('reset_token', None)
                             st.rerun()
                         else:
@@ -379,7 +383,6 @@ else:
         with center_col:
             if st.session_state['auth_mode'] == 'login':
 
-                # Meldungen anzeigen
                 if st.session_state.get('verify_success'):
                     st.success("✅ E-Mail erfolgreich verifiziert! Du kannst dich jetzt einloggen.")
                     st.session_state['verify_success'] = False
@@ -401,6 +404,7 @@ else:
                             else:
                                 st.session_state['logged_in'] = True
                                 st.session_state['user_name'] = u_in
+                                st.session_state['token_processed'] = False
                                 st.rerun()
                         else:
                             st.error("Login ungültig.")
