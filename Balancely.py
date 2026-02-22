@@ -284,19 +284,24 @@ else:
     with center_col:
 
         # ===== LOGIN =====
-        if st.form_submit_button("Anmelden"):
-    df_u = conn.read(worksheet="users", ttl="0")
-    user_row = df_u[df_u['username'] == u_in]
-    if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
-        verified = str(user_row.iloc[0].get('verified', 'True')).strip().lower()
-        if verified not in ('true', '1', 'yes'):
-            st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
-        else:
-            st.session_state['logged_in'] = True
-            st.session_state['user_name'] = u_in
-            st.rerun()
-    else:
-        st.error("Login ungültig.")
+        if st.session_state['auth_mode'] == 'login':
+            with st.form("l_f"):
+                st.markdown("<h3 style='text-align:center; color:white;'>Anmelden</h3>", unsafe_allow_html=True)
+                u_in = st.text_input("Username", placeholder="Benutzername")
+                p_in = st.text_input("Passwort", type="password")
+                if st.form_submit_button("Anmelden"):
+                    df_u = conn.read(worksheet="users", ttl="0")
+                    user_row = df_u[df_u['username'] == u_in]
+                    if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
+                        verified = str(user_row.iloc[0].get('verified', 'True')).strip().lower()
+                        if verified not in ('true', '1', 'yes'):
+                            st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
+                        else:
+                            st.session_state['logged_in'] = True
+                            st.session_state['user_name'] = u_in
+                            st.rerun()
+                    else:
+                        st.error("Login ungültig.")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("Konto erstellen", use_container_width=True):
@@ -363,7 +368,7 @@ else:
                 st.markdown(f"<p style='text-align:center; color:#94a3b8;'>Wir haben einen 6-stelligen Code an <b style='color:#38bdf8;'>{st.session_state['pending_user'].get('email','')}</b> gesendet.</p>", unsafe_allow_html=True)
                 code_input = st.text_input("Code eingeben", placeholder="123456", max_chars=6)
                 if st.form_submit_button("Bestätigen", use_container_width=True):
-                    if datetime.datetime.now() > st.session_state['verify_expiry']:
+                    if st.session_state['verify_expiry'] and datetime.datetime.now() > st.session_state['verify_expiry']:
                         st.error("⏰ Der Code ist abgelaufen. Bitte registriere dich erneut.")
                         st.session_state['auth_mode'] = 'signup'
                         st.rerun()
@@ -425,7 +430,7 @@ else:
                 pw_neu = st.text_input("Neues Passwort", type="password")
                 pw_neu2 = st.text_input("Passwort wiederholen", type="password")
                 if st.form_submit_button("Passwort speichern", use_container_width=True):
-                    if datetime.datetime.now() > st.session_state['reset_expiry']:
+                    if st.session_state['reset_expiry'] and datetime.datetime.now() > st.session_state['reset_expiry']:
                         st.error("⏰ Der Code ist abgelaufen. Bitte fordere einen neuen an.")
                         st.session_state['auth_mode'] = 'forgot'
                         st.rerun()
@@ -452,4 +457,3 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-
