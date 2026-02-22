@@ -456,7 +456,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_custom_cats(user: str, typ: str) -> list:
     try:
-        df = conn.read(worksheet="categories", ttl="0")
+        df = conn.read(worksheet="categories", ttl="5")
         if df.empty or 'user' not in df.columns:
             return []
         rows = df[(df['user'] == user) & (df['typ'] == typ)]
@@ -467,7 +467,7 @@ def load_custom_cats(user: str, typ: str) -> list:
 
 def save_custom_cat(user: str, typ: str, kategorie: str):
     try:
-        df = conn.read(worksheet="categories", ttl="0")
+        df = conn.read(worksheet="categories", ttl="5")
     except Exception:
         df = pd.DataFrame(columns=['user', 'typ', 'kategorie'])
     new_row = pd.DataFrame([{'user': user, 'typ': typ, 'kategorie': kategorie}])
@@ -476,7 +476,7 @@ def save_custom_cat(user: str, typ: str, kategorie: str):
 
 def delete_custom_cat(user: str, typ: str, kategorie: str):
     try:
-        df = conn.read(worksheet="categories", ttl="0")
+        df = conn.read(worksheet="categories", ttl="5")
         df = df[~((df['user'] == user) & (df['typ'] == typ) & (df['kategorie'] == kategorie))]
         conn.update(worksheet="categories", data=df)
     except Exception:
@@ -485,7 +485,7 @@ def delete_custom_cat(user: str, typ: str, kategorie: str):
 
 def update_custom_cat(user: str, typ: str, old_label: str, new_label: str):
     try:
-        df = conn.read(worksheet="categories", ttl="0")
+        df = conn.read(worksheet="categories", ttl="5")
         mask = (df['user'] == user) & (df['typ'] == typ) & (df['kategorie'] == old_label)
         df.loc[mask, 'kategorie'] = new_label
         conn.update(worksheet="categories", data=df)
@@ -495,7 +495,7 @@ def update_custom_cat(user: str, typ: str, old_label: str, new_label: str):
 
 def load_goal(user: str) -> float:
     try:
-        df_g = conn.read(worksheet="goals", ttl="0")
+        df_g = conn.read(worksheet="goals", ttl="5")
         if df_g.empty or 'user' not in df_g.columns:
             return 0.0
         row = df_g[df_g['user'] == user]
@@ -508,7 +508,7 @@ def load_goal(user: str) -> float:
 
 def save_goal(user: str, goal: float):
     try:
-        df_g = conn.read(worksheet="goals", ttl="0")
+        df_g = conn.read(worksheet="goals", ttl="5")
     except Exception:
         df_g = pd.DataFrame(columns=['user', 'sparziel'])
     if 'user' not in df_g.columns:
@@ -527,7 +527,7 @@ def save_goal(user: str, goal: float):
 def load_toepfe(user: str) -> list:
     """Load all Spartöpfe for a user from 'toepfe' worksheet."""
     try:
-        df = conn.read(worksheet="toepfe", ttl="0")
+        df = conn.read(worksheet="toepfe", ttl="5")
         if df.empty or 'user' not in df.columns:
             return []
         rows = df[df['user'] == user]
@@ -556,7 +556,7 @@ TOPF_PALETTE = [
 
 def save_topf(user: str, name: str, ziel: float, emoji: str):
     try:
-        df = conn.read(worksheet="toepfe", ttl="0")
+        df = conn.read(worksheet="toepfe", ttl="5")
     except Exception:
         df = pd.DataFrame(columns=['user', 'id', 'name', 'ziel', 'gespart', 'emoji', 'farbe', 'deleted'])
     # Auto-Farbe basierend auf Anzahl vorhandener Töpfe
@@ -576,7 +576,7 @@ def update_topf_gespart(user: str, topf_id: str, topf_name: str, delta: float):
     """Update gespart in toepfe AND write a Spartopf transaction."""
     # 1. Topf-Guthaben aktualisieren
     try:
-        df = conn.read(worksheet="toepfe", ttl="0")
+        df = conn.read(worksheet="toepfe", ttl="5")
         mask = (df['user'] == user) & (df['id'] == topf_id)
         if mask.any():
             current = float(df.loc[mask, 'gespart'].values[0] or 0)
@@ -586,7 +586,7 @@ def update_topf_gespart(user: str, topf_id: str, topf_name: str, delta: float):
         pass
     # 2. Transaktion schreiben (Spartopf-Typ, negativ = Geld geht weg vom Konto)
     try:
-        df_t = conn.read(worksheet="transactions", ttl="0")
+        df_t = conn.read(worksheet="transactions", ttl="5")
         sign = -1 if delta > 0 else 1  # Einzahlung = vom Konto weg; Auszahlung = zurück aufs Konto
         notiz = f"{'↓' if delta > 0 else '↑'} {topf_name}"
         new_row = pd.DataFrame([{
@@ -605,7 +605,7 @@ def update_topf_gespart(user: str, topf_id: str, topf_name: str, delta: float):
 
 def delete_topf(user: str, topf_id: str):
     try:
-        df = conn.read(worksheet="toepfe", ttl="0")
+        df = conn.read(worksheet="toepfe", ttl="5")
         mask = (df['user'] == user) & (df['id'] == topf_id)
         df.loc[mask, 'deleted'] = 'True'
         conn.update(worksheet="toepfe", data=df)
@@ -615,7 +615,7 @@ def delete_topf(user: str, topf_id: str):
 
 def update_topf_meta(user: str, topf_id: str, name: str, ziel: float, emoji: str):
     try:
-        df = conn.read(worksheet="toepfe", ttl="0")
+        df = conn.read(worksheet="toepfe", ttl="5")
         mask = (df['user'] == user) & (df['id'] == topf_id)
         if mask.any():
             df.loc[mask, 'name']  = name
@@ -756,7 +756,7 @@ def confirm_delete(row_data):
     col_ja, col_nein = st.columns(2)
     with col_ja:
         if st.button("Löschen", use_container_width=True, type="primary"):
-            df_all = conn.read(worksheet="transactions", ttl="0")
+            df_all = conn.read(worksheet="transactions", ttl="5")
             if 'deleted' not in df_all.columns:
                 df_all['deleted'] = ''
             mask = (
@@ -880,7 +880,7 @@ if st.session_state['logged_in']:
                 st.rerun()
 
         try:
-            df_t = conn.read(worksheet="transactions", ttl="0")
+            df_t = conn.read(worksheet="transactions", ttl="5")
             if "user" not in df_t.columns:
                 st.info("Noch keine Daten vorhanden.")
             else:
@@ -1363,7 +1363,7 @@ if st.session_state['logged_in']:
                     "betrag":    betrag_save,
                     "notiz":     t_note,
                 }])
-                df_old = conn.read(worksheet="transactions", ttl="0")
+                df_old = conn.read(worksheet="transactions", ttl="5")
                 conn.update(worksheet="transactions",
                             data=pd.concat([df_old, new_row], ignore_index=True))
                 st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
@@ -1415,7 +1415,7 @@ if st.session_state['logged_in']:
             unsafe_allow_html=True
         )
         try:
-            df_t = conn.read(worksheet="transactions", ttl="0")
+            df_t = conn.read(worksheet="transactions", ttl="5")
             if 'user' not in df_t.columns:
                 st.info("Noch keine Buchungen vorhanden.")
             else:
@@ -1548,7 +1548,7 @@ if st.session_state['logged_in']:
                                     cancelled = st.form_submit_button("Abbrechen", use_container_width=True)
 
                                 if saved:
-                                    df_all = conn.read(worksheet="transactions", ttl="0")
+                                    df_all = conn.read(worksheet="transactions", ttl="5")
                                     if 'deleted' not in df_all.columns:
                                         df_all['deleted'] = ''
                                     match_idx = df_all[find_row_mask(df_all, row)].index
@@ -1592,7 +1592,7 @@ if st.session_state['logged_in']:
         )
 
         try:
-            df_raw = conn.read(worksheet="transactions", ttl="0")
+            df_raw = conn.read(worksheet="transactions", ttl="5")
         except Exception as e:
             st.warning(f"Verbindung wird hergestellt... ({e})")
             df_raw = pd.DataFrame()
@@ -2725,7 +2725,7 @@ if st.session_state['logged_in']:
             pw_neu2 = st.text_input("Neues Passwort wiederholen", type="password")
 
             if st.form_submit_button("Passwort ändern", use_container_width=True):
-                df_u = conn.read(worksheet="users", ttl="0")
+                df_u = conn.read(worksheet="users", ttl="5")
                 idx  = df_u[df_u['username'] == st.session_state['user_name']].index
                 if idx.empty:
                     st.error("❌ Benutzer nicht gefunden.")
@@ -2774,7 +2774,7 @@ else:
 
                 if st.form_submit_button("Anmelden", use_container_width=True):
                     time.sleep(1)
-                    df_u     = conn.read(worksheet="users", ttl="0")
+                    df_u     = conn.read(worksheet="users", ttl="5")
                     matching = df_u[df_u['username'] == u_in]
                     user_row = matching.iloc[[-1]] if not matching.empty else matching
 
@@ -2827,7 +2827,7 @@ else:
                         elif s_pass != c_pass:
                             st.error("❌ Die Passwörter stimmen nicht überein.")
                         else:
-                            df_u = conn.read(worksheet="users", ttl="0")
+                            df_u = conn.read(worksheet="users", ttl="5")
                             if s_user in df_u['username'].values:
                                 st.error("⚠️ Dieser Username ist bereits vergeben.")
                             elif s_email.strip().lower() in df_u['email'].values:
@@ -2883,7 +2883,7 @@ else:
                     elif code_input.strip() != st.session_state['verify_code']:
                         st.error("❌ Falscher Code.")
                     else:
-                        df_u  = conn.read(worksheet="users", ttl="0")
+                        df_u  = conn.read(worksheet="users", ttl="5")
                         new_u = pd.DataFrame([{
                             **st.session_state['pending_user'],
                             "verified": "True", "token": "", "token_expiry": "",
@@ -2919,7 +2919,7 @@ else:
                     if not is_valid_email(forgot_email):
                         st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
                     else:
-                        df_u = conn.read(worksheet="users", ttl="0")
+                        df_u = conn.read(worksheet="users", ttl="5")
                         idx  = df_u[df_u['email'] == forgot_email.strip().lower()].index
                         if idx.empty:
                             st.success("✅ Falls diese E-Mail registriert ist, wurde ein Code gesendet.")
@@ -2972,7 +2972,7 @@ else:
                         elif pw_neu != pw_neu2:
                             st.error("❌ Die neuen Passwörter stimmen nicht überein.")
                         else:
-                            df_u = conn.read(worksheet="users", ttl="0")
+                            df_u = conn.read(worksheet="users", ttl="5")
                             idx  = df_u[df_u['email'] == st.session_state['reset_email']].index
                             if not idx.empty:
                                 df_u.loc[idx[0], 'password'] = make_hashes(pw_neu)
@@ -2987,3 +2987,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
