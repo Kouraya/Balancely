@@ -299,6 +299,9 @@ defaults = {
     'new_cat_typ':     'Ausgabe',
     # FIX: letzter aktiver Tab – wird zum Erkennen von Tab-Wechseln genutzt
     '_last_menu':      "",
+    # Kategorie bearbeiten / löschen
+    'edit_cat_data':   None,
+    'delete_cat_data': None,
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -339,6 +342,17 @@ def delete_custom_cat(user: str, typ: str, kategorie: str):
         pass
 
 
+def update_custom_cat(user: str, typ: str, old_label: str, new_label: str):
+    """Benennt eine eigene Kategorie um."""
+    try:
+        df = conn.read(worksheet="categories", ttl="0")
+        mask = (df['user'] == user) & (df['typ'] == typ) & (df['kategorie'] == old_label)
+        df.loc[mask, 'kategorie'] = new_label
+        conn.update(worksheet="categories", data=df)
+    except Exception:
+        pass
+
+
 @st.dialog("➕ Neue Kategorie erstellen")
 def new_category_dialog():
     typ = st.session_state.get('new_cat_typ', 'Ausgabe')
@@ -348,7 +362,8 @@ def new_category_dialog():
     )
     nc1, nc2 = st.columns([1, 3])
     with nc1:
-        new_emoji = st.text_input("Emoji", placeholder="🎵", max_chars=4)
+        new_emoji = st.text_input("Emoji", placeholder="🎵", max_chars=4,
+                                  help="Windows: **Win + .** | Mac: **Ctrl+Cmd+Space**")
     with nc2:
         new_name = st.text_input("Name", placeholder="z.B. Musik")
 
@@ -374,6 +389,107 @@ def new_category_dialog():
     with col_cancel:
         if st.button("❌ Abbrechen", use_container_width=True):
             st.session_state['show_new_cat'] = False
+            st.rerun()
+
+
+@st.dialog("✏️ Kategorie bearbeiten")
+def edit_category_dialog():
+    data = st.session_state.get('edit_cat_data')
+    if not data:
+        st.rerun()
+        return
+    old_label = data['old_label']
+    typ       = data['typ']
+    user      = data['user']
+
+    # Emoji und Name aus altem Label trennen
+    parts = old_label.split(' ', 1)
+    if len(parts) == 2 and len(parts[0]) <= 4:
+        init_emoji, init_name = parts[0], parts[1]
+    else:
+        init_emoji, init_name = '', old_label
+
+    st.markdown(
+        f"<p style='color:#94a3b8;font-size:13px;margin-bottom:12px;'>"
+        f"Kategorie bearbeiten – aktuell: <b style='color:#38bdf8;'>{old_label}</b></p>",
+        unsafe_allow_html=True
+    )
+
+    nc1, nc2 = st.columns([1, 3])
+    with nc1:
+        # JS-Trick: inputmode="none" auf Desktop öffnet nichts, auf Mobile die Emoji-Tastatur
+        st.markdown("""
+        <script>
+        window.addEventListener('load', function() {
+            const inputs = window.parent.document.querySelectorAll('input[aria-label="Emoji"]');
+            inputs.forEach(function(inp) {
+                // Mobile: emoji keyboard; Desktop: trigger native emoji picker via key shortcut hint
+                inp.setAttribute('inputmode', 'text');
+                inp.setAttribute('autocomplete', 'off');
+                // Show emoji picker on focus for desktop via title hint
+                inp.title = 'Windows: Win+. | Mac: Ctrl+Cmd+Space';
+            });
+        });
+        </script>
+        """, unsafe_allow_html=True)
+        new_emoji = st.text_input("Emoji", value=init_emoji, max_chars=4,
+                                  placeholder="🎵",
+                                  help="Windows: **Win + .** | Mac: **Ctrl+Cmd+Space**")
+    with nc2:
+        new_name = st.text_input("Name", value=init_name, placeholder="z.B. Musik")
+
+    new_typ = st.selectbox("Typ", ["Ausgabe", "Einnahme"],
+                           index=0 if typ == "Ausgabe" else 1)
+
+    col_save, col_cancel = st.columns(2)
+    with col_save:
+        if st.button("💾 Speichern", use_container_width=True, type="primary"):
+            if not new_name.strip():
+                st.error("❌ Bitte einen Namen eingeben.")
+            else:
+                new_label = f"{new_emoji.strip()} {new_name.strip()}" \
+                            if new_emoji.strip() else new_name.strip()
+                existing = load_custom_cats(user, new_typ) + DEFAULT_CATS[new_typ]
+                if new_label != old_label and new_label in existing:
+                    st.error("⚠️ Diese Kategorie existiert bereits.")
+                else:
+                    if new_typ != typ:
+                        # Typ hat sich geändert: alten Eintrag löschen + neuen anlegen
+                        delete_custom_cat(user, typ, old_label)
+                        save_custom_cat(user, new_typ, new_label)
+                    else:
+                        update_custom_cat(user, typ, old_label, new_label)
+                    st.session_state['edit_cat_data'] = None
+                    st.rerun()
+    with col_cancel:
+        if st.button("❌ Abbrechen", use_container_width=True):
+            st.session_state['edit_cat_data'] = None
+            st.rerun()
+
+
+@st.dialog("🗑️ Kategorie löschen")
+def confirm_delete_cat():
+    data = st.session_state.get('delete_cat_data')
+    if not data:
+        st.rerun()
+        return
+    st.markdown(
+        "<p style='color:#f1f5f9;font-size:16px;'>Kategorie wirklich löschen?</p>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f"<p style='color:#94a3b8;font-size:14px;'>{data['label']}</p>",
+        unsafe_allow_html=True
+    )
+    col_ja, col_nein = st.columns(2)
+    with col_ja:
+        if st.button("✅ Ja, löschen", use_container_width=True, type="primary"):
+            delete_custom_cat(data['user'], data['typ'], data['label'])
+            st.session_state['delete_cat_data'] = None
+            st.rerun()
+    with col_nein:
+        if st.button("❌ Abbrechen", use_container_width=True):
+            st.session_state['delete_cat_data'] = None
             st.rerun()
 
 
@@ -484,6 +600,12 @@ if st.session_state['logged_in']:
         if st.session_state.get('show_new_cat') is True:
             new_category_dialog()
 
+        # Kategorie-Dialoge
+        if st.session_state.get('edit_cat_data') is not None:
+            edit_category_dialog()
+        if st.session_state.get('delete_cat_data') is not None:
+            confirm_delete_cat()
+
         # ── Header ──────────────────────────────────────────
         st.markdown(
             "<h1 style='margin-bottom:4px;'>Neue Buchung</h1>"
@@ -574,9 +696,24 @@ if st.session_state['logged_in']:
                             f"<span style='color:#cbd5e1;font-size:14px;'>{cat}</span>",
                             unsafe_allow_html=True
                         )
-                        if cc2.button("🗑️", key=f"delcat_{cat}", use_container_width=True):
-                            delete_custom_cat(user_name, t_type, cat)
-                            st.rerun()
+                        with cc2:
+                            with st.popover("⋯", use_container_width=True):
+                                if st.button("✏️ Bearbeiten", key=f"editcat_btn_{cat}",
+                                             use_container_width=True):
+                                    st.session_state['edit_cat_data'] = {
+                                        'user':      user_name,
+                                        'typ':       t_type,
+                                        'old_label': cat,
+                                    }
+                                    st.rerun()
+                                if st.button("🗑️ Löschen", key=f"delcat_btn_{cat}",
+                                             use_container_width=True):
+                                    st.session_state['delete_cat_data'] = {
+                                        'user':  user_name,
+                                        'typ':   t_type,
+                                        'label': cat,
+                                    }
+                                    st.rerun()
 
         # ── Buchungstabelle ──────────────────────────────────
         st.markdown("---")
