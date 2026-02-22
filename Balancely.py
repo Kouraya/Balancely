@@ -419,6 +419,9 @@ defaults = {
     'dash_month_offset':  0,
     'dash_selected_aus':  None,
     'dash_selected_ein':  None,
+    'dash_selected_cat':  None,
+    'dash_selected_typ':  None,
+    'dash_selected_color': None,
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -669,11 +672,11 @@ if st.session_state['logged_in']:
 
         # Page header
         st.markdown(
-            f"<div style='margin-bottom:28px;'>"
-            f"<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
-            f"color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-0.5px;'>"
+            f"<div style='margin-bottom:36px;margin-top:16px;'>"
+            f"<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;"
+            f"color:#e2e8f0;margin:0 0 6px 0;letter-spacing:-1px;'>"
             f"Deine Übersicht, {st.session_state['user_name']}! ⚖️</h1>"
-            f"<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;margin:0;'>"
+            f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:15px;margin:0;'>"
             f"Monatliche Finanzübersicht</p>"
             f"</div>",
             unsafe_allow_html=True
@@ -693,6 +696,9 @@ if st.session_state['logged_in']:
         with nav1:
             if st.button("‹", use_container_width=True, key="dash_prev"):
                 st.session_state['dash_month_offset'] -= 1
+                st.session_state['dash_selected_cat']   = None
+                st.session_state['dash_selected_typ']   = None
+                st.session_state['dash_selected_color'] = None
                 st.rerun()
         with nav2:
             st.markdown(
@@ -705,6 +711,9 @@ if st.session_state['logged_in']:
             if st.button("›", use_container_width=True, key="dash_next",
                          disabled=(offset >= 0)):
                 st.session_state['dash_month_offset'] += 1
+                st.session_state['dash_selected_cat']   = None
+                st.session_state['dash_selected_typ']   = None
+                st.session_state['dash_selected_color'] = None
                 st.rerun()
 
         try:
@@ -821,14 +830,7 @@ if st.session_state['logged_in']:
                             line=dict(color="rgba(5,10,20,0.8)", width=2),
                         ),
                         textinfo="none",
-                        customdata=customdata_list,
-                        # Tooltip zeigt saubere Werte — kein pull damit Kreis rund bleibt
-                        hovertemplate=(
-                            "<b>%{label}</b><br>"
-                            "%{customdata[0]}<br>"
-                            "%{value:,.2f} €  ·  %{customdata[1]:.1f}%"
-                            "<extra></extra>"
-                        ),
+                        hoverinfo="none",   # Kein Hover-Tooltip
                         direction="clockwise",
                         sort=False,
                         rotation=90,
@@ -880,35 +882,27 @@ if st.session_state['logged_in']:
                     chart_col, legend_col = st.columns([2, 2])
 
                     with chart_col:
-                        ev = st.plotly_chart(
+                        # Kein on_select — Interaktion läuft über Legende-Buttons
+                        st.plotly_chart(
                             fig, use_container_width=True,
-                            key="donut_combined", on_select="rerun",
-                            selection_mode="points",
+                            key="donut_combined",
                         )
 
                     with legend_col:
-                        sel_cat = sel_typ = sel_color = None
-                        try:
-                            pts = ev.selection.get("points", [])
-                            if pts:
-                                lbl = pts[0].get("label")
-                                if lbl in all_cats:
-                                    idx_s     = all_cats.index(lbl)
-                                    sel_cat   = lbl
-                                    sel_typ   = all_types[idx_s]
-                                    sel_color = all_colors[idx_s]
-                        except Exception:
-                            pass
+                        # Aktive Auswahl aus session_state lesen
+                        sel_cat   = st.session_state.get('dash_selected_cat')
+                        sel_typ   = st.session_state.get('dash_selected_typ')
+                        sel_color = st.session_state.get('dash_selected_color')
 
-                        if sel_cat:
+                        if sel_cat and sel_typ:
                             src_df  = ausg_df if sel_typ == "Ausgabe" else ein_df
                             detail  = src_df[src_df["kategorie"] == sel_cat]
                             total_d = detail["betrag_num"].sum()
                             sign    = "−" if sel_typ == "Ausgabe" else "+"
                             rows_html = ""
                             for _, tr in detail.sort_values("datum_dt", ascending=False).iterrows():
-                                notiz = str(tr.get("notiz", ""))
-                                notiz = "" if notiz.lower() == "nan" else notiz
+                                notiz_tr = str(tr.get("notiz", ""))
+                                notiz_tr = "" if notiz_tr.lower() == "nan" else notiz_tr
                                 rows_html += (
                                     f"<div style='display:flex;justify-content:space-between;"
                                     f"align-items:center;padding:9px 0;"
@@ -918,7 +912,7 @@ if st.session_state['logged_in']:
                                     f"font-size:12px;'>{tr['datum_dt'].strftime('%d.%m.')}</span>"
                                     + (f"<span style='color:#334155;font-size:12px;"
                                        f"margin-left:10px;font-family:DM Sans,sans-serif;'>"
-                                       f"{notiz}</span>" if notiz else "")
+                                       f"{notiz_tr}</span>" if notiz_tr else "")
                                     + f"</div>"
                                     f"<span style='color:{sel_color};font-weight:600;"
                                     f"font-size:13px;font-family:DM Mono,monospace;"
@@ -926,11 +920,17 @@ if st.session_state['logged_in']:
                                     f"{sign}{tr['betrag_num']:,.2f} €</span>"
                                     f"</div>"
                                 )
+                            # Zurück-Button + Detail-Card
+                            if st.button("← Alle Kategorien", key="dash_back_btn"):
+                                st.session_state['dash_selected_cat']   = None
+                                st.session_state['dash_selected_typ']   = None
+                                st.session_state['dash_selected_color'] = None
+                                st.rerun()
                             st.markdown(
                                 f"<div style='background:linear-gradient(145deg,rgba(13,23,41,0.95),rgba(10,16,30,0.98));"
                                 f"border:1px solid {sel_color}30;"
                                 f"border-top:2px solid {sel_color};"
-                                f"border-radius:14px;padding:18px 20px;"
+                                f"border-radius:14px;padding:18px 20px;margin-top:10px;"
                                 f"box-shadow:0 8px 30px rgba(0,0,0,0.3);'>"
                                 f"<div style='font-family:DM Mono,monospace;color:{sel_color};"
                                 f"font-size:9px;font-weight:500;letter-spacing:2px;"
@@ -946,42 +946,50 @@ if st.session_state['logged_in']:
                                 unsafe_allow_html=True
                             )
                         else:
-                            # Legende
-                            legend_rows = ""
+                            # Legende als klickbare Buttons
+                            st.markdown(
+                                f"<div style='font-family:DM Mono,monospace;color:#334155;"
+                                f"font-size:9px;font-weight:500;letter-spacing:2px;"
+                                f"text-transform:uppercase;margin-bottom:10px;padding:0 4px;'>"
+                                f"Kategorien</div>",
+                                unsafe_allow_html=True
+                            )
                             for cat, val, color, typ in zip(
                                     all_cats, all_vals, all_colors, all_types):
                                 pct  = val / total_sum * 100
                                 sign = "−" if typ == "Ausgabe" else "+"
-                                legend_rows += (
-                                    f"<div style='display:flex;align-items:center;"
-                                    f"justify-content:space-between;"
-                                    f"padding:9px 0;border-bottom:1px solid rgba(148,163,184,0.05);'>"
-                                    f"<div style='display:flex;align-items:center;gap:10px;min-width:0;'>"
-                                    f"<div style='width:6px;height:6px;border-radius:50%;"
-                                    f"background:{color};flex-shrink:0;'></div>"
-                                    f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;"
-                                    f"font-size:13px;white-space:nowrap;overflow:hidden;"
-                                    f"text-overflow:ellipsis;font-weight:400;'>{cat}</span>"
-                                    f"</div>"
-                                    f"<div style='display:flex;align-items:center;"
-                                    f"gap:10px;flex-shrink:0;margin-left:10px;'>"
-                                    f"<span style='font-family:DM Mono,monospace;color:{color};"
-                                    f"font-weight:500;font-size:12px;'>{sign}{val:,.2f} €</span>"
-                                    f"<span style='font-family:DM Mono,monospace;color:#1e293b;"
-                                    f"font-size:11px;min-width:32px;text-align:right;'>"
-                                    f"{pct:.0f}%</span>"
-                                    f"</div></div>"
-                                )
-                            st.markdown(
-                                f"<div style='background:linear-gradient(145deg,rgba(13,23,41,0.9),rgba(10,16,30,0.95));"
-                                f"border:1px solid rgba(148,163,184,0.07);border-radius:14px;"
-                                f"padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.2);'>"
-                                f"<div style='font-family:DM Mono,monospace;color:#1e293b;"
-                                f"font-size:9px;font-weight:500;letter-spacing:2px;"
-                                f"text-transform:uppercase;margin-bottom:14px;'>Kategorien</div>"
-                                f"{legend_rows}</div>",
-                                unsafe_allow_html=True
-                            )
+                                # Jede Zeile als klickbarer Button
+                                btn_key = f"legend_btn_{cat}_{typ}"
+                                # Render als custom HTML-Button via Streamlit button
+                                col_legend, col_btn = st.columns([10, 1])
+                                with col_legend:
+                                    st.markdown(
+                                        f"<div style='display:flex;align-items:center;"
+                                        f"justify-content:space-between;"
+                                        f"padding:7px 8px;border-radius:8px;"
+                                        f"border:1px solid transparent;"
+                                        f"cursor:pointer;'>"
+                                        f"<div style='display:flex;align-items:center;gap:10px;min-width:0;'>"
+                                        f"<div style='width:7px;height:7px;border-radius:50%;"
+                                        f"background:{color};flex-shrink:0;'></div>"
+                                        f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;"
+                                        f"font-size:13px;overflow:hidden;text-overflow:ellipsis;"
+                                        f"white-space:nowrap;'>{cat}</span>"
+                                        f"</div>"
+                                        f"<div style='display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:8px;'>"
+                                        f"<span style='font-family:DM Mono,monospace;color:{color};"
+                                        f"font-weight:500;font-size:12px;'>{sign}{val:,.2f} €</span>"
+                                        f"<span style='font-family:DM Mono,monospace;color:#334155;"
+                                        f"font-size:11px;min-width:28px;text-align:right;'>{pct:.0f}%</span>"
+                                        f"</div></div>",
+                                        unsafe_allow_html=True
+                                    )
+                                with col_btn:
+                                    if st.button("›", key=btn_key):
+                                        st.session_state['dash_selected_cat']   = cat
+                                        st.session_state['dash_selected_typ']   = typ
+                                        st.session_state['dash_selected_color'] = color
+                                        st.rerun()
 
         except Exception as e:
             st.warning(f"Verbindung wird hergestellt... ({e})")
@@ -1219,14 +1227,18 @@ if st.session_state['logged_in']:
                                         "Typ", ["Einnahme", "Ausgabe"],
                                         index=0 if row['typ'] == "Einnahme" else 1
                                     )
-                                    cats_e   = ["Gehalt", "Bonus", "Verkauf"] \
-                                               if e_typ == "Einnahme" \
-                                               else ["Essen", "Miete", "Freizeit",
-                                                     "Transport", "Shopping"]
-                                    curr_cat = row['kategorie'] \
-                                               if row['kategorie'] in cats_e else cats_e[0]
-                                    e_cat  = st.selectbox(
-                                        "Kategorie", cats_e, index=cats_e.index(curr_cat)
+                                    # FIX: Volle Kategorienliste mit Emojis + eigene Kategorien
+                                    e_std_cats    = DEFAULT_CATS[e_typ]
+                                    e_custom_cats = load_custom_cats(user_name, e_typ)
+                                    e_all_cats    = e_std_cats + e_custom_cats
+                                    # Aktuelle Kategorie vorauswählen — auch wenn Typ geändert
+                                    curr_cat = row['kategorie']
+                                    if curr_cat in e_all_cats:
+                                        e_cat_idx = e_all_cats.index(curr_cat)
+                                    else:
+                                        e_cat_idx = 0
+                                    e_cat = st.selectbox(
+                                        "Kategorie", e_all_cats, index=e_cat_idx
                                     )
                                 e_notiz = st.text_input(
                                     "Notiz (optional)", value=notiz,
