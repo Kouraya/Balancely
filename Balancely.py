@@ -573,9 +573,9 @@ if st.session_state['logged_in']:
         now = datetime.datetime.now()
 
         st.markdown(
-            f"<h1 style='margin-bottom:2px;'>Deine Übersicht, "
+            f"<h1 style='margin-bottom:2px;font-size:32px;'>Deine Übersicht, "
             f"{st.session_state['user_name']}! ⚖️</h1>"
-            f"<p style='color:#64748b;font-size:14px;margin-bottom:20px;'>"
+            f"<p style='color:#475569;font-size:13px;margin-bottom:16px;'>"
             f"Monatliche Finanzübersicht</p>",
             unsafe_allow_html=True
         )
@@ -590,15 +590,15 @@ if st.session_state['logged_in']:
         t_month += 1
         monat_label = datetime.date(t_year, t_month, 1).strftime("%B %Y")
 
-        nav1, nav2, nav3 = st.columns([1, 3, 1])
+        nav1, nav2, nav3 = st.columns([1, 4, 1])
         with nav1:
             if st.button("◀", use_container_width=True, key="dash_prev"):
                 st.session_state['dash_month_offset'] -= 1
                 st.rerun()
         with nav2:
             st.markdown(
-                f"<div style='text-align:center;font-size:17px;font-weight:700;"
-                f"color:#f1f5f9;padding:6px 0;'>{monat_label}</div>",
+                f"<div style='text-align:center;font-size:15px;font-weight:600;"
+                f"color:#94a3b8;padding:6px 0;'>{monat_label}</div>",
                 unsafe_allow_html=True
             )
         with nav3:
@@ -617,7 +617,7 @@ if st.session_state['logged_in']:
                     alle = alle[~alle["deleted"].astype(str).str.strip().str.lower()
                                 .isin(["true", "1", "1.0"])]
 
-                alle["datum_dt"]  = pd.to_datetime(alle["datum"], errors="coerce")
+                alle["datum_dt"] = pd.to_datetime(alle["datum"], errors="coerce")
                 monat_df = alle[
                     (alle["datum_dt"].dt.year  == t_year) &
                     (alle["datum_dt"].dt.month == t_month)
@@ -630,29 +630,34 @@ if st.session_state['logged_in']:
                     ein = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
                     aus = abs(monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].sum())
                     bal = ein - aus
-
-                    # ── KPI-Karten ────────────────────────────
-                    k1, k2, k3 = st.columns(3)
-                    def kpi_card(col, label, value, color):
-                        col.markdown(
-                            f"<div style='background:rgba(15,23,42,0.8);"
-                            f"border:1px solid #1e293b;border-radius:16px;"
-                            f"padding:18px 20px;text-align:center;'>"
-                            f"<div style='color:#475569;font-size:11px;font-weight:700;"
-                            f"letter-spacing:1.5px;text-transform:uppercase;"
-                            f"margin-bottom:8px;'>{label}</div>"
-                            f"<div style='color:{color};font-size:24px;font-weight:800;"
-                            f"letter-spacing:-0.5px;'>{value}</div></div>",
-                            unsafe_allow_html=True
-                        )
                     bal_color = "#4ade80" if bal >= 0 else "#f87171"
-                    kpi_card(k1, "Kontostand", f"{bal:+,.2f} €", bal_color)
-                    kpi_card(k2, "Einnahmen",  f"+{ein:,.2f} €", "#4ade80")
-                    kpi_card(k3, "Ausgaben",   f"-{aus:,.2f} €", "#f87171")
 
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                    # ── Kompakte KPI-Leiste ───────────────────
+                    st.markdown(
+                        f"<div style='display:flex;gap:12px;margin:12px 0 24px 0;'>"
+                        f"<div style='flex:1;background:rgba(15,23,42,0.6);"
+                        f"border:1px solid #1e293b;border-radius:12px;padding:12px 16px;'>"
+                        f"<div style='color:#475569;font-size:10px;font-weight:700;"
+                        f"letter-spacing:1.2px;text-transform:uppercase;'>Kontostand</div>"
+                        f"<div style='color:{bal_color};font-size:20px;font-weight:800;"
+                        f"margin-top:4px;'>{bal:+,.2f} €</div></div>"
+                        f"<div style='flex:1;background:rgba(15,23,42,0.6);"
+                        f"border:1px solid #1e293b;border-radius:12px;padding:12px 16px;'>"
+                        f"<div style='color:#475569;font-size:10px;font-weight:700;"
+                        f"letter-spacing:1.2px;text-transform:uppercase;'>Einnahmen</div>"
+                        f"<div style='color:#4ade80;font-size:20px;font-weight:800;"
+                        f"margin-top:4px;'>+{ein:,.2f} €</div></div>"
+                        f"<div style='flex:1;background:rgba(15,23,42,0.6);"
+                        f"border:1px solid #1e293b;border-radius:12px;padding:12px 16px;'>"
+                        f"<div style='color:#475569;font-size:10px;font-weight:700;"
+                        f"letter-spacing:1.2px;text-transform:uppercase;'>Ausgaben</div>"
+                        f"<div style='color:#f87171;font-size:20px;font-weight:800;"
+                        f"margin-top:4px;'>-{aus:,.2f} €</div></div>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
 
-                    # ── Kategorien zusammenstellen ────────────
+                    # ── Kategorien ────────────────────────────
                     ausg_df = monat_df[monat_df["typ"] == "Ausgabe"].copy()
                     ausg_df["betrag_num"] = ausg_df["betrag_num"].abs()
                     ausg_grp = (ausg_df.groupby("kategorie")["betrag_num"]
@@ -664,76 +669,47 @@ if st.session_state['logged_in']:
                                .sum().reset_index()
                                .sort_values("betrag_num", ascending=False))
 
-                    # ── Farben: Ausgaben = Rottöne, Einnahmen = Grüntöne ──
-                    PALETTE_AUS = [
-                        "#ef4444","#f97316","#f59e0b","#dc2626",
-                        "#ea580c","#d97706","#b91c1c","#c2410c",
-                        "#92400e","#7c3aed",
-                    ]
-                    PALETTE_EIN = [
-                        "#22c55e","#16a34a","#15803d","#4ade80",
-                        "#86efac","#059669","#10b981","#34d399",
-                        "#6ee7b7","#047857",
-                    ]
+                    PALETTE_AUS = ["#ef4444","#f97316","#f59e0b","#dc2626",
+                                   "#ea580c","#d97706","#b91c1c","#c2410c",
+                                   "#92400e","#e11d48"]
+                    PALETTE_EIN = ["#22c55e","#16a34a","#15803d","#4ade80",
+                                   "#059669","#10b981","#34d399","#047857",
+                                   "#065f46","#86efac"]
 
-                    # ── EIN Donut-Chart: außen = Ausgaben, innen = Einnahmen ──
-                    # Wir bauen ein zweilagiges Sunburst-artiges Diagramm:
-                    # Äußerer Ring: alle Kategorien (Ausgaben warm, Einnahmen grün)
-                    # Kontostand in der Mitte als Annotation
-
-                    all_cats   = []
-                    all_vals   = []
-                    all_colors = []
-                    all_types  = []
-
-                    for i, row in ausg_grp.iterrows():
+                    all_cats, all_vals, all_colors, all_types = [], [], [], []
+                    for i, (_, row) in enumerate(ausg_grp.iterrows()):
                         all_cats.append(row["kategorie"])
                         all_vals.append(row["betrag_num"])
-                        all_colors.append(PALETTE_AUS[len(all_cats) % len(PALETTE_AUS) - 1])
+                        all_colors.append(PALETTE_AUS[i % len(PALETTE_AUS)])
                         all_types.append("Ausgabe")
-
-                    for i, row in ein_grp.iterrows():
+                    for i, (_, row) in enumerate(ein_grp.iterrows()):
                         all_cats.append(row["kategorie"])
                         all_vals.append(row["betrag_num"])
-                        all_colors.append(PALETTE_EIN[len(ein_grp) - 1 - list(ein_grp.index).index(i) if i in list(ein_grp.index) else 0])
+                        all_colors.append(PALETTE_EIN[i % len(PALETTE_EIN)])
                         all_types.append("Einnahme")
 
-                    # Farben korrekt zuweisen
-                    all_colors = []
-                    for idx_c, t in enumerate(all_types):
-                        if t == "Ausgabe":
-                            j = sum(1 for x in all_types[:idx_c] if x == "Ausgabe")
-                            all_colors.append(PALETTE_AUS[j % len(PALETTE_AUS)])
-                        else:
-                            j = sum(1 for x in all_types[:idx_c] if x == "Einnahme")
-                            all_colors.append(PALETTE_EIN[j % len(PALETTE_EIN)])
-
-                    # Hover-Text: sauber lesbar
-                    hover_texts = []
-                    for idx_h, (cat, val, typ) in enumerate(zip(all_cats, all_vals, all_types)):
-                        pct = val / sum(all_vals) * 100
-                        hover_texts.append(
-                            f"<b>{cat}</b><br>"
-                            f"{val:,.2f} €<br>"
-                            f"{pct:.1f}% aller Buchungen<br>"
-                            f"<i style='color:#94a3b8'>{typ}</i>"
-                        )
-
-                    bal_str   = f"{bal:+,.2f} €"
-                    bal_color2 = "#4ade80" if bal >= 0 else "#f87171"
+                    total_sum = sum(all_vals)
 
                     fig = go.Figure(go.Pie(
                         labels=all_cats,
                         values=all_vals,
-                        hole=0.58,
+                        hole=0.60,
                         marker=dict(
                             colors=all_colors,
-                            line=dict(color="#0f172a", width=3),
+                            line=dict(color="#060d1a", width=2),
                         ),
-                        text=all_cats,
                         textinfo="none",
-                        customdata=hover_texts,
-                        hovertemplate="%{customdata}<extra></extra>",
+                        # Saubere Hover-Tooltips: nur plaintext, kein HTML
+                        customdata=[
+                            [t, v, v/total_sum*100]
+                            for t, v in zip(all_types, all_vals)
+                        ],
+                        hovertemplate=(
+                            "<b>%{label}</b><br>"
+                            "%{customdata[0]}<br>"
+                            "%{customdata[1]:,.2f} €  ·  %{customdata[2]:.1f}%"
+                            "<extra></extra>"
+                        ),
                         direction="clockwise",
                         sort=False,
                         rotation=90,
@@ -743,38 +719,38 @@ if st.session_state['logged_in']:
                         paper_bgcolor="rgba(0,0,0,0)",
                         plot_bgcolor="rgba(0,0,0,0)",
                         showlegend=False,
-                        margin=dict(t=20, b=20, l=20, r=20),
-                        height=420,
+                        margin=dict(t=10, b=10, l=10, r=10),
+                        height=400,
                         hoverlabel=dict(
                             bgcolor="#1e293b",
-                            bordercolor="#334155",
-                            font=dict(color="#f1f5f9", size=14),
+                            bordercolor="#38bdf8",
+                            font=dict(color="#f8fafc", size=14, family="monospace"),
+                            namelength=0,
                             align="left",
                         ),
                         annotations=[
                             dict(
                                 text="Kontostand",
-                                x=0.5, y=0.57, showarrow=False,
-                                font=dict(size=13, color="#64748b"),
+                                x=0.5, y=0.60, showarrow=False,
+                                font=dict(size=12, color="#64748b"),
                                 xref="paper", yref="paper",
                             ),
                             dict(
-                                text=f"<b>{bal_str}</b>",
-                                x=0.5, y=0.46, showarrow=False,
-                                font=dict(size=22, color=bal_color2),
+                                text=f"<b>{bal:+,.2f} €</b>",
+                                x=0.5, y=0.48, showarrow=False,
+                                font=dict(size=20, color=bal_color),
                                 xref="paper", yref="paper",
                             ),
                             dict(
-                                text=f"<span style='color:#475569;font-size:11px'>"
-                                     f"↑ {ein:,.0f} €  ↓ {aus:,.0f} €</span>",
-                                x=0.5, y=0.36, showarrow=False,
+                                text=f"+{ein:,.0f} €  /  -{aus:,.0f} €",
+                                x=0.5, y=0.37, showarrow=False,
                                 font=dict(size=11, color="#475569"),
                                 xref="paper", yref="paper",
                             ),
                         ],
                     )
 
-                    # ── Layout: Chart links, Legende rechts ───
+                    # ── Layout: Chart + Legende ───────────────
                     chart_col, legend_col = st.columns([3, 2])
 
                     with chart_col:
@@ -784,147 +760,94 @@ if st.session_state['logged_in']:
                             selection_mode="points",
                         )
 
-                    # ── Legende + Klick-Detail ────────────────
                     with legend_col:
-                        # Segment ausgewählt?
-                        sel_cat  = None
-                        sel_typ  = None
-                        sel_color = None
+                        sel_cat = sel_typ = sel_color = None
                         try:
                             pts = ev.selection.get("points", [])
                             if pts:
-                                sel_label = pts[0].get("label")
-                                if sel_label in all_cats:
-                                    idx_s = all_cats.index(sel_label)
-                                    sel_cat   = sel_label
+                                lbl = pts[0].get("label")
+                                if lbl in all_cats:
+                                    idx_s     = all_cats.index(lbl)
+                                    sel_cat   = lbl
                                     sel_typ   = all_types[idx_s]
                                     sel_color = all_colors[idx_s]
                         except Exception:
                             pass
 
                         if sel_cat:
-                            # Detail-Ansicht
                             src_df  = ausg_df if sel_typ == "Ausgabe" else ein_df
                             detail  = src_df[src_df["kategorie"] == sel_cat]
                             total_d = detail["betrag_num"].sum()
                             sign    = "-" if sel_typ == "Ausgabe" else "+"
-                            st.markdown(
-                                f"<div style='background:rgba(15,23,42,0.9);"
-                                f"border:1px solid {sel_color};border-radius:14px;"
-                                f"padding:16px 18px;'>"
-                                f"<div style='color:{sel_color};font-weight:700;"
-                                f"font-size:15px;margin-bottom:4px;'>{sel_cat}</div>"
-                                f"<div style='color:#f1f5f9;font-size:20px;"
-                                f"font-weight:800;margin-bottom:12px;'>"
-                                f"{sign}{total_d:,.2f} €</div>",
-                                unsafe_allow_html=True
-                            )
+                            rows_html = ""
                             for _, tr in detail.sort_values("datum_dt", ascending=False).iterrows():
                                 notiz = str(tr.get("notiz", ""))
                                 notiz = "" if notiz.lower() == "nan" else notiz
-                                st.markdown(
+                                rows_html += (
                                     f"<div style='display:flex;justify-content:space-between;"
                                     f"align-items:center;padding:7px 0;"
                                     f"border-bottom:1px solid #1e293b;'>"
                                     f"<div>"
-                                    f"<span style='color:#94a3b8;font-size:13px;'>"
+                                    f"<span style='color:#64748b;font-size:13px;'>"
                                     f"{tr['datum_dt'].strftime('%d.%m.')}</span>"
-                                    + (f"<span style='color:#475569;font-size:12px;"
+                                    + (f"<span style='color:#334155;font-size:12px;"
                                        f"margin-left:8px;'>{notiz}</span>" if notiz else "")
                                     + f"</div>"
                                     f"<span style='color:{sel_color};font-weight:700;"
                                     f"font-size:14px;'>{sign}{tr['betrag_num']:,.2f} €</span>"
-                                    f"</div>",
-                                    unsafe_allow_html=True
+                                    f"</div>"
                                 )
-                            st.markdown("</div>", unsafe_allow_html=True)
-
-                        else:
-                            # Normale Legende — alle Kategorien
                             st.markdown(
-                                "<p style='color:#475569;font-size:11px;font-weight:700;"
-                                "letter-spacing:1.5px;text-transform:uppercase;"
-                                "margin-bottom:12px;'>Kategorien</p>",
+                                f"<div style='background:rgba(15,23,42,0.8);"
+                                f"border:1px solid {sel_color}44;"
+                                f"border-top:2px solid {sel_color};"
+                                f"border-radius:12px;padding:16px 18px;'>"
+                                f"<div style='color:{sel_color};font-size:11px;"
+                                f"font-weight:700;letter-spacing:1px;"
+                                f"text-transform:uppercase;margin-bottom:4px;'>{sel_typ}</div>"
+                                f"<div style='color:#f1f5f9;font-weight:700;"
+                                f"font-size:18px;margin-bottom:2px;'>{sel_cat}</div>"
+                                f"<div style='color:{sel_color};font-size:22px;"
+                                f"font-weight:800;margin-bottom:14px;'>"
+                                f"{sign}{total_d:,.2f} €</div>"
+                                f"{rows_html}</div>",
                                 unsafe_allow_html=True
                             )
-                            for cat, val, color, typ in zip(all_cats, all_vals,
-                                                             all_colors, all_types):
-                                pct  = val / sum(all_vals) * 100
+                        else:
+                            # Legende
+                            legend_rows = ""
+                            for cat, val, color, typ in zip(
+                                    all_cats, all_vals, all_colors, all_types):
+                                pct  = val / total_sum * 100
                                 sign = "-" if typ == "Ausgabe" else "+"
-                                st.markdown(
+                                legend_rows += (
                                     f"<div style='display:flex;align-items:center;"
                                     f"justify-content:space-between;"
-                                    f"padding:6px 0;border-bottom:1px solid #0f172a;'>"
-                                    f"<div style='display:flex;align-items:center;gap:10px;'>"
-                                    f"<div style='width:10px;height:10px;border-radius:50%;"
+                                    f"padding:8px 0;border-bottom:1px solid #0f172a;'>"
+                                    f"<div style='display:flex;align-items:center;gap:10px;"
+                                    f"min-width:0;'>"
+                                    f"<div style='width:8px;height:8px;border-radius:50%;"
                                     f"background:{color};flex-shrink:0;'></div>"
-                                    f"<span style='color:#cbd5e1;font-size:13px;'>{cat}</span>"
+                                    f"<span style='color:#cbd5e1;font-size:13px;"
+                                    f"white-space:nowrap;overflow:hidden;"
+                                    f"text-overflow:ellipsis;'>{cat}</span>"
                                     f"</div>"
-                                    f"<div style='text-align:right;'>"
+                                    f"<div style='display:flex;align-items:center;"
+                                    f"gap:8px;flex-shrink:0;margin-left:8px;'>"
                                     f"<span style='color:{color};font-weight:700;"
                                     f"font-size:13px;'>{sign}{val:,.2f} €</span>"
-                                    f"<span style='color:#475569;font-size:11px;"
-                                    f"margin-left:6px;'>{pct:.0f}%</span>"
-                                    f"</div></div>",
-                                    unsafe_allow_html=True
+                                    f"<span style='color:#334155;font-size:11px;"
+                                    f"min-width:28px;text-align:right;'>{pct:.0f}%</span>"
+                                    f"</div></div>"
                                 )
-
-                    # ── Tagesverlauf ──────────────────────────
-                    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-                    st.markdown(
-                        "<p style='color:#475569;font-size:11px;font-weight:700;"
-                        "letter-spacing:1.5px;text-transform:uppercase;"
-                        "margin-bottom:8px;'>Tagesverlauf</p>",
-                        unsafe_allow_html=True
-                    )
-                    tages = monat_df.groupby("datum_dt")["betrag_num"].sum().reset_index()
-                    tages = tages.sort_values("datum_dt")
-                    tages["kumuliert"] = tages["betrag_num"].cumsum()
-
-                    fig_line = go.Figure()
-                    # Fläche unter der Kurve einfärben je nach Vorzeichen
-                    fig_line.add_trace(go.Scatter(
-                        x=tages["datum_dt"],
-                        y=tages["kumuliert"],
-                        mode="lines+markers",
-                        line=dict(color="#38bdf8", width=2.5, shape="spline"),
-                        marker=dict(size=6, color="#38bdf8",
-                                    line=dict(color="#0f172a", width=2)),
-                        fill="tozeroy",
-                        fillcolor="rgba(56,189,248,0.07)",
-                        hovertemplate=(
-                            "<b>%{x|%d. %B}</b><br>"
-                            "Kumuliert: <b>%{y:+,.2f} €</b>"
-                            "<extra></extra>"
-                        ),
-                        name="Netto",
-                    ))
-                    fig_line.update_layout(
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        height=200,
-                        margin=dict(t=8, b=30, l=55, r=10),
-                        xaxis=dict(
-                            showgrid=False, zeroline=False,
-                            tickfont=dict(color="#475569", size=11),
-                            tickformat="%d.%m.",
-                        ),
-                        yaxis=dict(
-                            showgrid=True,
-                            gridcolor="rgba(30,41,59,0.9)",
-                            zeroline=True,
-                            zerolinecolor="rgba(100,116,139,0.35)",
-                            tickfont=dict(color="#475569", size=11),
-                            ticksuffix=" €",
-                        ),
-                        hoverlabel=dict(
-                            bgcolor="#1e293b",
-                            bordercolor="#334155",
-                            font=dict(color="#f1f5f9", size=13),
-                            align="left",
-                        ),
-                    )
-                    st.plotly_chart(fig_line, use_container_width=True, key="line_verlauf")
+                            st.markdown(
+                                f"<div style='padding:4px 0;'>"
+                                f"<div style='color:#475569;font-size:10px;font-weight:700;"
+                                f"letter-spacing:1.5px;text-transform:uppercase;"
+                                f"margin-bottom:10px;'>Kategorien</div>"
+                                f"{legend_rows}</div>",
+                                unsafe_allow_html=True
+                            )
 
         except Exception as e:
             st.warning(f"Verbindung wird hergestellt... ({e})")
