@@ -44,7 +44,7 @@ st.markdown("""
     div[data-testid="stTextInputRootElement"] {
         background-color: transparent !important;
     }
-    /* Innerer BaseWeb Container */
+    /* Input + BaseWeb Container */
     div[data-baseweb="input"],
     div[data-baseweb="base-input"] {
         background-color: transparent !important;
@@ -53,23 +53,42 @@ st.markdown("""
         padding-right: 0 !important;
         gap: 0 !important;
     }
-    /* Fokus-State */
+    /* Fokus */
     div[data-baseweb="input"]:focus-within,
     div[data-baseweb="base-input"]:focus-within {
         background-color: transparent !important;
         border-color: #38bdf8 !important;
     }
-    /* Datum-Feld */
+    /* Datum */
     div[data-testid="stDateInput"] > div {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
     }
+    /* Kategorie Selectbox */
+    div[data-baseweb="select"] > div:first-child {
+        background-color: transparent !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 8px !important;
+    }
+    div[data-baseweb="select"] > div:first-child:focus-within {
+        border-color: #38bdf8 !important;
+    }
+
+    /* + / - Buttons beim Number Input ausblenden */
+    button[data-testid="stNumberInputStepDown"],
+    button[data-testid="stNumberInputStepUp"] {
+        display: none !important;
+    }
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+        border-radius: 8px !important;
+    }
+
     /* Leerer Spacer neben Auge */
     div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
         display: none !important;
     }
-    /* "Press Enter" Text ausblenden */
+    /* "Press Enter" ausblenden */
     [data-testid="InputInstructions"],
     [data-testid="stInputInstructions"],
     div[class*="InputInstructions"],
