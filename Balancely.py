@@ -157,6 +157,16 @@ div[data-testid="stDateInput"] > div {
     border: 1px solid #1e293b !important;
     border-radius: 8px !important;
     box-shadow: none !important;
+    min-height: 42px !important;
+}
+/* Alle Inputs, Selects und Date-Picker gleich hoch */
+div[data-baseweb="input"],
+div[data-baseweb="base-input"],
+div[data-baseweb="select"] > div:first-child,
+div[data-testid="stDateInput"] > div,
+div[data-testid="stNumberInput"] > div {
+    min-height: 42px !important;
+    height: 42px !important;
 }
 div[data-baseweb="select"] > div:first-child {
     background-color: transparent !important;
