@@ -846,27 +846,37 @@ if st.session_state['logged_in']:
                                .sum().reset_index()
                                .sort_values("betrag_num", ascending=False))
 
-                    PALETTE_AUS = ["#ef4444","#f97316","#f59e0b","#dc2626",
-                                   "#ea580c","#d97706","#b91c1c","#c2410c",
-                                   "#92400e","#e11d48"]
-                    PALETTE_EIN = ["#166534","#86efac","#14532d","#bbf7d0",
-                                   "#15803d","#dcfce7","#16a34a","#4ade80",
-                                   "#065f46","#a7f3d0"]
-                    PALETTE_DEP = ["#38bdf8","#0ea5e9","#7dd3fc","#0284c7",
-                                   "#bae6fd","#0369a1","#e0f2fe","#2563eb",
-                                   "#93c5fd","#1d4ed8"]
+                    # Ausgaben: Rot-Spektrum aus Screenshot (#ff0000 → Schwarz / Weiß)
+                    PALETTE_AUS = [
+                        "#ff0000","#ff5232","#ff7b5a","#ff9e81",
+                        "#ffbfaa","#ffdfd4","#dc2626","#b91c1c",
+                        "#991b1b","#7f1d1d",
+                    ]
+                    # Einnahmen: Grün-Spektrum aus Screenshot (monochrom #006b00–#2b961f)
+                    PALETTE_EIN = [
+                        "#006b00","#007200","#007900","#008000",
+                        "#14870c","#218e16","#2b961f","#38a82b",
+                        "#45bb37","#53ce44",
+                    ]
+                    # Depot: Blau-Spektrum aus Screenshot (#0000ff → Schwarz)
+                    PALETTE_DEP = [
+                        "#0000ff","#1e0bd0","#2510a3","#241178",
+                        "#1f104f","#19092e","#2563eb","#1d4ed8",
+                        "#1e40af","#1e3a8a",
+                    ]
 
                     all_cats, all_vals, all_colors, all_types = [], [], [], []
-                    for i, (_, row) in enumerate(ausg_grp.iterrows()):
-                        all_cats.append(row["kategorie"])
-                        all_vals.append(float(row["betrag_num"]))
-                        all_colors.append(PALETTE_AUS[i % len(PALETTE_AUS)])
-                        all_types.append("Ausgabe")
+                    # Reihenfolge: Einnahmen → Ausgaben → Depot
                     for i, (_, row) in enumerate(ein_grp.iterrows()):
                         all_cats.append(row["kategorie"])
                         all_vals.append(float(row["betrag_num"]))
                         all_colors.append(PALETTE_EIN[i % len(PALETTE_EIN)])
                         all_types.append("Einnahme")
+                    for i, (_, row) in enumerate(ausg_grp.iterrows()):
+                        all_cats.append(row["kategorie"])
+                        all_vals.append(float(row["betrag_num"]))
+                        all_colors.append(PALETTE_AUS[i % len(PALETTE_AUS)])
+                        all_types.append("Ausgabe")
                     for i, (_, row) in enumerate(dep_grp.iterrows()):
                         all_cats.append(row["kategorie"])
                         all_vals.append(float(row["betrag_num"]))
@@ -1011,7 +1021,7 @@ if st.session_state['logged_in']:
                                 unsafe_allow_html=True
                             )
                         else:
-                            # Legende als klickbare Buttons
+                            # Legende als klickbare Buttons — sortiert: Einnahmen → Ausgaben → Depot
                             st.markdown(
                                 f"<div style='font-family:DM Mono,monospace;color:#334155;"
                                 f"font-size:9px;font-weight:500;letter-spacing:2px;"
@@ -1019,13 +1029,29 @@ if st.session_state['logged_in']:
                                 f"Kategorien</div>",
                                 unsafe_allow_html=True
                             )
+                            current_typ = None
+                            TYP_LABELS = {
+                                "Einnahme": ("EINNAHMEN", "#2b961f"),
+                                "Ausgabe":  ("AUSGABEN",  "#ff5232"),
+                                "Depot":    ("DEPOT",     "#2510a3"),
+                            }
                             for cat, val, color, typ in zip(
                                     all_cats, all_vals, all_colors, all_types):
+                                # Abschnitts-Header wenn Typ wechselt
+                                if typ != current_typ:
+                                    current_typ = typ
+                                    lbl, hdr_col = TYP_LABELS.get(typ, (typ.upper(), "#64748b"))
+                                    st.markdown(
+                                        f"<div style='font-family:DM Mono,monospace;color:{hdr_col};"
+                                        f"font-size:9px;font-weight:700;letter-spacing:2px;"
+                                        f"text-transform:uppercase;padding:10px 8px 4px 8px;"
+                                        f"border-top:1px solid rgba(255,255,255,0.05);margin-top:4px;'>"
+                                        f"{lbl}</div>",
+                                        unsafe_allow_html=True
+                                    )
                                 pct  = val / total_sum * 100
-                                sign = "−" if typ == "Ausgabe" else "+"
-                                # Jede Zeile als klickbarer Button
+                                sign = "−" if typ == "Ausgabe" else ("" if typ == "Depot" else "+")
                                 btn_key = f"legend_btn_{cat}_{typ}"
-                                # Render als custom HTML-Button via Streamlit button
                                 col_legend, col_btn = st.columns([10, 1])
                                 with col_legend:
                                     st.markdown(
