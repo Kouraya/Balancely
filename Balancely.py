@@ -298,10 +298,12 @@ else:
 
                     if not user_row.empty and make_hashes(p_in) == str(user_row.iloc[0]['password']):
                         raw_verified = user_row.iloc[0].get('verified', 'True')
-                        verified = str(raw_verified).strip().lower()
-                        # DEBUG — zeigt genau was aus der DB gelesen wird
-                        st.info(f"🔍 Debug: raw='{raw_verified}' | type={type(raw_verified).__name__} | lower='{verified}'")
-                        if verified not in ('true', '1', 'yes'):
+                        # FIX: Google Sheets liest TRUE als float 1.0 ein
+                        try:
+                            is_verified = float(raw_verified) >= 1.0
+                        except (ValueError, TypeError):
+                            is_verified = str(raw_verified).strip().lower() in ('true', '1', 'yes')
+                        if not is_verified:
                             st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
                         else:
                             st.session_state['logged_in'] = True
@@ -398,13 +400,10 @@ else:
                         st.session_state['verify_expiry'] = None
                         st.session_state['auth_mode'] = 'login'
                         
-                        # FIX: st.stop() statt st.rerun() — damit die Success-Meldung angezeigt wird
-                        # und der nächste Login-Versuch frische Daten aus GSheets liest
                         st.success("✅ E-Mail verifiziert! Du kannst dich jetzt einloggen.")
-                        st.stop()
 
-            if st.button("Zurück", use_container_width=True):
-                st.session_state['auth_mode'] = 'signup'
+            if st.button("➡️ Zum Login", use_container_width=True, type="primary"):
+                st.session_state['auth_mode'] = 'login'
                 st.rerun()
 
         # ===== PASSWORT VERGESSEN =====
