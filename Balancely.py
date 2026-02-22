@@ -1019,36 +1019,46 @@ if st.session_state['logged_in']:
                                 unsafe_allow_html=True
                             )
                         else:
-                            # Legende als klickbare Buttons — sortiert: Einnahmen → Ausgaben → Depot
-                            st.markdown(
-                                f"<div style='font-family:DM Mono,monospace;color:#334155;"
-                                f"font-size:9px;font-weight:500;letter-spacing:2px;"
-                                f"text-transform:uppercase;margin-bottom:10px;padding:0 4px;'>"
-                                f"Kategorien</div>",
-                                unsafe_allow_html=True
-                            )
-                            current_typ = None
-                            TYP_LABELS = {
-                                "Einnahme": ("EINNAHMEN", "#2b961f"),
-                                "Ausgabe":  ("AUSGABEN",  "#ff5232"),
-                                "Depot":    ("DEPOT",     "#2510a3"),
+                            # ── Tab-Auswahl: Einnahmen / Ausgaben / Depot ──
+                            TYP_CONFIG = {
+                                "Einnahme": ("EINNAHMEN", "#2b961f", "+"),
+                                "Ausgabe":  ("AUSGABEN",  "#ff5232", "−"),
+                                "Depot":    ("DEPOT",     "#2510a3", ""),
                             }
-                            for cat, val, color, typ in zip(
-                                    all_cats, all_vals, all_colors, all_types):
-                                # Abschnitts-Header wenn Typ wechselt
-                                if typ != current_typ:
-                                    current_typ = typ
-                                    lbl, hdr_col = TYP_LABELS.get(typ, (typ.upper(), "#64748b"))
-                                    st.markdown(
-                                        f"<div style='font-family:DM Mono,monospace;color:{hdr_col};"
-                                        f"font-size:9px;font-weight:700;letter-spacing:2px;"
-                                        f"text-transform:uppercase;padding:10px 8px 4px 8px;"
-                                        f"border-top:1px solid rgba(255,255,255,0.05);margin-top:4px;'>"
-                                        f"{lbl}</div>",
-                                        unsafe_allow_html=True
-                                    )
-                                pct  = val / total_sum * 100
-                                sign = "−" if typ == "Ausgabe" else ("" if typ == "Depot" else "+")
+                            # Welche Typen haben überhaupt Daten?
+                            available_types = list(dict.fromkeys(all_types))  # Reihenfolge erhalten
+
+                            # Aktiven Tab aus session_state lesen (oder ersten verfügbaren)
+                            if 'dash_legend_tab' not in st.session_state or \
+                               st.session_state['dash_legend_tab'] not in available_types:
+                                st.session_state['dash_legend_tab'] = available_types[0] if available_types else "Ausgabe"
+
+                            active_tab = st.session_state['dash_legend_tab']
+
+                            # Tab-Buttons nebeneinander
+                            tab_cols = st.columns(len(available_types))
+                            for i, typ in enumerate(available_types):
+                                lbl, col_active, _ = TYP_CONFIG.get(typ, (typ.upper(), "#64748b", ""))
+                                is_active = (typ == active_tab)
+                                with tab_cols[i]:
+                                    btn_style = "primary" if is_active else "secondary"
+                                    if st.button(
+                                        lbl,
+                                        key=f"dash_tab_{typ}",
+                                        use_container_width=True,
+                                        type=btn_style,
+                                    ):
+                                        st.session_state['dash_legend_tab'] = typ
+                                        st.rerun()
+
+                            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+                            # Nur Kategorien des aktiven Tabs anzeigen
+                            lbl_active, color_active, sign_active = TYP_CONFIG.get(active_tab, (active_tab, "#64748b", ""))
+                            for cat, val, color, typ in zip(all_cats, all_vals, all_colors, all_types):
+                                if typ != active_tab:
+                                    continue
+                                pct     = val / total_sum * 100
                                 btn_key = f"legend_btn_{cat}_{typ}"
                                 col_legend, col_btn = st.columns([10, 1])
                                 with col_legend:
@@ -1067,7 +1077,7 @@ if st.session_state['logged_in']:
                                         f"</div>"
                                         f"<div style='display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:8px;'>"
                                         f"<span style='font-family:DM Mono,monospace;color:{color};"
-                                        f"font-weight:500;font-size:12px;'>{sign}{val:,.2f} €</span>"
+                                        f"font-weight:500;font-size:12px;'>{sign_active}{val:,.2f} €</span>"
                                         f"<span style='font-family:DM Mono,monospace;color:#334155;"
                                         f"font-size:11px;min-width:28px;text-align:right;'>{pct:.0f}%</span>"
                                         f"</div></div>",
@@ -1689,3 +1699,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
