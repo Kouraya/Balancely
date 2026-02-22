@@ -1,5 +1,7 @@
 # ============================================================
-#  Balancely — Persönliche Finanzverwaltung  v2
+#  Balancely — Persönliche Finanzverwaltung  v3
+#  Neue Features: Kalender-Heatmap, End-of-Month Forecast,
+#  Spar-Potenzial, Spartöpfe, Dashboard-Sparziel-Warnung
 # ============================================================
 
 import streamlit as st
@@ -155,16 +157,13 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
     min-height: 100vh;
 }
 
-/* ── Typography ─────────────────────────────────────────── */
 h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: -0.5px; }
 
-/* ── Remove default padding ─────────────────────────────── */
 [data-testid="stMain"] .block-container {
     padding-top: 2rem !important;
     max-width: 1200px !important;
 }
 
-/* ── Branding ───────────────────────────────────────────── */
 .main-title {
     text-align: center;
     color: #f8fafc;
@@ -188,7 +187,6 @@ h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: 
     margin-top: 8px;
 }
 
-/* ── Forms ──────────────────────────────────────────────── */
 [data-testid="stForm"] {
     background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(10,16,32,0.95) 100%) !important;
     backdrop-filter: blur(20px) !important;
@@ -198,7 +196,6 @@ h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: 
     box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
 
-/* ── Inputs ─────────────────────────────────────────────── */
 div[data-testid="stTextInputRootElement"] { background-color: transparent !important; }
 div[data-baseweb="input"],
 div[data-baseweb="base-input"] {
@@ -224,7 +221,6 @@ input {
 }
 input::placeholder { color: #334155 !important; }
 
-/* ── Date & Select ──────────────────────────────────────── */
 div[data-testid="stDateInput"] > div {
     background-color: rgba(15,23,42,0.6) !important;
     border: 1px solid rgba(148,163,184,0.1) !important;
@@ -244,7 +240,6 @@ div[data-baseweb="select"] > div:first-child:focus-within {
     box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important;
 }
 
-/* ── Buttons ─────────────────────────────────────────────── */
 button[kind="primaryFormSubmit"],
 button[kind="secondaryFormSubmit"] {
     height: 48px !important;
@@ -265,7 +260,6 @@ button[kind="primaryFormSubmit"]:hover {
     transform: translateY(-1px) !important;
 }
 
-/* ── Sidebar ─────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
     background: linear-gradient(180deg, #070d1a 0%, #060b18 100%) !important;
     border-right: 1px solid rgba(148,163,184,0.07) !important;
@@ -302,14 +296,12 @@ button[kind="primaryFormSubmit"]:hover {
     display: none !important;
 }
 
-/* ── Number input step buttons ──────────────────────────── */
 button[data-testid="stNumberInputStepDown"],
 button[data-testid="stNumberInputStepUp"] { display: none !important; }
 div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
     display: none !important;
 }
 
-/* ── Hide input instructions ────────────────────────────── */
 [data-testid="InputInstructions"],
 [data-testid="stInputInstructions"],
 div[class*="InputInstructions"],
@@ -321,14 +313,12 @@ div[class*="stInputInstructions"] {
     position: absolute !important;
 }
 
-/* ── Cursor ─────────────────────────────────────────────── */
 button, [data-testid="stPopover"] button,
 div[data-baseweb="select"],
 div[data-baseweb="select"] *,
 div[data-testid="stDateInput"],
 [data-testid="stSelectbox"] * { cursor: pointer !important; }
 
-/* ── Dialogs ─────────────────────────────────────────────── */
 div[data-testid="stDialog"] > div,
 div[role="dialog"] {
     position: fixed !important;
@@ -349,13 +339,11 @@ div[data-testid="stDialog"] {
     justify-content: center !important;
 }
 
-/* ── Divider ─────────────────────────────────────────────── */
 hr {
     border-color: rgba(148,163,184,0.08) !important;
     margin: 24px 0 !important;
 }
 
-/* ── Subheader ───────────────────────────────────────────── */
 [data-testid="stMarkdownContainer"] h3 {
     font-size: 15px !important;
     font-weight: 600 !important;
@@ -364,14 +352,12 @@ hr {
     text-transform: uppercase !important;
 }
 
-/* ── Success / Error messages ───────────────────────────── */
 [data-testid="stAlert"] {
     border-radius: 10px !important;
     font-family: 'DM Sans', sans-serif !important;
     font-size: 14px !important;
 }
 
-/* ── Popover ─────────────────────────────────────────────── */
 [data-testid="stPopover"] > div {
     background: #0d1729 !important;
     border: 1px solid rgba(148,163,184,0.1) !important;
@@ -379,11 +365,39 @@ hr {
     box-shadow: none !important;
 }
 
-/* ── Expander ─────────────────────────────────────────────── */
 [data-testid="stExpander"] {
     border: 1px solid rgba(148,163,184,0.08) !important;
     border-radius: 12px !important;
     background: rgba(10,16,32,0.5) !important;
+}
+
+/* ── Spartöpfe progress bars ─────────────────────────────── */
+.topf-progress-bg {
+    background: rgba(30,41,59,0.8);
+    border-radius: 99px;
+    height: 5px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+.topf-progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.6s ease;
+}
+
+/* ── Heatmap calendar cells ──────────────────────────────── */
+.heatmap-cell {
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    text-align: center;
+    line-height: 36px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    transition: transform 0.15s ease;
+    cursor: default;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -424,6 +438,10 @@ defaults = {
     'dash_selected_typ':  None,
     'dash_selected_color': None,
     'analysen_zeitraum':  'Monatlich',
+    # Spartöpfe
+    'topf_edit_idx':    None,
+    'topf_delete_idx':  None,
+    'show_new_topf':    False,
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -431,6 +449,10 @@ for key, val in defaults.items():
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+
+# ============================================================
+#  Daten-Hilfsfunktionen
+# ============================================================
 
 def load_custom_cats(user: str, typ: str) -> list:
     try:
@@ -499,6 +521,87 @@ def save_goal(user: str, goal: float):
                          ignore_index=True)
     conn.update(worksheet="goals", data=df_g)
 
+
+# ── Spartöpfe ────────────────────────────────────────────────
+
+def load_toepfe(user: str) -> list:
+    """Load all Spartöpfe for a user from 'toepfe' worksheet."""
+    try:
+        df = conn.read(worksheet="toepfe", ttl="0")
+        if df.empty or 'user' not in df.columns:
+            return []
+        rows = df[df['user'] == user]
+        result = []
+        for _, r in rows.iterrows():
+            deleted = str(r.get('deleted', '')).strip().lower()
+            if deleted in ('true', '1', '1.0'):
+                continue
+            result.append({
+                'id':       str(r.get('id', '')),
+                'name':     str(r.get('name', '')),
+                'ziel':     float(r.get('ziel', 0) or 0),
+                'gespart':  float(r.get('gespart', 0) or 0),
+                'emoji':    str(r.get('emoji', '🪣')),
+                'farbe':    str(r.get('farbe', '#38bdf8')),
+            })
+        return result
+    except Exception:
+        return []
+
+
+def save_topf(user: str, name: str, ziel: float, emoji: str, farbe: str):
+    try:
+        df = conn.read(worksheet="toepfe", ttl="0")
+    except Exception:
+        df = pd.DataFrame(columns=['user', 'id', 'name', 'ziel', 'gespart', 'emoji', 'farbe', 'deleted'])
+    topf_id = f"{user}_{int(time.time())}"
+    new_row = pd.DataFrame([{
+        'user': user, 'id': topf_id, 'name': name,
+        'ziel': ziel, 'gespart': 0, 'emoji': emoji,
+        'farbe': farbe, 'deleted': '',
+    }])
+    conn.update(worksheet="toepfe", data=pd.concat([df, new_row], ignore_index=True))
+
+
+def update_topf_gespart(user: str, topf_id: str, delta: float):
+    try:
+        df = conn.read(worksheet="toepfe", ttl="0")
+        mask = (df['user'] == user) & (df['id'] == topf_id)
+        if mask.any():
+            current = float(df.loc[mask, 'gespart'].values[0] or 0)
+            df.loc[mask, 'gespart'] = max(0, current + delta)
+            conn.update(worksheet="toepfe", data=df)
+    except Exception:
+        pass
+
+
+def delete_topf(user: str, topf_id: str):
+    try:
+        df = conn.read(worksheet="toepfe", ttl="0")
+        mask = (df['user'] == user) & (df['id'] == topf_id)
+        df.loc[mask, 'deleted'] = 'True'
+        conn.update(worksheet="toepfe", data=df)
+    except Exception:
+        pass
+
+
+def update_topf_meta(user: str, topf_id: str, name: str, ziel: float, emoji: str, farbe: str):
+    try:
+        df = conn.read(worksheet="toepfe", ttl="0")
+        mask = (df['user'] == user) & (df['id'] == topf_id)
+        if mask.any():
+            df.loc[mask, 'name']  = name
+            df.loc[mask, 'ziel']  = ziel
+            df.loc[mask, 'emoji'] = emoji
+            df.loc[mask, 'farbe'] = farbe
+            conn.update(worksheet="toepfe", data=df)
+    except Exception:
+        pass
+
+
+# ============================================================
+#  Dialog-Funktionen
+# ============================================================
 
 @st.dialog("➕ Neue Kategorie")
 def new_category_dialog():
@@ -678,7 +781,7 @@ if st.session_state['logged_in']:
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         menu = st.radio(
             "Navigation",
-            ["📈 Dashboard", "💸 Transaktionen", "📂 Analysen", "⚙️ Einstellungen"],
+            ["📈 Dashboard", "💸 Transaktionen", "📂 Analysen", "🪣 Spartöpfe", "⚙️ Einstellungen"],
             label_visibility="collapsed"
         )
         st.markdown("<div style='height:28vh;'></div>", unsafe_allow_html=True)
@@ -694,7 +797,6 @@ if st.session_state['logged_in']:
         st.session_state['edit_cat_data']   = None
         st.session_state['delete_cat_data'] = None
 
-    # Edit-Formular zurücksetzen wenn Menü gewechselt wird
     if menu != st.session_state.get('_last_menu', menu):
         st.session_state['edit_idx'] = None
 
@@ -706,7 +808,6 @@ if st.session_state['logged_in']:
 
         now = datetime.datetime.now()
 
-        # Page header
         st.markdown(
             f"<div style='margin-bottom:36px;margin-top:16px;'>"
             f"<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;"
@@ -718,7 +819,6 @@ if st.session_state['logged_in']:
             unsafe_allow_html=True
         )
 
-        # ── Monats-Selektor ──────────────────────────────────
         if 'dash_month_offset' not in st.session_state:
             st.session_state['dash_month_offset'] = 0
         offset = st.session_state['dash_month_offset']
@@ -791,6 +891,43 @@ if st.session_state['logged_in']:
                     bank_str   = f"{bank:,.2f} €" if bank >= 0 else f"-{abs(bank):,.2f} €"
                     nw_color   = "#4ade80" if networth >= 0 else "#f87171"
                     nw_str     = f"{networth:,.2f} €" if networth >= 0 else f"-{abs(networth):,.2f} €"
+
+                    # ── NEU: Sparziel-Warnung auf dem Dashboard ──────
+                    # Nur für aktuellen Monat anzeigen
+                    if offset == 0:
+                        current_goal_dash = load_goal(st.session_state["user_name"])
+                        if current_goal_dash > 0:
+                            # End-of-Month Forecast berechnen
+                            today_day  = now.day
+                            days_in_m  = (datetime.date(t_year, t_month % 12 + 1, 1)
+                                          - datetime.timedelta(days=1)).day \
+                                         if t_month < 12 else 31
+                            # Hochrechnung basierend auf bisherigen Ausgaben
+                            if today_day > 0:
+                                forecast_aus = aus / today_day * days_in_m
+                                forecast_bank = ein - forecast_aus - dep_monat
+                            else:
+                                forecast_bank = bank
+
+                            if bank < current_goal_dash:
+                                fehl = current_goal_dash - bank
+                                st.markdown(
+                                    f"<div style='background:linear-gradient(135deg,rgba(251,113,133,0.08),rgba(239,68,68,0.05));"
+                                    f"border:1px solid rgba(248,113,113,0.25);border-left:3px solid #f87171;"
+                                    f"border-radius:14px;padding:14px 18px;margin-bottom:20px;"
+                                    f"display:flex;align-items:center;gap:14px;'>"
+                                    f"<span style='font-size:22px;'>⚠️</span>"
+                                    f"<div>"
+                                    f"<div style='font-family:DM Sans,sans-serif;color:#fca5a5;"
+                                    f"font-weight:600;font-size:14px;margin-bottom:2px;'>"
+                                    f"Du liegst {fehl:,.2f} € unter deinem Sparziel</div>"
+                                    f"<div style='font-family:DM Sans,sans-serif;color:#64748b;"
+                                    f"font-size:13px;'>Ziel: {current_goal_dash:,.2f} € · "
+                                    f"Aktuell verfügbar: {bank:,.2f} €</div>"
+                                    f"</div>"
+                                    f"</div>",
+                                    unsafe_allow_html=True
+                                )
 
                     row1 = (
                         f"<div style='display:flex;gap:14px;margin:0 0 12px 0;flex-wrap:wrap;'>"
@@ -924,43 +1061,28 @@ if st.session_state['logged_in']:
                         hoverlabel=dict(
                             bgcolor="#0d1729",
                             bordercolor="rgba(56,189,248,0.4)",
-                            font=dict(
-                                color="#e2e8f0",
-                                size=13,
-                                family="DM Sans, sans-serif",
-                            ),
+                            font=dict(color="#e2e8f0", size=13, family="DM Sans, sans-serif"),
                             namelength=-1,
                             align="left",
                         ),
                         annotations=[
-                            dict(
-                                text="BANK",
-                                x=0.5, y=0.62, showarrow=False,
-                                font=dict(size=10, color="#334155", family="DM Mono, monospace"),
-                                xref="paper", yref="paper",
-                            ),
-                            dict(
-                                text=f"<b>{bank_str}</b>",
-                                x=0.5, y=0.50, showarrow=False,
-                                font=dict(size=22, color=bank_color, family="DM Sans, sans-serif"),
-                                xref="paper", yref="paper",
-                            ),
-                            dict(
-                                text=f"+{ein:,.0f}  /  -{aus:,.0f} €",
-                                x=0.5, y=0.38, showarrow=False,
-                                font=dict(size=11, color="#334155", family="DM Sans, sans-serif"),
-                                xref="paper", yref="paper",
-                            ),
+                            dict(text="BANK", x=0.5, y=0.62, showarrow=False,
+                                 font=dict(size=10, color="#334155", family="DM Mono, monospace"),
+                                 xref="paper", yref="paper"),
+                            dict(text=f"<b>{bank_str}</b>", x=0.5, y=0.50, showarrow=False,
+                                 font=dict(size=22, color=bank_color, family="DM Sans, sans-serif"),
+                                 xref="paper", yref="paper"),
+                            dict(text=f"+{ein:,.0f}  /  -{aus:,.0f} €", x=0.5, y=0.38,
+                                 showarrow=False,
+                                 font=dict(size=11, color="#334155", family="DM Sans, sans-serif"),
+                                 xref="paper", yref="paper"),
                         ],
                     )
 
                     chart_col, legend_col = st.columns([2, 2])
 
                     with chart_col:
-                        st.plotly_chart(
-                            fig, use_container_width=True,
-                            key="donut_combined",
-                        )
+                        st.plotly_chart(fig, use_container_width=True, key="donut_combined")
 
                     with legend_col:
                         sel_cat   = st.session_state.get('dash_selected_cat')
@@ -1043,12 +1165,8 @@ if st.session_state['logged_in']:
                                 is_active = (typ == active_tab)
                                 with tab_cols[i]:
                                     btn_style = "primary" if is_active else "secondary"
-                                    if st.button(
-                                        lbl,
-                                        key=f"dash_tab_{typ}",
-                                        use_container_width=True,
-                                        type=btn_style,
-                                    ):
+                                    if st.button(lbl, key=f"dash_tab_{typ}",
+                                                 use_container_width=True, type=btn_style):
                                         st.session_state['dash_legend_tab'] = typ
                                         st.rerun()
 
@@ -1066,8 +1184,7 @@ if st.session_state['logged_in']:
                                         f"<div style='display:flex;align-items:center;"
                                         f"justify-content:space-between;"
                                         f"padding:7px 8px;border-radius:8px;"
-                                        f"border:1px solid transparent;"
-                                        f"cursor:pointer;'>"
+                                        f"border:1px solid transparent;cursor:pointer;'>"
                                         f"<div style='display:flex;align-items:center;gap:10px;min-width:0;'>"
                                         f"<div style='width:7px;height:7px;border-radius:50%;"
                                         f"background:{color};flex-shrink:0;'></div>"
@@ -1272,9 +1389,7 @@ if st.session_state['logged_in']:
                             farbe = '#38bdf8'
                         else:
                             farbe = '#f87171'
-                        zeit_label = format_timestamp(
-                            row.get('timestamp', ''), row.get('datum', '')
-                        )
+                        zeit_label = format_timestamp(row.get('timestamp', ''), row.get('datum', ''))
 
                         c1, c2, c3, c4, c5 = st.columns([2.5, 2, 2.5, 3, 1])
                         c1.markdown(
@@ -1352,9 +1467,7 @@ if st.session_state['logged_in']:
                                         e_cat_idx = e_all_cats.index(curr_cat)
                                     else:
                                         e_cat_idx = 0
-                                    e_cat = st.selectbox(
-                                        "Kategorie", e_all_cats, index=e_cat_idx
-                                    )
+                                    e_cat = st.selectbox("Kategorie", e_all_cats, index=e_cat_idx)
                                 e_notiz = st.text_input(
                                     "Notiz (optional)", value=notiz,
                                     placeholder="z.B. Supermarkt, Tankstelle..."
@@ -1365,9 +1478,7 @@ if st.session_state['logged_in']:
                                         "Speichern", use_container_width=True, type="primary"
                                     )
                                 with col_cancel:
-                                    cancelled = st.form_submit_button(
-                                        "Abbrechen", use_container_width=True
-                                    )
+                                    cancelled = st.form_submit_button("Abbrechen", use_container_width=True)
 
                                 if saved:
                                     df_all = conn.read(worksheet="transactions", ttl="0")
@@ -1398,10 +1509,10 @@ if st.session_state['logged_in']:
     # ── Analysen ─────────────────────────────────────────────
     elif menu == "📂 Analysen":
         import plotly.graph_objects as go
+        import calendar
 
         user_name = st.session_state['user_name']
 
-        # ── Große Überschrift wie Dashboard ──────────────────
         st.markdown(
             "<div style='margin-bottom:36px;margin-top:16px;'>"
             "<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;"
@@ -1439,6 +1550,9 @@ if st.session_state['logged_in']:
                                "#dbead5","#2d7a2d","#4a9e4a","#5cb85c","#80c780"]
                 PALETTE_DEP = ["#0000ff","#1e0bd0","#2510a3","#241178","#1f104f",
                                "#19092e","#2563eb","#1d4ed8","#1e40af","#1e3a8a"]
+
+                now   = datetime.datetime.now()
+                today = now.date()
 
                 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 # SECTION 1 — ZEITRAUM KREISDIAGRAMME
@@ -1479,9 +1593,6 @@ if st.session_state['logged_in']:
 
                 st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
 
-                # Daten für gewählten Zeitraum filtern
-                now   = datetime.datetime.now()
-                today = now.date()
                 if zeitraum == "Wöchentlich":
                     week_start   = today - datetime.timedelta(days=today.weekday())
                     week_end     = week_start + datetime.timedelta(days=6)
@@ -1510,48 +1621,32 @@ if st.session_state['logged_in']:
                 )
 
                 def make_donut(grp, palette, label, sign, center_color, key_suffix):
-                    """Render a static donut chart + legend side-by-side in a card."""
                     if grp.empty:
                         return
                     cats   = grp['kategorie'].tolist()
                     vals   = grp['betrag_num'].abs().tolist()
                     colors = [palette[i % len(palette)] for i in range(len(cats))]
                     total  = sum(vals) if sum(vals) > 0 else 1
-
                     center_str = f"{sign}{total:,.2f} €"
 
                     fig = go.Figure(go.Pie(
-                        labels=cats,
-                        values=vals,
-                        hole=0.60,
-                        marker=dict(
-                            colors=colors,
-                            line=dict(color="rgba(5,10,20,0.9)", width=2),
-                        ),
-                        textinfo="none",
-                        hoverinfo="none",
-                        direction="clockwise",
-                        sort=False,
-                        rotation=90,
+                        labels=cats, values=vals, hole=0.60,
+                        marker=dict(colors=colors, line=dict(color="rgba(5,10,20,0.9)", width=2)),
+                        textinfo="none", hoverinfo="none",
+                        direction="clockwise", sort=False, rotation=90,
                     ))
                     fig.update_traces(hovertemplate=None)
                     fig.update_layout(
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        showlegend=False,
-                        margin=dict(t=10, b=10, l=10, r=10),
-                        height=240,
-                        autosize=True,
-                        dragmode=False,
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                        showlegend=False, margin=dict(t=10, b=10, l=10, r=10),
+                        height=240, autosize=True, dragmode=False,
                         annotations=[dict(
-                            text=f"<b>{center_str}</b>",
-                            x=0.5, y=0.5, showarrow=False,
+                            text=f"<b>{center_str}</b>", x=0.5, y=0.5, showarrow=False,
                             font=dict(size=15, color=center_color, family="DM Sans, sans-serif"),
                             xref="paper", yref="paper",
                         )],
                     )
 
-                    # Legend rows HTML
                     rows = ""
                     for cat, val, col in zip(cats, vals, colors):
                         pct = val / total * 100
@@ -1577,7 +1672,6 @@ if st.session_state['logged_in']:
                             f"</div></div>"
                         )
 
-                    # Card wrapper
                     st.markdown(
                         f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
                         f"rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);"
@@ -1595,10 +1689,7 @@ if st.session_state['logged_in']:
                             config={"displayModeBar": False, "staticPlot": True}
                         )
                     with leg_col:
-                        st.markdown(
-                            f"<div style='padding:4px 0;'>{rows}</div>",
-                            unsafe_allow_html=True
-                        )
+                        st.markdown(f"<div style='padding:4px 0;'>{rows}</div>", unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 if period_df.empty:
@@ -1609,18 +1700,15 @@ if st.session_state['logged_in']:
                         unsafe_allow_html=True
                     )
                 else:
-                    # Ausgaben-Donut
                     aus_p = period_df[period_df['typ'] == 'Ausgabe'].copy()
                     aus_p['betrag_num'] = aus_p['betrag_num'].abs()
                     aus_grp_p = aus_p.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num', ascending=False)
                     make_donut(aus_grp_p, PALETTE_AUS, "Ausgaben", "−", "#f87171", "aus")
 
-                    # Einnahmen-Donut
                     ein_p = period_df[period_df['typ'] == 'Einnahme'].copy()
                     ein_grp_p = ein_p.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num', ascending=False)
                     make_donut(ein_grp_p, PALETTE_EIN, "Einnahmen", "+", "#4ade80", "ein")
 
-                    # Depot-Donut
                     dep_p = period_df[period_df['typ'] == 'Depot'].copy()
                     dep_p['betrag_num'] = dep_p['betrag_num'].abs()
                     dep_grp_p = dep_p.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num', ascending=False)
@@ -1640,7 +1728,6 @@ if st.session_state['logged_in']:
 
                 kv_col_l, kv_col_r = st.columns(2)
 
-                # ── Top Ausgabe-Kategorien (Balken, statisch) ─
                 with kv_col_l:
                     aus_all = df_all[df_all['typ'] == 'Ausgabe'].copy()
                     aus_all['betrag_num'] = aus_all['betrag_num'].abs()
@@ -1666,21 +1753,11 @@ if st.session_state['logged_in']:
                         ))
                         fig_kat.update_traces(hovertemplate=None)
                         fig_kat.update_layout(
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            height=280,
-                            margin=dict(t=0, b=0, l=0, r=60),
-                            dragmode=False,
-                            xaxis=dict(showgrid=False, showticklabels=False, showline=False,
-                                       fixedrange=True),
-                            yaxis=dict(
-                                tickfont=dict(size=12, color='#94a3b8',
-                                              family='DM Sans, sans-serif'),
-                                showgrid=False, showline=False,
-                                fixedrange=True,
-                                # wrap long labels
-                                automargin=True,
-                            ),
+                            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                            height=280, margin=dict(t=0, b=0, l=0, r=60), dragmode=False,
+                            xaxis=dict(showgrid=False, showticklabels=False, showline=False, fixedrange=True),
+                            yaxis=dict(tickfont=dict(size=12, color='#94a3b8', family='DM Sans, sans-serif'),
+                                       showgrid=False, showline=False, fixedrange=True, automargin=True),
                         )
                         st.markdown(
                             "<p style='font-family:DM Sans,sans-serif;color:#475569;"
@@ -1692,7 +1769,6 @@ if st.session_state['logged_in']:
                     else:
                         st.info("Keine Ausgaben vorhanden.")
 
-                # ── Ø Ausgaben nach Wochentag ─────────────────
                 with kv_col_r:
                     aus_all2 = df_all[df_all['typ'] == 'Ausgabe'].copy()
                     aus_all2['betrag_num'] = aus_all2['betrag_num'].abs()
@@ -1708,39 +1784,24 @@ if st.session_state['logged_in']:
                         heat_labels = [wt_de.get(d, d) for d in heat.index]
 
                         fig_heat = go.Figure(go.Bar(
-                            x=heat_labels,
-                            y=heat.values,
+                            x=heat_labels, y=heat.values,
                             marker=dict(
                                 color=heat.values,
                                 colorscale=[[0, '#1a0505'], [0.5, '#dc2626'], [1, '#ff5232']],
-                                showscale=False,
-                                cornerradius=6,
+                                showscale=False, cornerradius=6,
                             ),
-                            # Labels inside to avoid overflow
                             text=[f"{v:,.0f} €" if v > 0 else "" for v in heat.values],
-                            textposition='inside',
-                            insidetextanchor='middle',
-                            textfont=dict(size=10, color='rgba(255,255,255,0.7)',
-                                          family='DM Mono, monospace'),
+                            textposition='inside', insidetextanchor='middle',
+                            textfont=dict(size=10, color='rgba(255,255,255,0.7)', family='DM Mono, monospace'),
                             hovertemplate=None,
                         ))
                         fig_heat.update_traces(hovertemplate=None)
                         fig_heat.update_layout(
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            height=280,
-                            margin=dict(t=0, b=0, l=0, r=0),
-                            dragmode=False,
-                            xaxis=dict(
-                                tickfont=dict(size=13, color='#94a3b8',
-                                              family='DM Sans, sans-serif'),
-                                showgrid=False, showline=False,
-                                fixedrange=True,
-                            ),
-                            yaxis=dict(
-                                showgrid=False, showticklabels=False, showline=False,
-                                fixedrange=True,
-                            ),
+                            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                            height=280, margin=dict(t=0, b=0, l=0, r=0), dragmode=False,
+                            xaxis=dict(tickfont=dict(size=13, color='#94a3b8', family='DM Sans, sans-serif'),
+                                       showgrid=False, showline=False, fixedrange=True),
+                            yaxis=dict(showgrid=False, showticklabels=False, showline=False, fixedrange=True),
                         )
                         st.markdown(
                             "<p style='font-family:DM Sans,sans-serif;color:#475569;"
@@ -1749,13 +1810,372 @@ if st.session_state['logged_in']:
                         )
                         st.plotly_chart(fig_heat, use_container_width=True, key="heat_chart",
                                         config={"displayModeBar": False, "staticPlot": True})
-                    else:
-                        st.info("Keine Ausgaben vorhanden.")
 
                 st.markdown("<hr>", unsafe_allow_html=True)
 
                 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                # SECTION 3 — SPARZIEL
+                # NEU: SECTION 2b — KALENDER-HEATMAP
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                st.markdown(
+                    "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+                    "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+                    "margin-bottom:14px;'>Kalender-Heatmap</p>",
+                    unsafe_allow_html=True
+                )
+
+                # Monatsselektor für Heatmap
+                if 'heatmap_month_offset' not in st.session_state:
+                    st.session_state['heatmap_month_offset'] = 0
+                hm_offset = st.session_state['heatmap_month_offset']
+                hm_m_total = now.year * 12 + (now.month - 1) + hm_offset
+                hm_year, hm_month_idx = divmod(hm_m_total, 12)
+                hm_month = hm_month_idx + 1
+                hm_label = datetime.date(hm_year, hm_month, 1).strftime("%B %Y")
+
+                hn1, hn2, hn3 = st.columns([1, 5, 1])
+                with hn1:
+                    if st.button("‹", key="hm_prev", use_container_width=True):
+                        st.session_state['heatmap_month_offset'] -= 1
+                        st.rerun()
+                with hn2:
+                    st.markdown(
+                        f"<div style='text-align:center;font-family:DM Sans,sans-serif;"
+                        f"font-size:13px;color:#64748b;padding:6px 0;'>{hm_label}</div>",
+                        unsafe_allow_html=True
+                    )
+                with hn3:
+                    if st.button("›", key="hm_next", use_container_width=True,
+                                 disabled=(hm_offset >= 0)):
+                        st.session_state['heatmap_month_offset'] += 1
+                        st.rerun()
+
+                # Ausgaben pro Tag berechnen
+                hm_df = df_all[
+                    (df_all['datum_dt'].dt.year  == hm_year) &
+                    (df_all['datum_dt'].dt.month == hm_month) &
+                    (df_all['typ'] == 'Ausgabe')
+                ].copy()
+                hm_df['betrag_num'] = hm_df['betrag_num'].abs()
+                tages_summen = hm_df.groupby(hm_df['datum_dt'].dt.day)['betrag_num'].sum()
+
+                max_val = tages_summen.max() if not tages_summen.empty else 1
+                max_val = max(max_val, 1)
+
+                # Kalender aufbauen
+                days_in_month = calendar.monthrange(hm_year, hm_month)[1]
+                first_weekday = calendar.monthrange(hm_year, hm_month)[0]  # 0=Mo
+
+                wt_labels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+                header_html = "".join([
+                    f"<div style='width:42px;text-align:center;font-family:DM Mono,monospace;"
+                    f"font-size:10px;color:#334155;letter-spacing:0.5px;padding-bottom:4px;'>{d}</div>"
+                    for d in wt_labels
+                ])
+
+                cal_cells = ""
+                # Leere Zellen vor dem 1.
+                for _ in range(first_weekday):
+                    cal_cells += "<div style='width:42px;height:42px;'></div>"
+
+                for day in range(1, days_in_month + 1):
+                    val = tages_summen.get(day, 0)
+                    intensity = val / max_val if max_val > 0 else 0
+                    is_today = (hm_year == now.year and hm_month == now.month and day == now.day)
+
+                    # Farbe interpolieren: dunkel → rot
+                    if val == 0:
+                        bg = "rgba(15,23,42,0.6)"
+                        text_color = "#1e293b"
+                    else:
+                        r = int(20 + intensity * 235)
+                        g = int(5 + (1 - intensity) * 30)
+                        b = int(5 + (1 - intensity) * 10)
+                        bg = f"rgba({r},{g},{b},0.85)"
+                        text_color = "#ffffff" if intensity > 0.3 else "#94a3b8"
+
+                    border = "2px solid #38bdf8" if is_today else "1px solid rgba(148,163,184,0.06)"
+                    title_str = f"{val:.0f} €" if val > 0 else ""
+                    tooltip = f"title='{day}. {hm_label}: {val:.2f} €'"
+
+                    cal_cells += (
+                        f"<div {tooltip} style='width:42px;height:42px;border-radius:8px;"
+                        f"background:{bg};border:{border};display:flex;flex-direction:column;"
+                        f"align-items:center;justify-content:center;cursor:default;'>"
+                        f"<span style='font-family:DM Mono,monospace;font-size:11px;"
+                        f"color:#334155;line-height:1;'>{day}</span>"
+                        + (f"<span style='font-family:DM Mono,monospace;font-size:8px;"
+                           f"color:{text_color};line-height:1;margin-top:2px;'>{val:.0f}€</span>"
+                           if val > 0 else "")
+                        + f"</div>"
+                    )
+
+                st.markdown(
+                    f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                    f"rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);"
+                    f"border-radius:16px;padding:20px 22px;'>"
+                    f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;"
+                    f"margin-bottom:14px;'>Ausgaben pro Tag — dunklere Felder = höhere Ausgaben</div>"
+                    f"<div style='display:flex;gap:6px;margin-bottom:6px;flex-wrap:nowrap;'>"
+                    f"{header_html}</div>"
+                    f"<div style='display:flex;flex-wrap:wrap;gap:6px;'>"
+                    f"{cal_cells}</div>"
+                    f"<div style='display:flex;align-items:center;gap:8px;margin-top:14px;'>"
+                    f"<span style='font-family:DM Mono,monospace;font-size:10px;color:#334155;'>0 €</span>"
+                    f"<div style='height:6px;flex:1;max-width:120px;border-radius:3px;"
+                    f"background:linear-gradient(to right,rgba(15,23,42,0.6),#ff0000);'></div>"
+                    f"<span style='font-family:DM Mono,monospace;font-size:10px;color:#64748b;'>"
+                    f"{max_val:.0f} €</span>"
+                    f"</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
+                st.markdown("<hr>", unsafe_allow_html=True)
+
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                # NEU: SECTION 3 — END-OF-MONTH FORECAST
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                st.markdown(
+                    "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+                    "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+                    "margin-bottom:14px;'>Monatsende-Prognose</p>",
+                    unsafe_allow_html=True
+                )
+
+                curr_month_df = df_all[
+                    (df_all['datum_dt'].dt.year  == now.year) &
+                    (df_all['datum_dt'].dt.month == now.month)
+                ].copy()
+
+                today_day   = now.day
+                days_in_cur = calendar.monthrange(now.year, now.month)[1]
+                days_left   = days_in_cur - today_day
+
+                curr_ein = curr_month_df[curr_month_df['typ'] == 'Einnahme']['betrag_num'].sum()
+                curr_aus = curr_month_df[curr_month_df['typ'] == 'Ausgabe']['betrag_num'].abs().sum()
+                curr_dep = curr_month_df[curr_month_df['typ'] == 'Depot']['betrag_num'].abs().sum()
+
+                # Tägliche Ausgaben-Rate hochrechnen
+                daily_rate = curr_aus / today_day if today_day > 0 else 0
+                forecast_aus_total = daily_rate * days_in_cur
+                forecast_remaining = daily_rate * days_left
+                forecast_bank = curr_ein - forecast_aus_total - curr_dep
+                current_bank  = curr_ein - curr_aus - curr_dep
+
+                fc_col_l, fc_col_r = st.columns([1, 1])
+
+                with fc_col_l:
+                    fc_color = "#4ade80" if forecast_bank >= 0 else "#f87171"
+                    fc_str   = f"{forecast_bank:,.2f} €" if forecast_bank >= 0 else f"-{abs(forecast_bank):,.2f} €"
+
+                    # Fortschrittsbalken: Monat-Verlauf
+                    month_pct = today_day / days_in_cur * 100
+
+                    st.markdown(
+                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                        f"rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);"
+                        f"border-radius:16px;padding:20px 22px;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;'>"
+                        f"Prognose für {now.strftime('%B %Y')}</div>"
+                        # Monats-Fortschrittsbalken
+                        f"<div style='display:flex;justify-content:space-between;margin-bottom:4px;'>"
+                        f"<span style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Monatsverlauf</span>"
+                        f"<span style='font-family:DM Mono,monospace;color:#64748b;font-size:12px;'>Tag {today_day}/{days_in_cur}</span>"
+                        f"</div>"
+                        f"<div style='background:rgba(30,41,59,0.8);border-radius:99px;height:5px;margin-bottom:16px;'>"
+                        f"<div style='width:{month_pct:.0f}%;height:100%;background:#475569;border-radius:99px;'></div>"
+                        f"</div>"
+                        # Kennzahlen
+                        f"<div style='display:flex;flex-direction:column;gap:8px;'>"
+                        f"<div style='display:flex;justify-content:space-between;'>"
+                        f"<span style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Ø Tagesausgaben</span>"
+                        f"<span style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>{daily_rate:,.2f} €/Tag</span>"
+                        f"</div>"
+                        f"<div style='display:flex;justify-content:space-between;'>"
+                        f"<span style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Noch {days_left} Tage → ca.</span>"
+                        f"<span style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>-{forecast_remaining:,.2f} €</span>"
+                        f"</div>"
+                        f"<div style='border-top:1px solid rgba(148,163,184,0.08);padding-top:10px;"
+                        f"display:flex;justify-content:space-between;align-items:baseline;'>"
+                        f"<span style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;font-weight:500;'>Prognose Monatsende</span>"
+                        f"<span style='font-family:DM Mono,monospace;color:{fc_color};font-size:18px;font-weight:600;'>{fc_str}</span>"
+                        f"</div></div></div>",
+                        unsafe_allow_html=True
+                    )
+
+                with fc_col_r:
+                    # Visueller Verlauf: Ist vs. Prognose
+                    curr_color = "#4ade80" if current_bank >= 0 else "#f87171"
+                    curr_str   = f"{current_bank:,.2f} €" if current_bank >= 0 else f"-{abs(current_bank):,.2f} €"
+
+                    # Sparziel Vergleich
+                    goal_fc = load_goal(user_name)
+                    if goal_fc > 0:
+                        diff_to_goal = forecast_bank - goal_fc
+                        on_track = forecast_bank >= goal_fc
+                        goal_html = (
+                            f"<div style='margin-top:12px;padding:10px 14px;"
+                            f"border-radius:10px;background:{'rgba(74,222,128,0.06)' if on_track else 'rgba(248,113,113,0.06)'};"
+                            f"border:1px solid {'rgba(74,222,128,0.15)' if on_track else 'rgba(248,113,113,0.15)'};"
+                            f"display:flex;align-items:center;gap:10px;'>"
+                            f"<span style='font-size:16px;'>{'✅' if on_track else '⚠️'}</span>"
+                            f"<div>"
+                            f"<div style='font-family:DM Sans,sans-serif;color:{'#4ade80' if on_track else '#fca5a5'};"
+                            f"font-size:13px;font-weight:500;'>{'Sparziel erreichbar!' if on_track else 'Sparziel in Gefahr'}</div>"
+                            f"<div style='font-family:DM Mono,monospace;color:#475569;font-size:11px;'>"
+                            f"{'Puffer: +' if diff_to_goal >= 0 else 'Fehlbetrag: '}{abs(diff_to_goal):,.2f} € vs. Ziel {goal_fc:,.2f} €"
+                            f"</div></div></div>"
+                        )
+                    else:
+                        goal_html = ""
+
+                    st.markdown(
+                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                        f"rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);"
+                        f"border-radius:16px;padding:20px 22px;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;"
+                        f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;'>Jetzt vs. Prognose</div>"
+                        f"<div style='display:flex;gap:12px;'>"
+                        f"<div style='flex:1;background:rgba(10,16,30,0.5);border-radius:12px;"
+                        f"padding:14px;border:1px solid rgba(148,163,184,0.06);text-align:center;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;"
+                        f"letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;'>Aktuell</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:{curr_color};"
+                        f"font-size:20px;font-weight:600;'>{curr_str}</div>"
+                        f"<div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+                        f"margin-top:4px;'>Tag {today_day}</div>"
+                        f"</div>"
+                        f"<div style='display:flex;align-items:center;color:#334155;font-size:18px;'>→</div>"
+                        f"<div style='flex:1;background:rgba(10,16,30,0.5);border-radius:12px;"
+                        f"padding:14px;border:1px solid rgba(148,163,184,0.06);text-align:center;'>"
+                        f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;"
+                        f"letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;'>Prognose</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:{fc_color};"
+                        f"font-size:20px;font-weight:600;'>{fc_str}</div>"
+                        f"<div style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+                        f"margin-top:4px;'>Tag {days_in_cur}</div>"
+                        f"</div></div>"
+                        f"{goal_html}"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+
+                st.markdown("<hr>", unsafe_allow_html=True)
+
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                # NEU: SECTION 4 — SPAR-POTENZIAL
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                st.markdown(
+                    "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+                    "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+                    "margin-bottom:14px;'>Spar-Potenzial</p>",
+                    unsafe_allow_html=True
+                )
+
+                # Durchschnitt der letzten 3 Monate pro Kategorie berechnen (exkl. aktueller Monat)
+                hist_df = df_all[
+                    ~(
+                        (df_all['datum_dt'].dt.year  == now.year) &
+                        (df_all['datum_dt'].dt.month == now.month)
+                    ) &
+                    (df_all['typ'] == 'Ausgabe')
+                ].copy()
+                hist_df['betrag_num'] = hist_df['betrag_num'].abs()
+
+                # Letzten 3 Monate
+                three_months_ago = now - datetime.timedelta(days=90)
+                hist_df = hist_df[hist_df['datum_dt'] >= three_months_ago]
+
+                if not hist_df.empty and not curr_month_df.empty:
+                    # Anzahl Monate in hist (mind. 1)
+                    hist_months = hist_df['datum_dt'].dt.to_period('M').nunique()
+                    hist_months = max(hist_months, 1)
+
+                    avg_per_kat = hist_df.groupby('kategorie')['betrag_num'].sum() / hist_months
+
+                    curr_aus_df = curr_month_df[curr_month_df['typ'] == 'Ausgabe'].copy()
+                    curr_aus_df['betrag_num'] = curr_aus_df['betrag_num'].abs()
+                    curr_per_kat = curr_aus_df.groupby('kategorie')['betrag_num'].sum()
+
+                    potenzial_rows = []
+                    for kat in curr_per_kat.index:
+                        curr_val = curr_per_kat.get(kat, 0)
+                        avg_val  = avg_per_kat.get(kat, 0)
+                        if avg_val > 0 and curr_val > avg_val * 1.1:  # Mindestens 10% mehr
+                            diff_pct  = (curr_val - avg_val) / avg_val * 100
+                            diff_eur  = curr_val - avg_val
+                            potenzial_rows.append({
+                                'kategorie': kat,
+                                'aktuell':   curr_val,
+                                'durchschn': avg_val,
+                                'diff_pct':  diff_pct,
+                                'diff_eur':  diff_eur,
+                            })
+
+                    if potenzial_rows:
+                        potenzial_rows.sort(key=lambda x: x['diff_eur'], reverse=True)
+                        total_potenzial = sum(r['diff_eur'] for r in potenzial_rows)
+
+                        st.markdown(
+                            f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                            f"rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);"
+                            f"border-radius:16px;padding:20px 22px;margin-bottom:12px;'>"
+                            f"<div style='font-family:DM Sans,sans-serif;color:#94a3b8;"
+                            f"font-size:14px;margin-bottom:16px;'>"
+                            f"Diesen Monat hast du in <b style='color:#e2e8f0;'>{len(potenzial_rows)} {'Kategorie' if len(potenzial_rows)==1 else 'Kategorien'}</b> "
+                            f"mehr ausgegeben als im Durchschnitt. "
+                            f"Spar-Potenzial: <span style='color:#4ade80;font-weight:600;'>{total_potenzial:,.2f} €</span></div>",
+                            unsafe_allow_html=True
+                        )
+                        for r in potenzial_rows:
+                            bar_pct = min(r['diff_pct'], 200) / 200 * 100
+                            st.markdown(
+                                f"<div style='margin-bottom:14px;'>"
+                                f"<div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;'>"
+                                f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:13px;'>{r['kategorie']}</span>"
+                                f"<div style='display:flex;gap:14px;align-items:baseline;'>"
+                                f"<span style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>"
+                                f"{r['aktuell']:,.2f} €</span>"
+                                f"<span style='font-family:DM Mono,monospace;color:#334155;font-size:11px;'>"
+                                f"Ø {r['durchschn']:,.2f} €</span>"
+                                f"<span style='font-family:DM Mono,monospace;color:#facc15;"
+                                f"font-size:12px;font-weight:600;'>+{r['diff_pct']:.0f}%</span>"
+                                f"</div></div>"
+                                f"<div style='background:rgba(30,41,59,0.6);border-radius:99px;height:4px;'>"
+                                f"<div style='width:{bar_pct:.0f}%;height:100%;border-radius:99px;"
+                                f"background:linear-gradient(to right,#facc15,#f87171);'></div></div>"
+                                f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;margin-top:4px;'>"
+                                f"Da könntest du ca. <span style='color:#4ade80;font-weight:500;'>{r['diff_eur']:,.2f} €</span> sparen</div>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(
+                            "<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                            "rgba(10,16,30,0.95));border:1px solid rgba(74,222,128,0.12);"
+                            "border-left:3px solid #4ade80;border-radius:16px;padding:18px 22px;'>"
+                            "<div style='font-family:DM Sans,sans-serif;color:#4ade80;"
+                            "font-size:14px;font-weight:500;'>🎉 Alles im grünen Bereich!</div>"
+                            "<div style='font-family:DM Sans,sans-serif;color:#475569;"
+                            "font-size:13px;margin-top:6px;'>Deine Ausgaben liegen diesen Monat "
+                            "im normalen Rahmen.</div>"
+                            "</div>",
+                            unsafe_allow_html=True
+                        )
+                else:
+                    st.markdown(
+                        "<div style='color:#334155;font-family:DM Sans,sans-serif;font-size:14px;"
+                        "padding:16px;'>Zu wenig Daten für Vergleich. Buche mehrere Monate, "
+                        "um Spar-Potenziale zu sehen.</div>",
+                        unsafe_allow_html=True
+                    )
+
+                st.markdown("<hr>", unsafe_allow_html=True)
+
+                # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                # SECTION 5 — SPARZIEL (unverändert)
                 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 st.markdown(
                     "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
@@ -1782,11 +2202,8 @@ if st.session_state['logged_in']:
                 with sg_col_l:
                     with st.form("sparziel_form"):
                         goal_input = st.number_input(
-                            "Monatliches Sparziel (€)",
-                            min_value=0.0,
-                            value=float(current_goal),
-                            step=50.0,
-                            format="%.2f",
+                            "Monatliches Sparziel (€)", min_value=0.0,
+                            value=float(current_goal), step=50.0, format="%.2f",
                             help="Wie viel möchtest du pro Monat zurücklegen?"
                         )
                         if st.form_submit_button("Sparziel speichern",
@@ -1845,8 +2262,7 @@ if st.session_state['logged_in']:
                             f"<div style='display:flex;justify-content:space-between;"
                             f"align-items:baseline;margin-bottom:8px;'>"
                             f"<span style='font-family:DM Mono,monospace;font-size:10px;"
-                            f"color:#334155;letter-spacing:1.5px;text-transform:uppercase;'>"
-                            f"Fortschritt</span>"
+                            f"color:#334155;letter-spacing:1.5px;text-transform:uppercase;'>Fortschritt</span>"
                             f"<span style='font-family:DM Mono,monospace;font-size:13px;"
                             f"color:{bar_color};font-weight:600;'>{pct_display:.0f}%</span>"
                             f"</div>"
@@ -1918,15 +2334,6 @@ if st.session_state['logged_in']:
                                     f"{rows_html}</div>",
                                     unsafe_allow_html=True
                                 )
-                            else:
-                                st.markdown(
-                                    f"<div style='background:rgba(15,23,42,0.5);border:1px solid "
-                                    f"rgba(248,113,113,0.1);border-radius:12px;padding:16px 18px;"
-                                    f"color:#475569;font-family:DM Sans,sans-serif;font-size:14px;'>"
-                                    f"Noch {fehlbetrag:,.2f} € fehlen – buche Ausgaben für Empfehlungen."
-                                    f"</div>",
-                                    unsafe_allow_html=True
-                                )
                         elif erreicht:
                             st.markdown(
                                 f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
@@ -1949,6 +2356,298 @@ if st.session_state['logged_in']:
                             "</div>",
                             unsafe_allow_html=True
                         )
+
+    # ── NEU: Spartöpfe ───────────────────────────────────────
+    elif menu == "🪣 Spartöpfe":
+        user_name = st.session_state['user_name']
+
+        st.markdown(
+            "<div style='margin-bottom:36px;margin-top:16px;'>"
+            "<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;"
+            "color:#e2e8f0;margin:0 0 6px 0;letter-spacing:-1px;'>Spartöpfe 🪣</h1>"
+            "<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:15px;margin:0;'>"
+            "Virtuelle Töpfe für deine Sparziele</p>"
+            "</div>",
+            unsafe_allow_html=True
+        )
+
+        toepfe = load_toepfe(user_name)
+
+        # ── Übersicht ────────────────────────────────────────
+        TOPF_FARBEN = [
+            "#38bdf8", "#4ade80", "#f87171", "#facc15",
+            "#a78bfa", "#fb923c", "#34d399", "#f472b6",
+        ]
+
+        if toepfe:
+            # Gesamtübersicht
+            total_gespart = sum(t['gespart'] for t in toepfe)
+            total_ziel    = sum(t['ziel'] for t in toepfe if t['ziel'] > 0)
+
+            st.markdown(
+                f"<div style='display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;'>"
+                f"<div style='flex:1;min-width:140px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                f"border:1px solid rgba(56,189,248,0.12);border-radius:14px;padding:16px 18px;'>"
+                f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#1e40af;"
+                f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Gesamt gespart</div>"
+                f"<div style='font-family:DM Sans,sans-serif;color:#38bdf8;font-size:22px;"
+                f"font-weight:600;'>{total_gespart:,.2f} €</div>"
+                f"</div>"
+                f"<div style='flex:1;min-width:140px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                f"border:1px solid rgba(148,163,184,0.08);border-radius:14px;padding:16px 18px;'>"
+                f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;"
+                f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Anzahl Töpfe</div>"
+                f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;font-size:22px;"
+                f"font-weight:600;'>{len(toepfe)}</div>"
+                f"</div>"
+                + (
+                    f"<div style='flex:1;min-width:140px;background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                    f"border:1px solid rgba(148,163,184,0.08);border-radius:14px;padding:16px 18px;'>"
+                    f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;"
+                    f"letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;'>Gesamt-Ziel</div>"
+                    f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:22px;"
+                    f"font-weight:600;'>{total_ziel:,.2f} €</div>"
+                    f"</div>"
+                    if total_ziel > 0 else ""
+                )
+                + f"</div>",
+                unsafe_allow_html=True
+            )
+
+            # ── Topf-Karten ──────────────────────────────────
+            col_a, col_b = st.columns(2)
+            for i, topf in enumerate(toepfe):
+                col = col_a if i % 2 == 0 else col_b
+                with col:
+                    farbe    = topf.get('farbe', '#38bdf8')
+                    gespart  = topf['gespart']
+                    ziel     = topf['ziel']
+                    emoji    = topf.get('emoji', '🪣')
+                    topf_id  = topf['id']
+
+                    if ziel > 0:
+                        pct = min(gespart / ziel * 100, 100)
+                        ziel_html = (
+                            f"<div style='display:flex;justify-content:space-between;"
+                            f"margin-bottom:6px;margin-top:10px;'>"
+                            f"<span style='font-family:DM Mono,monospace;color:#334155;"
+                            f"font-size:10px;'>{gespart:,.2f} € von {ziel:,.2f} €</span>"
+                            f"<span style='font-family:DM Mono,monospace;color:{farbe};"
+                            f"font-size:10px;font-weight:600;'>{pct:.0f}%</span>"
+                            f"</div>"
+                            f"<div style='background:rgba(30,41,59,0.8);border-radius:99px;"
+                            f"height:5px;overflow:hidden;'>"
+                            f"<div style='width:{pct:.0f}%;height:100%;background:{farbe};"
+                            f"border-radius:99px;'></div></div>"
+                        )
+                        if pct >= 100:
+                            badge_html = (
+                                f"<span style='background:rgba(74,222,128,0.1);color:#4ade80;"
+                                f"font-family:DM Mono,monospace;font-size:9px;padding:2px 8px;"
+                                f"border-radius:99px;border:1px solid rgba(74,222,128,0.2);'>"
+                                f"✓ ERREICHT</span>"
+                            )
+                        else:
+                            fehl = ziel - gespart
+                            badge_html = (
+                                f"<span style='font-family:DM Mono,monospace;color:#334155;"
+                                f"font-size:10px;'>noch {fehl:,.2f} € fehlen</span>"
+                            )
+                    else:
+                        ziel_html  = ""
+                        badge_html = (
+                            f"<span style='font-family:DM Mono,monospace;color:#334155;"
+                            f"font-size:10px;'>kein Ziel gesetzt</span>"
+                        )
+
+                    st.markdown(
+                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                        f"rgba(10,16,30,0.95));border:1px solid {farbe}20;"
+                        f"border-top:2px solid {farbe};border-radius:16px;"
+                        f"padding:18px 20px;margin-bottom:14px;'>"
+                        f"<div style='display:flex;justify-content:space-between;align-items:flex-start;'>"
+                        f"<div>"
+                        f"<div style='font-size:22px;margin-bottom:4px;'>{emoji}</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;"
+                        f"font-weight:600;font-size:16px;letter-spacing:-0.3px;'>{topf['name']}</div>"
+                        f"</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:{farbe};"
+                        f"font-size:22px;font-weight:600;'>{gespart:,.2f} €</div>"
+                        f"</div>"
+                        f"{ziel_html}"
+                        f"<div style='margin-top:10px;'>{badge_html}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+
+                    # Einzahlen / Auszahlen
+                    with st.expander(f"💰 Ein/Auszahlen — {topf['name']}"):
+                        tz1, tz2 = st.columns(2)
+                        with tz1:
+                            einzahl_key = f"einzahl_{topf_id}"
+                            einzahl_val = st.number_input(
+                                "Einzahlen (€)", min_value=0.01, step=1.0,
+                                format="%.2f", key=einzahl_key
+                            )
+                            if st.button("+ Einzahlen", key=f"do_einzahl_{topf_id}",
+                                         use_container_width=True, type="primary"):
+                                update_topf_gespart(user_name, topf_id, einzahl_val)
+                                st.rerun()
+                        with tz2:
+                            auszahl_key = f"auszahl_{topf_id}"
+                            auszahl_val = st.number_input(
+                                "Auszahlen (€)", min_value=0.01, step=1.0,
+                                format="%.2f", key=auszahl_key
+                            )
+                            if st.button("− Auszahlen", key=f"do_auszahl_{topf_id}",
+                                         use_container_width=True, type="secondary"):
+                                update_topf_gespart(user_name, topf_id, -auszahl_val)
+                                st.rerun()
+
+                    # Bearbeiten / Löschen
+                    te1, te2 = st.columns(2)
+                    with te1:
+                        if st.button("✏️", key=f"edit_topf_{topf_id}",
+                                     use_container_width=True, type="secondary"):
+                            st.session_state['topf_edit_data'] = topf
+                            st.session_state['_dialog_just_opened'] = True
+                            st.rerun()
+                    with te2:
+                        if st.button("🗑️", key=f"del_topf_{topf_id}",
+                                     use_container_width=True, type="secondary"):
+                            st.session_state['topf_delete_id'] = topf_id
+                            st.session_state['topf_delete_name'] = topf['name']
+                            st.session_state['_dialog_just_opened'] = True
+                            st.rerun()
+
+        else:
+            st.markdown(
+                "<div style='text-align:center;padding:60px 20px;'>"
+                "<div style='font-size:48px;margin-bottom:16px;'>🪣</div>"
+                "<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:15px;'>"
+                "Noch keine Spartöpfe. Erstelle deinen ersten Topf!</p>"
+                "</div>",
+                unsafe_allow_html=True
+            )
+
+        # ── Neuen Topf erstellen ─────────────────────────────
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown(
+            "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
+            "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+            "margin-bottom:16px;'>Neuen Topf erstellen</p>",
+            unsafe_allow_html=True
+        )
+
+        with st.form("neuer_topf_form", clear_on_submit=True):
+            nt1, nt2, nt3 = st.columns([1, 3, 2])
+            with nt1:
+                nt_emoji = st.text_input("Emoji", placeholder="✈️", max_chars=4)
+            with nt2:
+                nt_name = st.text_input("Name", placeholder="z.B. Urlaub, Neues Auto, Laptop...")
+            with nt3:
+                nt_ziel = st.number_input("Sparziel (€, optional)", min_value=0.0,
+                                          step=50.0, format="%.2f", value=0.0)
+            nt_farbe = st.selectbox(
+                "Farbe",
+                ["🔵 Blau (#38bdf8)", "🟢 Grün (#4ade80)", "🔴 Rot (#f87171)",
+                 "🟡 Gelb (#facc15)", "🟣 Lila (#a78bfa)", "🟠 Orange (#fb923c)",
+                 "💚 Smaragd (#34d399)", "🩷 Pink (#f472b6)"],
+                index=0
+            )
+            farbe_map = {
+                "🔵 Blau (#38bdf8)": "#38bdf8",
+                "🟢 Grün (#4ade80)": "#4ade80",
+                "🔴 Rot (#f87171)":  "#f87171",
+                "🟡 Gelb (#facc15)": "#facc15",
+                "🟣 Lila (#a78bfa)": "#a78bfa",
+                "🟠 Orange (#fb923c)": "#fb923c",
+                "💚 Smaragd (#34d399)": "#34d399",
+                "🩷 Pink (#f472b6)": "#f472b6",
+            }
+            if st.form_submit_button("Topf erstellen", use_container_width=True, type="primary"):
+                if not nt_name.strip():
+                    st.error("Bitte einen Namen eingeben.")
+                else:
+                    save_topf(
+                        user=user_name,
+                        name=nt_name.strip(),
+                        ziel=nt_ziel,
+                        emoji=nt_emoji.strip() if nt_emoji.strip() else "🪣",
+                        farbe=farbe_map.get(nt_farbe, "#38bdf8")
+                    )
+                    st.success(f"✅ Topf '{nt_name.strip()}' erstellt!")
+                    st.rerun()
+
+        # ── Dialoge für Topf bearbeiten / löschen ───────────
+        if st.session_state.get('topf_edit_data'):
+            @st.dialog("✏️ Topf bearbeiten")
+            def topf_edit_dialog():
+                t = st.session_state['topf_edit_data']
+                farbe_labels = [
+                    "🔵 Blau (#38bdf8)", "🟢 Grün (#4ade80)", "🔴 Rot (#f87171)",
+                    "🟡 Gelb (#facc15)", "🟣 Lila (#a78bfa)", "🟠 Orange (#fb923c)",
+                    "💚 Smaragd (#34d399)", "🩷 Pink (#f472b6)"
+                ]
+                farbe_map_edit = {
+                    "#38bdf8": "🔵 Blau (#38bdf8)", "#4ade80": "🟢 Grün (#4ade80)",
+                    "#f87171": "🔴 Rot (#f87171)",  "#facc15": "🟡 Gelb (#facc15)",
+                    "#a78bfa": "🟣 Lila (#a78bfa)", "#fb923c": "🟠 Orange (#fb923c)",
+                    "#34d399": "💚 Smaragd (#34d399)", "#f472b6": "🩷 Pink (#f472b6)",
+                }
+                farbe_rev = {v: k for k, v in farbe_map_edit.items()}
+                curr_farbe_label = farbe_map_edit.get(t['farbe'], farbe_labels[0])
+                curr_farbe_idx = farbe_labels.index(curr_farbe_label) if curr_farbe_label in farbe_labels else 0
+
+                e1, e2 = st.columns([1, 3])
+                with e1:
+                    new_emoji = st.text_input("Emoji", value=t['emoji'], max_chars=4)
+                with e2:
+                    new_name = st.text_input("Name", value=t['name'])
+                new_ziel  = st.number_input("Sparziel (€)", min_value=0.0,
+                                             value=float(t['ziel']), step=50.0, format="%.2f")
+                new_farbe_label = st.selectbox("Farbe", farbe_labels, index=curr_farbe_idx)
+
+                cs, cc = st.columns(2)
+                with cs:
+                    if st.button("Speichern", use_container_width=True, type="primary"):
+                        update_topf_meta(
+                            user=user_name, topf_id=t['id'],
+                            name=new_name.strip() or t['name'],
+                            ziel=new_ziel,
+                            emoji=new_emoji.strip() if new_emoji.strip() else t['emoji'],
+                            farbe=farbe_rev.get(new_farbe_label, t['farbe'])
+                        )
+                        st.session_state['topf_edit_data'] = None
+                        st.rerun()
+                with cc:
+                    if st.button("Abbrechen", use_container_width=True):
+                        st.session_state['topf_edit_data'] = None
+                        st.rerun()
+            topf_edit_dialog()
+
+        if st.session_state.get('topf_delete_id'):
+            @st.dialog("Topf löschen")
+            def topf_delete_dialog():
+                name = st.session_state.get('topf_delete_name', '')
+                st.markdown(
+                    f"<p style='color:#e2e8f0;font-size:15px;'>"
+                    f"Topf <b>'{name}'</b> wirklich löschen?</p>",
+                    unsafe_allow_html=True
+                )
+                d1, d2 = st.columns(2)
+                with d1:
+                    if st.button("Löschen", use_container_width=True, type="primary"):
+                        delete_topf(user_name, st.session_state['topf_delete_id'])
+                        st.session_state['topf_delete_id']   = None
+                        st.session_state['topf_delete_name'] = None
+                        st.rerun()
+                with d2:
+                    if st.button("Abbrechen", use_container_width=True):
+                        st.session_state['topf_delete_id']   = None
+                        st.session_state['topf_delete_name'] = None
+                        st.rerun()
+            topf_delete_dialog()
 
     # ── Einstellungen ────────────────────────────────────────
     elif menu == "⚙️ Einstellungen":
@@ -2009,7 +2708,6 @@ else:
     with center_col:
         mode = st.session_state['auth_mode']
 
-        # ── Login ────────────────────────────────────────────
         if mode == 'login':
             with st.form("login_form"):
                 st.markdown(
@@ -2048,7 +2746,6 @@ else:
                     st.session_state['auth_mode'] = 'forgot'
                     st.rerun()
 
-        # ── Registrierung ────────────────────────────────────
         elif mode == 'signup':
             with st.form("signup_form"):
                 st.markdown(
@@ -2086,8 +2783,7 @@ else:
                                 code   = generate_code()
                                 expiry = datetime.datetime.now() + datetime.timedelta(minutes=10)
                                 html   = email_html(
-                                    "Willkommen bei Balancely! Dein Verifizierungscode lautet:",
-                                    code
+                                    "Willkommen bei Balancely! Dein Verifizierungscode lautet:", code
                                 )
                                 if send_email(s_email.strip().lower(),
                                               "Balancely – E-Mail verifizieren", html):
@@ -2108,7 +2804,6 @@ else:
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
 
-        # ── E-Mail verifizieren ──────────────────────────────
         elif mode == 'verify_email':
             pending_email = st.session_state['pending_user'].get('email', '')
             with st.form("verify_form"):
@@ -2138,9 +2833,7 @@ else:
                         df_u  = conn.read(worksheet="users", ttl="0")
                         new_u = pd.DataFrame([{
                             **st.session_state['pending_user'],
-                            "verified":     "True",
-                            "token":        "",
-                            "token_expiry": "",
+                            "verified": "True", "token": "", "token_expiry": "",
                         }])
                         conn.update(worksheet="users",
                                     data=pd.concat([df_u, new_u], ignore_index=True))
@@ -2154,7 +2847,6 @@ else:
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
 
-        # ── Passwort vergessen ───────────────────────────────
         elif mode == 'forgot':
             with st.form("forgot_form"):
                 st.markdown(
@@ -2181,9 +2873,7 @@ else:
                         else:
                             code   = generate_code()
                             expiry = datetime.datetime.now() + datetime.timedelta(minutes=10)
-                            html   = email_html(
-                                "Dein Code zum Zurücksetzen des Passworts lautet:", code
-                            )
+                            html   = email_html("Dein Code zum Zurücksetzen des Passworts lautet:", code)
                             if send_email(forgot_email.strip().lower(),
                                           "Balancely – Passwort zurücksetzen", html):
                                 st.session_state['reset_email']  = forgot_email.strip().lower()
@@ -2196,7 +2886,6 @@ else:
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
 
-        # ── Passwort zurücksetzen ────────────────────────────
         elif mode == 'reset_password':
             with st.form("reset_form"):
                 st.markdown(
