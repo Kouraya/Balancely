@@ -40,24 +40,6 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    /* FIX FÜR HITBOXEN & FARBEN */
-    div[data-testid="stSegmentedControl"] button {
-        border-radius: 10px !important;
-        min-height: 40px !important;
-    }
-    /* Ausgabe (Erster Button) aktiv */
-    div[data-testid="stSegmentedControl"] button:nth-of-type(1)[aria-checked="true"] {
-        background-color: rgba(239, 68, 68, 0.25) !important;
-        border: 2px solid #ef4444 !important;
-        color: #fca5a5 !important;
-    }
-    /* Einnahme (Zweiter Button) aktiv */
-    div[data-testid="stSegmentedControl"] button:nth-of-type(2)[aria-checked="true"] {
-        background-color: rgba(16, 185, 129, 0.25) !important;
-        border: 2px solid #10b981 !important;
-        color: #6ee7b7 !important;
-    }
-
     /* Äußerer Container */
     div[data-testid="stTextInputRootElement"] {
         background-color: transparent !important;
@@ -179,17 +161,25 @@ if st.session_state['logged_in']:
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
-        
-        # Geänderter Teil zur Behebung der Hitbox-Fehler:
+        t_type = st.session_state['t_type']
+
         st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
-        
-        t_type = st.segmented_control(
-            "Typ wählen", 
-            ["Ausgabe", "Einnahme"], 
-            default=st.session_state['t_type'],
-            label_visibility="collapsed"
-        )
-        st.session_state['t_type'] = t_type
+
+        col_a, col_e, _ = st.columns([1, 1, 3])
+        with col_a:
+            if t_type == "Ausgabe":
+                st.markdown('<div style="background:rgba(239,68,68,0.25);border:2px solid #ef4444;border-radius:10px;padding:8px 16px;color:#fca5a5;font-weight:700;font-size:14px;text-align:center;">↗ Ausgabe ✓</div>', unsafe_allow_html=True)
+            else:
+                if st.button("↗ Ausgabe", key="btn_ausgabe", use_container_width=True):
+                    st.session_state['t_type'] = "Ausgabe"
+                    st.rerun()
+        with col_e:
+            if t_type == "Einnahme":
+                st.markdown('<div style="background:rgba(16,185,129,0.25);border:2px solid #10b981;border-radius:10px;padding:8px 16px;color:#6ee7b7;font-weight:700;font-size:14px;text-align:center;">↙ Einnahme ✓</div>', unsafe_allow_html=True)
+            else:
+                if st.button("↙ Einnahme", key="btn_einnahme", use_container_width=True):
+                    st.session_state['t_type'] = "Einnahme"
+                    st.rerun()
 
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
@@ -219,7 +209,6 @@ if st.session_state['logged_in']:
                 st.balloons()
 
 else:
-    # --- LOGIN / SIGNUP ---
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
@@ -282,3 +271,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+                
