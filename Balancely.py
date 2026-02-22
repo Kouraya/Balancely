@@ -1243,7 +1243,7 @@ if st.session_state['logged_in']:
                                   + "</div>")
                 st.markdown(
                     f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);border-radius:16px;padding:20px 22px;'>"
-                    f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:14px;'>Ausgaben pro Tag — dunklere Felder = höhere Ausgaben</div>"
+                    f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:14px;'>Ausgaben pro Tag — hellere Felder = höhere Ausgaben</div>"
                     f"<div style='display:flex;gap:6px;margin-bottom:6px;'>{header_html}</div>"
                     f"<div style='display:flex;flex-wrap:wrap;gap:6px;'>{cal_cells}</div>"
                     f"<div style='display:flex;align-items:center;gap:8px;margin-top:14px;'>"
@@ -1261,7 +1261,7 @@ if st.session_state['logged_in']:
                 days_left     = days_in_cur - today_day
                 curr_ein      = curr_month_df[curr_month_df['typ']=='Einnahme']['betrag_num'].sum()
                 curr_aus      = curr_month_df[curr_month_df['typ']=='Ausgabe']['betrag_num'].abs().sum()
-                curr_dep      = curr_month_df[curr_month_df['typ']=='Depot']['betrag_num'].abs().sum()
+                curr_dep      = curr_month_df[curr_month_df['typ']=='Depot']['betrag_num'].sum()
                 curr_sp_netto = curr_month_df[curr_month_df['typ']=='Spartopf']['betrag_num'].sum()
                 daily_rate    = curr_aus/today_day if today_day>0 else 0
                 fc_aus_total  = daily_rate*days_in_cur
@@ -1978,4 +1978,5 @@ else:
                                 st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen."); st.rerun()
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'; st.rerun()
+
 
