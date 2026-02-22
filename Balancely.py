@@ -189,7 +189,9 @@ div[class*="stInputInstructions"] {
 /* Cursor pointer auf allen klickbaren Elementen */
 button, [data-testid="stPopover"] button,
 div[data-baseweb="select"],
-div[data-testid="stDateInput"] {
+div[data-baseweb="select"] *,
+div[data-testid="stDateInput"],
+[data-testid="stSelectbox"] * {
     cursor: pointer !important;
 }
 /* Verhindert dass Date-Input Hitbox über andere Elemente ragt */
@@ -253,6 +255,7 @@ defaults = {
     'reset_expiry':    None,
     'edit_idx':        None,
     'show_new_cat':    False,
+    'new_cat_typ':     'Ausgabe',
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -288,6 +291,42 @@ def delete_custom_cat(user: str, typ: str, kategorie: str):
         conn.update(worksheet="categories", data=df)
     except Exception:
         pass
+
+@st.dialog("➕ Neue Kategorie erstellen")
+def new_category_dialog():
+    typ = st.session_state.get('new_cat_typ', 'Ausgabe')
+    st.markdown(
+        f"<p style='color:#94a3b8;font-size:13px;'>Für: <b style='color:#38bdf8;'>{typ}</b></p>",
+        unsafe_allow_html=True
+    )
+    nc1, nc2 = st.columns([1, 3])
+    with nc1:
+        new_emoji = st.text_input("Emoji", placeholder="🎵", max_chars=4)
+    with nc2:
+        new_name = st.text_input("Name", placeholder="z.B. Musik")
+
+    nc_typ = st.selectbox("Typ", ["Ausgabe", "Einnahme"],
+                          index=0 if typ == "Ausgabe" else 1)
+
+    col_save, col_cancel = st.columns(2)
+    with col_save:
+        if st.button("✅ Speichern", use_container_width=True, type="primary"):
+            if not new_name.strip():
+                st.error("❌ Bitte einen Namen eingeben.")
+            else:
+                label    = f"{new_emoji.strip()} {new_name.strip()}"                            if new_emoji.strip() else new_name.strip()
+                existing = load_custom_cats(st.session_state['user_name'], nc_typ)                            + DEFAULT_CATS[nc_typ]
+                if label in existing:
+                    st.error("⚠️ Diese Kategorie existiert bereits.")
+                else:
+                    save_custom_cat(st.session_state['user_name'], nc_typ, label)
+                    st.session_state['show_new_cat'] = False
+                    st.rerun()
+    with col_cancel:
+        if st.button("❌ Abbrechen", use_container_width=True):
+            st.session_state['show_new_cat'] = False
+            st.rerun()
+
 
 @st.dialog("Eintrag löschen")
 def confirm_delete(row_data):
@@ -341,7 +380,7 @@ if st.session_state['logged_in']:
         st.markdown("---")
         menu = st.radio(
             "Navigation",
-            ["📈 Dashboard", "💸 Transaktion", "📂 Analysen", "⚙️ Einstellungen"],
+            ["📈 Dashboard", "💸 Transaktionen", "📂 Analysen", "⚙️ Einstellungen"],
             label_visibility="collapsed"
         )
         st.markdown("<div style='height:30vh;'></div>", unsafe_allow_html=True)
@@ -380,8 +419,8 @@ if st.session_state['logged_in']:
             st.warning("Verbindung wird hergestellt...")
 
     # ── Transaktion ──────────────────────────────────────────
-    elif menu == "💸 Transaktion":
-        st.title("Buchung hinzufügen ✍️")
+    elif menu == "💸 Transaktionen":
+        st.title("Transaktionen ✍️")
         t_type = st.session_state['t_type']
 
         st.markdown(
@@ -467,13 +506,22 @@ if st.session_state['logged_in']:
                             st.success(f"✅ Kategorie '{label}' gespeichert!")
                             st.rerun()
 
-            # Eigene Kategorien anzeigen + löschen
-            if custom_cats:
-                st.markdown(f"**Eigene {t_type}-Kategorien:**")
+        # ── Neue Kategorie / Auswahl-Trigger ────────────────
+        if t_cat == "➕ Neue Kategorie erstellen":
+            st.session_state['show_new_cat'] = True
+            st.session_state['new_cat_typ']  = t_type
+            st.rerun()
+
+        if st.session_state.get('show_new_cat'):
+            new_category_dialog()
+
+        # Eigene Kategorien verwalten
+        if custom_cats:
+            with st.expander(f"🗂️ Eigene {t_type}-Kategorien verwalten"):
                 for cat in custom_cats:
-                    cc1, cc2 = st.columns([4, 1])
+                    cc1, cc2 = st.columns([5, 1])
                     cc1.markdown(f"<span style='color:#cbd5e1'>{cat}</span>", unsafe_allow_html=True)
-                    if cc2.button("🗑️", key=f"delcat_{cat}", help="Kategorie löschen",
+                    if cc2.button("🗑️", key=f"delcat_{cat}", help="Löschen",
                                   use_container_width=True):
                         delete_custom_cat(user_name, t_type, cat)
                         st.rerun()
