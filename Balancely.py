@@ -273,23 +273,23 @@ if st.session_state['logged_in']:
                         betrag_num = pd.to_numeric(row['betrag'], errors='coerce')
 
                         # Zeile anzeigen
-                        c1, c2, c3, c4, c5, c6 = st.columns([2, 2, 2, 3, 1, 1])
+                        c1, c2, c3, c4, c5 = st.columns([2, 2, 2, 3, 2])
                         c1.markdown(f"<span style='color:#94a3b8'>{row['datum']}</span>", unsafe_allow_html=True)
                         farbe = '#4ade80' if row['typ'] == 'Einnahme' else '#f87171'
                         c2.markdown(f"<span style='color:{farbe}; font-weight:700'>{row['betrag_anzeige']}</span>", unsafe_allow_html=True)
                         c3.markdown(f"<span style='color:#cbd5e1'>{row['kategorie']}</span>", unsafe_allow_html=True)
                         c4.markdown(f"<span style='color:#64748b'>{notiz}</span>", unsafe_allow_html=True)
 
-                        # Bearbeiten Button
-                        if c5.button("✏️", key=f"edit_btn_{orig_idx}", help="Eintrag bearbeiten"):
+                        # Bearbeiten + Löschen eng nebeneinander in c5
+                        btn1, btn2 = c5.columns([1, 1])
+                        if btn1.button("✏️", key=f"edit_btn_{orig_idx}", help="Eintrag bearbeiten"):
                             if st.session_state['edit_idx'] == orig_idx:
                                 st.session_state['edit_idx'] = None
                             else:
                                 st.session_state['edit_idx'] = orig_idx
                             st.rerun()
 
-                        # Löschen Button
-                        if c6.button("🗑️", key=f"del_{orig_idx}", help="Eintrag löschen"):
+                        if btn2.button("🗑️", key=f"del_{orig_idx}", help="Eintrag löschen"):
                             df_all = conn.read(worksheet="transactions", ttl="0")
                             if 'deleted' not in df_all.columns:
                                 df_all['deleted'] = ''
@@ -323,12 +323,14 @@ if st.session_state['logged_in']:
                                     cats_e = ["Gehalt", "Bonus", "Verkauf"] if e_typ == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                                     current_cat = row['kategorie'] if row['kategorie'] in cats_e else cats_e[0]
                                     e_cat = st.selectbox("Kategorie", cats_e, index=cats_e.index(current_cat))
-                                    e_notiz = st.text_input("Notiz", value=notiz)
+                                    _, notiz_col, _ = st.columns([1, 2, 1])
+                                with notiz_col:
+                                    e_notiz = st.text_input("Notiz (optional)", value=notiz, placeholder="z.B. Supermarkt, Tankstelle...")
                                 col_save, col_cancel = st.columns(2)
                                 with col_save:
                                     saved = st.form_submit_button("💾 Speichern", use_container_width=True, type="primary")
                                 with col_cancel:
-                                    cancelled = st.form_submit_button("Abbrechen", use_container_width=True)
+                                    cancelled = st.form_submit_button("🚫 Abbrechen", use_container_width=True)
                                 if saved:
                                     df_all = conn.read(worksheet="transactions", ttl="0")
                                     if 'deleted' not in df_all.columns:
