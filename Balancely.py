@@ -2,11 +2,14 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import hashlib
+import numpy as np
 import datetime
 import re
 
+# --- 1. SEITEN-KONFIGURATION ---
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
 
+# --- 2. HILFSFUNKTIONEN ---
 def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
 
@@ -19,6 +22,7 @@ def check_password_strength(password):
         return False, "Das Passwort muss mindestens einen Großbuchstaben enthalten."
     return True, ""
 
+# --- 3. CSS (DESIGN & FIX FÜR HITBOXEN) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -40,70 +44,51 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    /* Äußerer Container */
-    div[data-testid="stTextInputRootElement"] {
-        background-color: transparent !important;
+    /* FIX FÜR HITBOXEN: SEGMENTED CONTROL STYLING */
+    div[data-testid="stSegmentedControl"] {
+        gap: 12px !important;
+        margin-bottom: 10px !important;
     }
-    /* Input + BaseWeb Container */
-    div[data-baseweb="input"],
-    div[data-baseweb="base-input"] {
+    div[data-testid="stSegmentedControl"] button {
+        border-radius: 10px !important;
+        min-height: 42px !important;
+        border: 1px solid #1e293b !important;
+        background-color: rgba(15, 23, 42, 0.5) !important;
+    }
+    /* Ausgabe-Button (aktiv) */
+    div[data-testid="stSegmentedControl"] button:nth-of-type(1)[aria-checked="true"] {
+        background: rgba(239, 68, 68, 0.25) !important;
+        border: 2px solid #ef4444 !important;
+        color: #fca5a5 !important;
+    }
+    /* Einnahme-Button (aktiv) */
+    div[data-testid="stSegmentedControl"] button:nth-of-type(2)[aria-checked="true"] {
+        background: rgba(16, 185, 129, 0.25) !important;
+        border: 2px solid #10b981 !important;
+        color: #6ee7b7 !important;
+    }
+
+    /* INPUT STYLING */
+    div[data-testid="stTextInputRootElement"] { background-color: transparent !important; }
+    div[data-baseweb="input"], div[data-baseweb="base-input"] {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
-        padding-right: 0 !important;
-        gap: 0 !important;
     }
-    /* Fokus */
-    div[data-baseweb="input"]:focus-within,
-    div[data-baseweb="base-input"]:focus-within {
-        background-color: transparent !important;
-        border-color: #38bdf8 !important;
-    }
-    /* Datum */
     div[data-testid="stDateInput"] > div {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
     }
-    /* Kategorie Selectbox */
     div[data-baseweb="select"] > div:first-child {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
     }
-    div[data-baseweb="select"] > div:first-child:focus-within {
-        border-color: #38bdf8 !important;
-    }
-
-    /* + / - Buttons beim Number Input ausblenden */
-    button[data-testid="stNumberInputStepDown"],
-    button[data-testid="stNumberInputStepUp"] {
+    button[data-testid="stNumberInputStepDown"], button[data-testid="stNumberInputStepUp"] {
         display: none !important;
     }
-    div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-        border-radius: 8px !important;
-    }
-
-    /* Leerer Spacer neben Auge */
-    div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
-        display: none !important;
-    }
-    /* "Press Enter" ausblenden */
-    [data-testid="InputInstructions"],
-    [data-testid="stInputInstructions"],
-    div[class*="InputInstructions"],
-    div[class*="stInputInstructions"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        max-height: 0 !important;
-        height: 0 !important;
-        width: 0 !important;
-        overflow: hidden !important;
-        position: absolute !important;
-        pointer-events: none !important;
-    }
-
+    [data-testid="stInputInstructions"] { display: none !important; }
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
 
     [data-testid="stSidebar"] {
@@ -118,6 +103,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- 4. SESSION STATE ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
@@ -125,6 +111,7 @@ if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+# --- 5. LOGIK ---
 if st.session_state['logged_in']:
     with st.sidebar:
         st.markdown("<h2 style='color:white;'>Balancely ⚖️</h2>", unsafe_allow_html=True)
@@ -161,25 +148,15 @@ if st.session_state['logged_in']:
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
-        t_type = st.session_state['t_type']
-
-        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
-
-        col_a, col_e, _ = st.columns([1, 1, 3])
-        with col_a:
-            if t_type == "Ausgabe":
-                st.markdown('<div style="background:rgba(239,68,68,0.25);border:2px solid #ef4444;border-radius:10px;padding:8px 16px;color:#fca5a5;font-weight:700;font-size:14px;text-align:center;">↗ Ausgabe ✓</div>', unsafe_allow_html=True)
-            else:
-                if st.button("↗ Ausgabe", key="btn_ausgabe", use_container_width=True):
-                    st.session_state['t_type'] = "Ausgabe"
-                    st.rerun()
-        with col_e:
-            if t_type == "Einnahme":
-                st.markdown('<div style="background:rgba(16,185,129,0.25);border:2px solid #10b981;border-radius:10px;padding:8px 16px;color:#6ee7b7;font-weight:700;font-size:14px;text-align:center;">↙ Einnahme ✓</div>', unsafe_allow_html=True)
-            else:
-                if st.button("↙ Einnahme", key="btn_einnahme", use_container_width=True):
-                    st.session_state['t_type'] = "Einnahme"
-                    st.rerun()
+        
+        # FIX: Segmented Control löst das Hitbox-Problem und ersetzt die fehlerhaften manuellen Buttons
+        t_type = st.segmented_control(
+            "Typ wählen",
+            options=["Ausgabe", "Einnahme"],
+            default=st.session_state['t_type'],
+            key="type_selector"
+        )
+        st.session_state['t_type'] = t_type
 
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
@@ -209,6 +186,7 @@ if st.session_state['logged_in']:
                 st.balloons()
 
 else:
+    # --- LOGIN / SIGNUP ---
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
