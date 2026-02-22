@@ -840,8 +840,8 @@ if st.session_state['logged_in']:
 
         st.markdown(
             "<div style='margin-bottom:36px;margin-top:16px;'>"
-            "<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:700;color:#e2e8f0;letter-spacing:-0.5px;margin:0 0 4px 0;'>Transaktionen</h1>"
-            "<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;margin:0;'>Buchungen erfassen &amp; verwalten</p></div>",
+            "<h1 style='font-family:DM Sans,sans-serif;font-size:40px;font-weight:700;color:#e2e8f0;margin:0 0 6px 0;letter-spacing:-1px;'>Buchungen &amp; Verlauf 🧾</h1>"
+            "<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:15px;margin:0;'>Buchungen erfassen &amp; verwalten</p></div>",
             unsafe_allow_html=True)
 
         if st.session_state.get('show_new_cat'):    new_category_dialog()
@@ -1785,38 +1785,26 @@ if st.session_state['logged_in']:
                             st.session_state.update({'email_verify_code':"",'email_verify_new':""}); st.rerun()
 
         elif active_tab == "Daten":
-            # ── Kategorien-Übersicht ──────────────────────────
-            section_header("Deine Kategorien")
-            for typ_label, typ_key, color in [("↗ Ausgabe","Ausgabe","#f87171"),("↙ Einnahme","Einnahme","#4ade80"),("📦 Depot","Depot","#38bdf8")]:
-                default = DEFAULT_CATS.get(typ_key,[])
-                custom  = load_custom_cats(user_name, typ_key)
-                all_c   = default + custom
-                rows_html = "".join(
-                    f"<div style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);'>"
-                    f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:13px;'>{c}</span>"
-                    f"<span style='font-family:DM Mono,monospace;font-size:10px;color:#334155;'>{'eigene' if c in custom else 'standard'}</span></div>"
-                    for c in all_c)
-                with st.expander(f"{typ_label} — {len(all_c)} Kategorien", expanded=False):
-                    st.markdown(
-                        f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));border-left:3px solid {color};border-radius:10px;padding:4px 16px;'>"
-                        f"{rows_html}</div>", unsafe_allow_html=True)
-            st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-
             col_l, col_r = st.columns(2)
             with col_l:
-                section_header("CSV-Export")
+                section_header("Excel-Export")
                 try:
+                    import io
                     df_export = _gs_read("transactions")
                     if 'user' in df_export.columns:
                         df_export = df_export[df_export['user']==user_name]
                         if 'deleted' in df_export.columns:
                             df_export = df_export[~df_export['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0'])]
-                        df_export = df_export.drop(columns=['deleted'], errors='ignore')
-                    csv_bytes = df_export.to_csv(index=False).encode('utf-8')
+                        df_export = df_export.drop(columns=['deleted','user'], errors='ignore')
+                    buffer = io.BytesIO()
+                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                        df_export.to_excel(writer, index=False, sheet_name='Transaktionen')
+                    excel_bytes = buffer.getvalue()
                     st.markdown(f"<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin-bottom:12px;'>{len(df_export)} Transaktionen bereit</p>", unsafe_allow_html=True)
-                    st.download_button(label="⬇️ Transaktionen exportieren (CSV)", data=csv_bytes,
-                                       file_name=f"balancely_{user_name}_{datetime.date.today()}.csv",
-                                       mime="text/csv", use_container_width=True, type="primary")
+                    st.download_button(label="⬇️ Transaktionen exportieren (Excel)", data=excel_bytes,
+                                       file_name=f"balancely_{user_name}_{datetime.date.today()}.xlsx",
+                                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                       use_container_width=True, type="primary")
                 except Exception as e: st.error(f"Export fehlgeschlagen: {e}")
 
                 st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
