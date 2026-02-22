@@ -442,6 +442,12 @@ defaults = {
     'topf_edit_idx':    None,
     'topf_delete_idx':  None,
     'show_new_topf':    False,
+    # Einstellungen
+    'settings_tab':     'Profil',
+    'email_verify_code':  "",
+    'email_verify_expiry': None,
+    'email_verify_new':   "",
+    'theme':            'Ocean Blue',
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -456,7 +462,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_custom_cats(user: str, typ: str) -> list:
     try:
-        df = conn.read(worksheet="categories", ttl="5")
+        df = conn.read(worksheet="categories", ttl="0")
         if df.empty or 'user' not in df.columns:
             return []
         rows = df[(df['user'] == user) & (df['typ'] == typ)]
@@ -467,7 +473,7 @@ def load_custom_cats(user: str, typ: str) -> list:
 
 def save_custom_cat(user: str, typ: str, kategorie: str):
     try:
-        df = conn.read(worksheet="categories", ttl="5")
+        df = conn.read(worksheet="categories", ttl="0")
     except Exception:
         df = pd.DataFrame(columns=['user', 'typ', 'kategorie'])
     new_row = pd.DataFrame([{'user': user, 'typ': typ, 'kategorie': kategorie}])
@@ -476,7 +482,7 @@ def save_custom_cat(user: str, typ: str, kategorie: str):
 
 def delete_custom_cat(user: str, typ: str, kategorie: str):
     try:
-        df = conn.read(worksheet="categories", ttl="5")
+        df = conn.read(worksheet="categories", ttl="0")
         df = df[~((df['user'] == user) & (df['typ'] == typ) & (df['kategorie'] == kategorie))]
         conn.update(worksheet="categories", data=df)
     except Exception:
@@ -485,7 +491,7 @@ def delete_custom_cat(user: str, typ: str, kategorie: str):
 
 def update_custom_cat(user: str, typ: str, old_label: str, new_label: str):
     try:
-        df = conn.read(worksheet="categories", ttl="5")
+        df = conn.read(worksheet="categories", ttl="0")
         mask = (df['user'] == user) & (df['typ'] == typ) & (df['kategorie'] == old_label)
         df.loc[mask, 'kategorie'] = new_label
         conn.update(worksheet="categories", data=df)
@@ -495,7 +501,7 @@ def update_custom_cat(user: str, typ: str, old_label: str, new_label: str):
 
 def load_goal(user: str) -> float:
     try:
-        df_g = conn.read(worksheet="goals", ttl="5")
+        df_g = conn.read(worksheet="goals", ttl="0")
         if df_g.empty or 'user' not in df_g.columns:
             return 0.0
         row = df_g[df_g['user'] == user]
@@ -508,22 +514,101 @@ def load_goal(user: str) -> float:
 
 def save_goal(user: str, goal: float):
     try:
-        df_g = conn.read(worksheet="goals", ttl="600")
+        df_g = conn.read(worksheet="goals", ttl="0")
     except Exception:
         df_g = pd.DataFrame(columns=['user', 'sparziel'])
-    
     if 'user' not in df_g.columns:
         df_g = pd.DataFrame(columns=['user', 'sparziel'])
-    
     mask = df_g['user'] == user
     if mask.any():
         df_g.loc[mask, 'sparziel'] = goal
     else:
-        new_entry = pd.DataFrame([{'user': user, 'sparziel': goal}])
-        df_g = pd.concat([df_g, new_entry], ignore_index=True)
-    
+        df_g = pd.concat([df_g, pd.DataFrame([{'user': user, 'sparziel': goal}])],
+                         ignore_index=True)
     conn.update(worksheet="goals", data=df_g)
-    st.cache_data.clear() 
+
+
+# ── Einstellungen-Daten ──────────────────────────────────────
+
+def load_user_settings(user: str) -> dict:
+    """Load user settings (budget, currency, avatar, theme) from 'settings' worksheet."""
+    try:
+        df = conn.read(worksheet="settings", ttl="0")
+        if df.empty or 'user' not in df.columns:
+            return {}
+        row = df[df['user'] == user]
+        if row.empty:
+            return {}
+        r = row.iloc[-1]
+        return {
+            'budget':    float(r.get('budget', 0) or 0),
+            'currency':  str(r.get('currency', 'EUR') or 'EUR'),
+            'avatar_url': str(r.get('avatar_url', '') or ''),
+            'theme':     str(r.get('theme', 'Ocean Blue') or 'Ocean Blue'),
+        }
+    except Exception:
+        return {}
+
+
+def save_user_settings(user: str, **kwargs):
+    """Save/update user settings. Pass keyword args for fields to update."""
+    try:
+        df = conn.read(worksheet="settings", ttl="0")
+    except Exception:
+        df = pd.DataFrame(columns=['user', 'budget', 'currency', 'avatar_url', 'theme'])
+    if 'user' not in df.columns:
+        df = pd.DataFrame(columns=['user', 'budget', 'currency', 'avatar_url', 'theme'])
+    mask = df['user'] == user
+    if mask.any():
+        for k, v in kwargs.items():
+            df.loc[mask, k] = v
+    else:
+        row_data = {'user': user, 'budget': 0, 'currency': 'EUR', 'avatar_url': '', 'theme': 'Ocean Blue'}
+        row_data.update(kwargs)
+        df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
+    conn.update(worksheet="settings", data=df)
+
+
+THEMES = {
+    'Ocean Blue': {
+        'primary':   '#38bdf8',
+        'bg1':       '#070d1a',
+        'bg2':       '#080e1c',
+        'bg3':       '#050b16',
+        'grad1':     'rgba(56,189,248,0.06)',
+        'grad2':     'rgba(99,102,241,0.05)',
+        'sidebar':   '#070d1a',
+        'accent':    '#0ea5e9',
+        'accent2':   '#2563eb',
+    },
+    'Emerald Green': {
+        'primary':   '#34d399',
+        'bg1':       '#061510',
+        'bg2':       '#071812',
+        'bg3':       '#051110',
+        'grad1':     'rgba(52,211,153,0.07)',
+        'grad2':     'rgba(16,185,129,0.05)',
+        'sidebar':   '#061510',
+        'accent':    '#10b981',
+        'accent2':   '#059669',
+    },
+    'Deep Purple': {
+        'primary':   '#a78bfa',
+        'bg1':       '#0d0a1a',
+        'bg2':       '#100c1e',
+        'bg3':       '#08061a',
+        'grad1':     'rgba(167,139,250,0.07)',
+        'grad2':     'rgba(139,92,246,0.05)',
+        'sidebar':   '#0d0a1a',
+        'accent':    '#8b5cf6',
+        'accent2':   '#7c3aed',
+    },
+}
+
+CURRENCY_SYMBOLS = {
+    'EUR': '€', 'CHF': 'CHF', 'USD': '$', 'GBP': '£',
+    'JPY': '¥', 'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr',
+}
 
 
 # ── Spartöpfe ────────────────────────────────────────────────
@@ -531,7 +616,7 @@ def save_goal(user: str, goal: float):
 def load_toepfe(user: str) -> list:
     """Load all Spartöpfe for a user from 'toepfe' worksheet."""
     try:
-        df = conn.read(worksheet="toepfe", ttl="5")
+        df = conn.read(worksheet="toepfe", ttl="0")
         if df.empty or 'user' not in df.columns:
             return []
         rows = df[df['user'] == user]
@@ -560,7 +645,7 @@ TOPF_PALETTE = [
 
 def save_topf(user: str, name: str, ziel: float, emoji: str):
     try:
-        df = conn.read(worksheet="toepfe", ttl="5")
+        df = conn.read(worksheet="toepfe", ttl="0")
     except Exception:
         df = pd.DataFrame(columns=['user', 'id', 'name', 'ziel', 'gespart', 'emoji', 'farbe', 'deleted'])
     # Auto-Farbe basierend auf Anzahl vorhandener Töpfe
@@ -580,7 +665,7 @@ def update_topf_gespart(user: str, topf_id: str, topf_name: str, delta: float):
     """Update gespart in toepfe AND write a Spartopf transaction."""
     # 1. Topf-Guthaben aktualisieren
     try:
-        df = conn.read(worksheet="toepfe", ttl="5")
+        df = conn.read(worksheet="toepfe", ttl="0")
         mask = (df['user'] == user) & (df['id'] == topf_id)
         if mask.any():
             current = float(df.loc[mask, 'gespart'].values[0] or 0)
@@ -590,7 +675,7 @@ def update_topf_gespart(user: str, topf_id: str, topf_name: str, delta: float):
         pass
     # 2. Transaktion schreiben (Spartopf-Typ, negativ = Geld geht weg vom Konto)
     try:
-        df_t = conn.read(worksheet="transactions", ttl="5")
+        df_t = conn.read(worksheet="transactions", ttl="0")
         sign = -1 if delta > 0 else 1  # Einzahlung = vom Konto weg; Auszahlung = zurück aufs Konto
         notiz = f"{'↓' if delta > 0 else '↑'} {topf_name}"
         new_row = pd.DataFrame([{
@@ -609,7 +694,7 @@ def update_topf_gespart(user: str, topf_id: str, topf_name: str, delta: float):
 
 def delete_topf(user: str, topf_id: str):
     try:
-        df = conn.read(worksheet="toepfe", ttl="5")
+        df = conn.read(worksheet="toepfe", ttl="0")
         mask = (df['user'] == user) & (df['id'] == topf_id)
         df.loc[mask, 'deleted'] = 'True'
         conn.update(worksheet="toepfe", data=df)
@@ -619,7 +704,7 @@ def delete_topf(user: str, topf_id: str):
 
 def update_topf_meta(user: str, topf_id: str, name: str, ziel: float, emoji: str):
     try:
-        df = conn.read(worksheet="toepfe", ttl="5")
+        df = conn.read(worksheet="toepfe", ttl="0")
         mask = (df['user'] == user) & (df['id'] == topf_id)
         if mask.any():
             df.loc[mask, 'name']  = name
@@ -760,7 +845,7 @@ def confirm_delete(row_data):
     col_ja, col_nein = st.columns(2)
     with col_ja:
         if st.button("Löschen", use_container_width=True, type="primary"):
-            df_all = conn.read(worksheet="transactions", ttl="5")
+            df_all = conn.read(worksheet="transactions", ttl="0")
             if 'deleted' not in df_all.columns:
                 df_all['deleted'] = ''
             mask = (
@@ -791,24 +876,76 @@ def confirm_delete(row_data):
 
 if st.session_state['logged_in']:
 
+    # ── Theme dynamisch injizieren ───────────────────────────
+    _theme_name = st.session_state.get('theme', 'Ocean Blue')
+    _t = THEMES.get(_theme_name, THEMES['Ocean Blue'])
+    st.markdown(f"""
+    <style>
+    [data-testid="stAppViewContainer"] {{
+        background:
+            radial-gradient(ellipse 80% 50% at 20% -10%, {_t['grad1']} 0%, transparent 60%),
+            radial-gradient(ellipse 60% 40% at 80% 110%, {_t['grad2']} 0%, transparent 55%),
+            linear-gradient(160deg, {_t['bg1']} 0%, {_t['bg2']} 40%, {_t['bg3']} 100%) !important;
+    }}
+    [data-testid="stSidebar"] {{
+        background: linear-gradient(180deg, {_t['bg1']} 0%, {_t['bg3']} 100%) !important;
+    }}
+    button[kind="primaryFormSubmit"] {{
+        background: linear-gradient(135deg, {_t['accent']}, {_t['accent2']}) !important;
+        box-shadow: 0 4px 15px {_t['primary']}40 !important;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
     # ── Sidebar ─────────────────────────────────────────────
+    # Nutzer-Einstellungen laden (für Avatar, Währung etc.)
+    _user_settings = load_user_settings(st.session_state['user_name'])
+    _currency_sym = CURRENCY_SYMBOLS.get(_user_settings.get('currency', 'EUR'), '€')
+    # Theme aus Einstellungen übernehmen
+    if _user_settings.get('theme') and _user_settings['theme'] != st.session_state.get('theme'):
+        st.session_state['theme'] = _user_settings['theme']
+
     with st.sidebar:
         st.markdown(
-            "<div style='padding:8px 0 24px 0;'>"
-            "<span style='font-family:DM Sans,sans-serif;font-size:20px;font-weight:600;"
-            "color:#e2e8f0;letter-spacing:-0.5px;'>Balancely</span>"
-            "<span style='color:#38bdf8;font-size:20px;'> ⚖️</span>"
-            "</div>",
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            f"<div style='font-family:DM Sans,sans-serif;font-size:12px;color:#334155;"
-            f"margin-bottom:20px;letter-spacing:0.3px;'>"
-            f"<span style='color:#475569;'>Eingeloggt als</span><br>"
-            f"<span style='color:#64748b;font-weight:500;'>{st.session_state['user_name']}</span>"
+            f"<div style='padding:8px 0 16px 0;'>"
+            f"<span style='font-family:DM Sans,sans-serif;font-size:20px;font-weight:600;"
+            f"color:#e2e8f0;letter-spacing:-0.5px;'>Balancely</span>"
+            f"<span style='color:{_t['primary']};font-size:20px;'> ⚖️</span>"
             f"</div>",
             unsafe_allow_html=True
         )
+        # Avatar + Username
+        _avatar = _user_settings.get('avatar_url', '')
+        if _avatar and _avatar.startswith('http'):
+            st.markdown(
+                f"<div style='display:flex;align-items:center;gap:10px;margin-bottom:20px;'>"
+                f"<img src='{_avatar}' style='width:36px;height:36px;border-radius:50%;"
+                f"object-fit:cover;border:2px solid {_t['primary']}40;'>"
+                f"<div>"
+                f"<div style='font-family:DM Sans,sans-serif;font-size:13px;color:#e2e8f0;"
+                f"font-weight:500;'>{st.session_state['user_name']}</div>"
+                f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;'>"
+                f"{_user_settings.get('currency','EUR')} · {_theme_name}</div>"
+                f"</div></div>",
+                unsafe_allow_html=True
+            )
+        else:
+            _initials = st.session_state['user_name'][:2].upper()
+            st.markdown(
+                f"<div style='display:flex;align-items:center;gap:10px;margin-bottom:20px;'>"
+                f"<div style='width:36px;height:36px;border-radius:50%;"
+                f"background:linear-gradient(135deg,{_t['accent']},{_t['accent2']});"
+                f"display:flex;align-items:center;justify-content:center;"
+                f"font-family:DM Sans,sans-serif;font-size:13px;font-weight:600;color:#fff;"
+                f"flex-shrink:0;'>{_initials}</div>"
+                f"<div>"
+                f"<div style='font-family:DM Sans,sans-serif;font-size:13px;color:#e2e8f0;"
+                f"font-weight:500;'>{st.session_state['user_name']}</div>"
+                f"<div style='font-family:DM Mono,monospace;font-size:10px;color:#334155;'>"
+                f"{_user_settings.get('currency','EUR')} · {_theme_name}</div>"
+                f"</div></div>",
+                unsafe_allow_html=True
+            )
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         menu = st.radio(
             "Navigation",
@@ -884,7 +1021,7 @@ if st.session_state['logged_in']:
                 st.rerun()
 
         try:
-            df_t = conn.read(worksheet="transactions", ttl="5")
+            df_t = conn.read(worksheet="transactions", ttl="0")
             if "user" not in df_t.columns:
                 st.info("Noch keine Daten vorhanden.")
             else:
@@ -924,11 +1061,35 @@ if st.session_state['logged_in']:
                     networth = bank + dep_gesamt + topf_gesamt_val
 
                     bank_color = "#e2e8f0" if bank >= 0 else "#f87171"
-                    bank_str   = f"{bank:,.2f} €" if bank >= 0 else f"-{abs(bank):,.2f} €"
+                    bank_str   = f"{bank:,.2f} {_currency_sym}" if bank >= 0 else f"-{abs(bank):,.2f} {_currency_sym}"
                     nw_color   = "#4ade80" if networth >= 0 else "#f87171"
-                    nw_str     = f"{networth:,.2f} €" if networth >= 0 else f"-{abs(networth):,.2f} €"
+                    nw_str     = f"{networth:,.2f} {_currency_sym}" if networth >= 0 else f"-{abs(networth):,.2f} {_currency_sym}"
 
-                    # ── NEU: Sparziel-Warnung auf dem Dashboard ──────
+                    # ── Budget-Limit Fortschrittsbalken ──────────────
+                    if offset == 0:
+                        _budget_limit = _user_settings.get('budget', 0)
+                        if _budget_limit > 0:
+                            _budget_pct = min(aus / _budget_limit * 100, 100)
+                            _budget_col = "#4ade80" if _budget_pct < 60 else ("#facc15" if _budget_pct < 85 else "#f87171")
+                            _budget_emoji = "🟢" if _budget_pct < 60 else ("🟡" if _budget_pct < 85 else "🔴")
+                            st.markdown(
+                                f"<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),rgba(10,16,30,0.95));"
+                                f"border:1px solid rgba(148,163,184,0.08);border-radius:14px;"
+                                f"padding:14px 18px;margin-bottom:16px;'>"
+                                f"<div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;'>"
+                                f"<span style='font-family:DM Sans,sans-serif;color:#94a3b8;font-size:13px;'>"
+                                f"{_budget_emoji} Monats-Budget</span>"
+                                f"<span style='font-family:DM Mono,monospace;color:{_budget_col};font-size:13px;font-weight:600;'>"
+                                f"{aus:,.2f} / {_budget_limit:,.2f} {_currency_sym} · {_budget_pct:.0f}%</span>"
+                                f"</div>"
+                                f"<div style='background:rgba(30,41,59,0.8);border-radius:99px;height:6px;overflow:hidden;'>"
+                                f"<div style='width:{_budget_pct:.0f}%;height:100%;background:{_budget_col};"
+                                f"border-radius:99px;transition:width 0.6s ease;'></div></div>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+
+                    # ── Sparziel-Warnung auf dem Dashboard ───────────
                     # Nur für aktuellen Monat anzeigen
                     if offset == 0:
                         current_goal_dash = load_goal(st.session_state["user_name"])
@@ -1367,15 +1528,11 @@ if st.session_state['logged_in']:
                     "betrag":    betrag_save,
                     "notiz":     t_note,
                 }])
-                df_old = conn.read(worksheet="transactions", ttl="5")
-                if st.form_submit_button("Speichern", use_container_width=True):
-                    new_row = pd.DataFrame([{ ... }]) # Deine Logik zum Erstellen der Zeile
-                    df_old = conn.read(worksheet="transactions", ttl="600")
-                    df_new = pd.concat([df_old, new_row], ignore_index=True)
-                    conn.update(worksheet="transactions", data=df_new)
-                    st.cache_data.clear()
-                    st.success("✅ Gespeichert!")
-                    st.balloons()
+                df_old = conn.read(worksheet="transactions", ttl="0")
+                conn.update(worksheet="transactions",
+                            data=pd.concat([df_old, new_row], ignore_index=True))
+                st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
+                st.balloons()
 
         cat_btn_col, manage_col = st.columns([1, 1])
         with cat_btn_col:
@@ -1423,7 +1580,7 @@ if st.session_state['logged_in']:
             unsafe_allow_html=True
         )
         try:
-            df_t = conn.read(worksheet="transactions", ttl="5")
+            df_t = conn.read(worksheet="transactions", ttl="0")
             if 'user' not in df_t.columns:
                 st.info("Noch keine Buchungen vorhanden.")
             else:
@@ -1556,7 +1713,7 @@ if st.session_state['logged_in']:
                                     cancelled = st.form_submit_button("Abbrechen", use_container_width=True)
 
                                 if saved:
-                                    df_all = conn.read(worksheet="transactions", ttl="5")
+                                    df_all = conn.read(worksheet="transactions", ttl="0")
                                     if 'deleted' not in df_all.columns:
                                         df_all['deleted'] = ''
                                     match_idx = df_all[find_row_mask(df_all, row)].index
@@ -1600,7 +1757,7 @@ if st.session_state['logged_in']:
         )
 
         try:
-            df_raw = conn.read(worksheet="transactions", ttl="5")
+            df_raw = conn.read(worksheet="transactions", ttl="0")
         except Exception as e:
             st.warning(f"Verbindung wird hergestellt... ({e})")
             df_raw = pd.DataFrame()
@@ -2712,45 +2869,481 @@ if st.session_state['logged_in']:
 
     # ── Einstellungen ────────────────────────────────────────
     elif menu == "⚙️ Einstellungen":
+        user_name = st.session_state['user_name']
+
         st.markdown(
-            "<div style='margin-bottom:28px;'>"
-            "<h1 style='font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
-            "color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-0.5px;'>Einstellungen</h1>"
-            "<p style='font-family:DM Sans,sans-serif;color:#334155;font-size:14px;margin:0;'>"
-            "Konto und Sicherheit</p>"
+            "<div style='margin-bottom:28px;margin-top:16px;'>"
+            "<h1 style='font-family:DM Sans,sans-serif;font-size:36px;font-weight:700;"
+            "color:#e2e8f0;margin:0 0 4px 0;letter-spacing:-1px;'>Einstellungen ⚙️</h1>"
+            "<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:14px;margin:0;'>"
+            "Profil, Finanzen, Design und Konto</p>"
             "</div>",
             unsafe_allow_html=True
         )
-        st.markdown(
-            "<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;"
-            "font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
-            "margin-bottom:16px;'>Passwort ändern</p>",
-            unsafe_allow_html=True
-        )
-        with st.form("pw_form"):
-            pw_alt  = st.text_input("Aktuelles Passwort", type="password")
-            pw_neu  = st.text_input("Neues Passwort", type="password")
-            pw_neu2 = st.text_input("Neues Passwort wiederholen", type="password")
 
-            if st.form_submit_button("Passwort ändern", use_container_width=True):
-                df_u = conn.read(worksheet="users", ttl="5")
-                idx  = df_u[df_u['username'] == st.session_state['user_name']].index
-                if idx.empty:
-                    st.error("❌ Benutzer nicht gefunden.")
-                elif make_hashes(pw_alt) != str(df_u.loc[idx[0], 'password']):
-                    st.error("❌ Aktuelles Passwort ist falsch.")
-                elif pw_neu == pw_alt:
-                    st.error("❌ Das neue Passwort darf nicht dem alten entsprechen.")
+        # ── Tab-Navigation ───────────────────────────────────
+        SETTINGS_TABS = [
+            ("👤", "Profil"),
+            ("💰", "Finanzen"),
+            ("🎨", "Design"),
+            ("🔐", "Sicherheit"),
+            ("📦", "Daten"),
+        ]
+        active_tab = st.session_state.get('settings_tab', 'Profil')
+        tab_cols = st.columns(len(SETTINGS_TABS))
+        for i, (icon, label) in enumerate(SETTINGS_TABS):
+            with tab_cols[i]:
+                is_active = active_tab == label
+                if st.button(
+                    f"{icon} {label}",
+                    key=f"stab_{label}",
+                    use_container_width=True,
+                    type="primary" if is_active else "secondary"
+                ):
+                    st.session_state['settings_tab'] = label
+                    st.rerun()
+
+        st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+
+        def section_header(title: str, subtitle: str = ""):
+            sub = f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin:2px 0 20px 0;'>{subtitle}</p>" if subtitle else "<div style='margin-bottom:20px;'></div>"
+            st.markdown(
+                f"<p style='font-family:DM Mono,monospace;color:#475569;font-size:10px;"
+                f"font-weight:500;letter-spacing:1.5px;text-transform:uppercase;"
+                f"margin:0 0 4px 0;'>{title}</p>{sub}",
+                unsafe_allow_html=True
+            )
+
+        def settings_card(content_fn):
+            st.markdown(
+                "<div style='background:linear-gradient(145deg,rgba(14,22,38,0.9),"
+                "rgba(10,16,30,0.95));border:1px solid rgba(148,163,184,0.08);"
+                "border-radius:16px;padding:24px 28px;margin-bottom:16px;'>",
+                unsafe_allow_html=True
+            )
+            content_fn()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ════════════════════════════════════════════════════
+        # TAB: PROFIL
+        # ════════════════════════════════════════════════════
+        if active_tab == "Profil":
+            col_main, col_preview = st.columns([2, 1])
+
+            with col_main:
+                section_header("Profilbild", "URL zu einem öffentlich zugänglichen Bild (PNG, JPG)")
+                with st.form("avatar_form"):
+                    current_avatar = _user_settings.get('avatar_url', '')
+                    new_avatar = st.text_input(
+                        "Bild-URL",
+                        value=current_avatar,
+                        placeholder="https://beispiel.de/foto.jpg"
+                    )
+                    if st.form_submit_button("Profilbild speichern", use_container_width=True, type="primary"):
+                        save_user_settings(user_name, avatar_url=new_avatar.strip())
+                        st.success("✅ Profilbild gespeichert!")
+                        st.rerun()
+
+            with col_preview:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                _av = _user_settings.get('avatar_url', '')
+                if _av and _av.startswith('http'):
+                    st.markdown(
+                        f"<div style='text-align:center;'>"
+                        f"<img src='{_av}' style='width:80px;height:80px;border-radius:50%;"
+                        f"object-fit:cover;border:3px solid {_t['primary']}60;'>"
+                        f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;"
+                        f"margin-top:8px;'>Aktuelles Profilbild</p></div>",
+                        unsafe_allow_html=True
+                    )
                 else:
-                    ok, msg = check_password_strength(pw_neu)
-                    if not ok:
-                        st.error(f"❌ {msg}")
-                    elif pw_neu != pw_neu2:
-                        st.error("❌ Die neuen Passwörter stimmen nicht überein.")
-                    else:
-                        df_u.loc[idx[0], 'password'] = make_hashes(pw_neu)
-                        conn.update(worksheet="users", data=df_u)
-                        st.success("✅ Passwort erfolgreich geändert!")
+                    _initials_big = user_name[:2].upper()
+                    st.markdown(
+                        f"<div style='text-align:center;'>"
+                        f"<div style='width:80px;height:80px;border-radius:50%;"
+                        f"background:linear-gradient(135deg,{_t['accent']},{_t['accent2']});"
+                        f"display:flex;align-items:center;justify-content:center;"
+                        f"font-family:DM Sans,sans-serif;font-size:28px;font-weight:600;"
+                        f"color:#fff;margin:0 auto;'>{_initials_big}</div>"
+                        f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;"
+                        f"margin-top:8px;'>Initialen-Avatar</p></div>",
+                        unsafe_allow_html=True
+                    )
+
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            section_header("Benutzername", "Aktuell eingeloggt als")
+            st.markdown(
+                f"<div style='background:rgba(10,16,30,0.5);border:1px solid rgba(148,163,184,0.06);"
+                f"border-radius:10px;padding:12px 16px;display:inline-block;'>"
+                f"<span style='font-family:DM Mono,monospace;color:{_t['primary']};font-size:15px;"
+                f"font-weight:500;'>@{user_name}</span></div>",
+                unsafe_allow_html=True
+            )
+
+        # ════════════════════════════════════════════════════
+        # TAB: FINANZEN
+        # ════════════════════════════════════════════════════
+        elif active_tab == "Finanzen":
+            col_l, col_r = st.columns(2)
+
+            with col_l:
+                section_header("Monatliches Budget-Limit", "Wird im Dashboard als Fortschrittsbalken angezeigt")
+                with st.form("budget_form"):
+                    current_budget = _user_settings.get('budget', 0.0)
+                    new_budget = st.number_input(
+                        f"Budget ({_currency_sym})",
+                        min_value=0.0,
+                        value=float(current_budget),
+                        step=50.0,
+                        format="%.2f",
+                        help="0 = kein Limit gesetzt"
+                    )
+                    if st.form_submit_button("Budget speichern", use_container_width=True, type="primary"):
+                        save_user_settings(user_name, budget=new_budget)
+                        st.success("✅ Budget-Limit gespeichert!")
+                        st.rerun()
+
+                if _user_settings.get('budget', 0) > 0:
+                    st.markdown(
+                        f"<div style='background:rgba(10,16,30,0.5);border:1px solid rgba(148,163,184,0.06);"
+                        f"border-radius:10px;padding:12px 16px;margin-top:8px;'>"
+                        f"<span style='font-family:DM Mono,monospace;color:#64748b;font-size:12px;'>"
+                        f"Aktuelles Limit: </span>"
+                        f"<span style='font-family:DM Mono,monospace;color:{_t['primary']};font-size:13px;font-weight:600;'>"
+                        f"{_user_settings['budget']:,.2f} {_currency_sym}</span></div>",
+                        unsafe_allow_html=True
+                    )
+
+            with col_r:
+                section_header("Währung", "Für alle Anzeigen und Berechnungen")
+                with st.form("currency_form"):
+                    curr_options = list(CURRENCY_SYMBOLS.keys())
+                    curr_current = _user_settings.get('currency', 'EUR')
+                    curr_idx = curr_options.index(curr_current) if curr_current in curr_options else 0
+                    curr_labels = [f"{sym} ({CURRENCY_SYMBOLS[sym]})" for sym in curr_options]
+                    new_currency_label = st.selectbox("Währung wählen", curr_labels, index=curr_idx)
+                    new_currency = curr_options[curr_labels.index(new_currency_label)]
+                    if st.form_submit_button("Währung speichern", use_container_width=True, type="primary"):
+                        save_user_settings(user_name, currency=new_currency)
+                        st.success(f"✅ Währung auf {new_currency} gesetzt!")
+                        st.rerun()
+
+        # ════════════════════════════════════════════════════
+        # TAB: DESIGN
+        # ════════════════════════════════════════════════════
+        elif active_tab == "Design":
+            section_header("Farbschema", "Das Design wird sofort angewendet")
+
+            theme_cols = st.columns(3)
+            theme_names = list(THEMES.keys())
+            theme_icons = {"Ocean Blue": "🌊", "Emerald Green": "🌿", "Deep Purple": "🔮"}
+            theme_descs = {
+                "Ocean Blue":    "Dunkles Marineblau mit Sky-Akzenten",
+                "Emerald Green": "Tiefes Waldgrün mit Smaragd-Akzenten",
+                "Deep Purple":   "Samtiges Dunkelviolett mit Amethyst-Akzenten",
+            }
+
+            for i, tname in enumerate(theme_names):
+                t_data = THEMES[tname]
+                is_active_theme = (_theme_name == tname)
+                with theme_cols[i]:
+                    _tc_bg1 = t_data['bg1']
+                    _tc_bg2 = t_data['bg2']
+                    _tc_pri = t_data['primary']
+                    _tc_acc = t_data['accent']
+                    _tc_ac2 = t_data['accent2']
+                    _tc_bor = _tc_pri + 'ff' if is_active_theme else _tc_pri + '30'
+                    _tc_sha = f"box-shadow:0 0 20px {_tc_pri}30;" if is_active_theme else ""
+                    _tc_badge = f"<div style='margin-top:8px;font-family:DM Mono,monospace;color:{_tc_pri};font-size:9px;letter-spacing:1.5px;'>✓ AKTIV</div>" if is_active_theme else ""
+                    st.markdown(
+                        f"<div style='background:linear-gradient(135deg,{_tc_bg1},{_tc_bg2});"
+                        f"border:2px solid {_tc_bor};"
+                        f"border-radius:14px;padding:16px;margin-bottom:10px;text-align:center;{_tc_sha}'>"
+                        f"<div style='font-size:24px;margin-bottom:8px;'>{theme_icons[tname]}</div>"
+                        f"<div style='display:flex;justify-content:center;gap:6px;margin-bottom:10px;'>"
+                        f"<div style='width:16px;height:16px;border-radius:50%;background:{_tc_pri};'></div>"
+                        f"<div style='width:16px;height:16px;border-radius:50%;background:{_tc_acc};'></div>"
+                        f"<div style='width:16px;height:16px;border-radius:50%;background:{_tc_ac2};'></div>"
+                        f"</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#e2e8f0;font-size:13px;"
+                        f"font-weight:600;margin-bottom:4px;'>{tname}</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#475569;font-size:11px;'>"
+                        f"{theme_descs[tname]}</div>"
+                        f"{_tc_badge}"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+                    if st.button(
+                        "Auswählen" if not is_active_theme else "✓ Aktiv",
+                        key=f"theme_btn_{tname}",
+                        use_container_width=True,
+                        type="primary" if is_active_theme else "secondary",
+                        disabled=is_active_theme
+                    ):
+                        st.session_state['theme'] = tname
+                        save_user_settings(user_name, theme=tname)
+                        st.rerun()
+
+        # ════════════════════════════════════════════════════
+        # TAB: SICHERHEIT
+        # ════════════════════════════════════════════════════
+        elif active_tab == "Sicherheit":
+            col_l, col_r = st.columns(2)
+
+            with col_l:
+                section_header("Passwort ändern")
+                with st.form("pw_form"):
+                    pw_alt  = st.text_input("Aktuelles Passwort", type="password")
+                    pw_neu  = st.text_input("Neues Passwort", type="password")
+                    pw_neu2 = st.text_input("Neues Passwort wiederholen", type="password")
+                    if st.form_submit_button("Passwort ändern", use_container_width=True, type="primary"):
+                        df_u = conn.read(worksheet="users", ttl="0")
+                        idx  = df_u[df_u['username'] == user_name].index
+                        if idx.empty:
+                            st.error("❌ Benutzer nicht gefunden.")
+                        elif make_hashes(pw_alt) != str(df_u.loc[idx[0], 'password']):
+                            st.error("❌ Aktuelles Passwort ist falsch.")
+                        elif pw_neu == pw_alt:
+                            st.error("❌ Das neue Passwort darf nicht dem alten entsprechen.")
+                        else:
+                            ok, msg = check_password_strength(pw_neu)
+                            if not ok:
+                                st.error(f"❌ {msg}")
+                            elif pw_neu != pw_neu2:
+                                st.error("❌ Die neuen Passwörter stimmen nicht überein.")
+                            else:
+                                df_u.loc[idx[0], 'password'] = make_hashes(pw_neu)
+                                conn.update(worksheet="users", data=df_u)
+                                st.success("✅ Passwort erfolgreich geändert!")
+
+            with col_r:
+                section_header("E-Mail-Adresse ändern", "Ein Bestätigungscode wird an die neue Adresse gesendet")
+
+                # Aktuelle E-Mail anzeigen
+                try:
+                    df_u_em = conn.read(worksheet="users", ttl="0")
+                    idx_em = df_u_em[df_u_em['username'] == user_name].index
+                    curr_email = str(df_u_em.loc[idx_em[0], 'email']) if not idx_em.empty else "–"
+                except Exception:
+                    curr_email = "–"
+
+                st.markdown(
+                    f"<div style='background:rgba(10,16,30,0.5);border:1px solid rgba(148,163,184,0.06);"
+                    f"border-radius:10px;padding:10px 14px;margin-bottom:14px;'>"
+                    f"<span style='font-family:DM Mono,monospace;color:#475569;font-size:11px;'>Aktuell: </span>"
+                    f"<span style='font-family:DM Mono,monospace;color:{_t['primary']};font-size:12px;'>"
+                    f"{curr_email}</span></div>",
+                    unsafe_allow_html=True
+                )
+
+                # Phase 1: Neue E-Mail eingeben
+                if not st.session_state.get('email_verify_code'):
+                    with st.form("email_change_form"):
+                        new_email_input = st.text_input("Neue E-Mail-Adresse", placeholder="neu@beispiel.de")
+                        if st.form_submit_button("Code senden", use_container_width=True, type="primary"):
+                            if not is_valid_email(new_email_input.strip()):
+                                st.error("❌ Bitte gib eine gültige E-Mail ein.")
+                            elif new_email_input.strip().lower() == curr_email.lower():
+                                st.error("❌ Das ist bereits deine E-Mail-Adresse.")
+                            else:
+                                code = generate_code()
+                                expiry = datetime.datetime.now() + datetime.timedelta(minutes=10)
+                                html = email_html("Dein Code zum Ändern der E-Mail-Adresse lautet:", code)
+                                if send_email(new_email_input.strip().lower(),
+                                              "Balancely – E-Mail-Adresse bestätigen", html):
+                                    st.session_state['email_verify_code']   = code
+                                    st.session_state['email_verify_expiry'] = expiry
+                                    st.session_state['email_verify_new']    = new_email_input.strip().lower()
+                                    st.rerun()
+                                else:
+                                    st.error("❌ E-Mail konnte nicht gesendet werden.")
+
+                # Phase 2: Code bestätigen
+                else:
+                    _pri_color = _t['primary']
+                    _new_email_display = st.session_state['email_verify_new']
+                    st.markdown(
+                        f"<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;"
+                        f"margin-bottom:12px;'>Code gesendet an "
+                        f"<span style='color:{_pri_color};'>"
+                        f"{_new_email_display}</span></p>",
+                        unsafe_allow_html=True
+                    )
+                    with st.form("email_verify_form"):
+                        code_in = st.text_input("6-stelliger Code", placeholder="123456", max_chars=6)
+                        cv1, cv2 = st.columns(2)
+                        with cv1:
+                            confirm = st.form_submit_button("Bestätigen", use_container_width=True, type="primary")
+                        with cv2:
+                            cancel = st.form_submit_button("Abbrechen", use_container_width=True)
+
+                        if confirm:
+                            if st.session_state['email_verify_expiry'] and \
+                               datetime.datetime.now() > st.session_state['email_verify_expiry']:
+                                st.error("⏰ Code abgelaufen.")
+                                st.session_state['email_verify_code'] = ""
+                                st.rerun()
+                            elif code_in.strip() != st.session_state['email_verify_code']:
+                                st.error("❌ Falscher Code.")
+                            else:
+                                df_u2 = conn.read(worksheet="users", ttl="0")
+                                idx2  = df_u2[df_u2['username'] == user_name].index
+                                if not idx2.empty:
+                                    df_u2.loc[idx2[0], 'email'] = st.session_state['email_verify_new']
+                                    conn.update(worksheet="users", data=df_u2)
+                                st.session_state['email_verify_code']   = ""
+                                st.session_state['email_verify_expiry'] = None
+                                st.session_state['email_verify_new']    = ""
+                                st.success("✅ E-Mail-Adresse erfolgreich geändert!")
+                                st.rerun()
+                        if cancel:
+                            st.session_state['email_verify_code'] = ""
+                            st.session_state['email_verify_new']  = ""
+                            st.rerun()
+
+        # ════════════════════════════════════════════════════
+        # TAB: DATEN
+        # ════════════════════════════════════════════════════
+        elif active_tab == "Daten":
+            col_l, col_r = st.columns(2)
+
+            with col_l:
+                section_header("CSV-Export", "Alle Transaktionen als Datei herunterladen")
+                try:
+                    df_export = conn.read(worksheet="transactions", ttl="0")
+                    if 'user' in df_export.columns:
+                        df_export = df_export[df_export['user'] == user_name]
+                        if 'deleted' in df_export.columns:
+                            df_export = df_export[~df_export['deleted'].astype(str).str.strip().str.lower().isin(['true','1','1.0'])]
+                        df_export = df_export.drop(columns=['deleted'], errors='ignore')
+
+                    csv_bytes = df_export.to_csv(index=False).encode('utf-8')
+                    st.markdown(
+                        f"<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;"
+                        f"margin-bottom:12px;'>{len(df_export)} Transaktionen bereit</p>",
+                        unsafe_allow_html=True
+                    )
+                    st.download_button(
+                        label="⬇️ Transaktionen exportieren (CSV)",
+                        data=csv_bytes,
+                        file_name=f"balancely_{user_name}_{datetime.date.today()}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        type="primary"
+                    )
+                except Exception as e:
+                    st.error(f"Export fehlgeschlagen: {e}")
+
+                st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+                section_header("Daten zurücksetzen", "Alle Transaktionen löschen — Account bleibt erhalten")
+
+                if 'confirm_reset' not in st.session_state:
+                    st.session_state['confirm_reset'] = False
+
+                if not st.session_state['confirm_reset']:
+                    if st.button("🔄 Alle Transaktionen löschen", use_container_width=True, type="secondary"):
+                        st.session_state['confirm_reset'] = True
+                        st.rerun()
+                else:
+                    st.markdown(
+                        "<div style='background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.2);"
+                        "border-radius:10px;padding:14px;margin-bottom:10px;'>"
+                        "<p style='font-family:DM Sans,sans-serif;color:#fca5a5;font-size:14px;"
+                        "font-weight:500;margin:0 0 4px 0;'>⚠️ Wirklich alle Transaktionen löschen?</p>"
+                        "<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin:0;'>"
+                        "Diese Aktion kann nicht rückgängig gemacht werden.</p></div>",
+                        unsafe_allow_html=True
+                    )
+                    rc1, rc2 = st.columns(2)
+                    with rc1:
+                        if st.button("Ja, löschen", use_container_width=True, type="primary"):
+                            try:
+                                df_all_t = conn.read(worksheet="transactions", ttl="0")
+                                if 'deleted' not in df_all_t.columns:
+                                    df_all_t['deleted'] = ''
+                                mask_t = df_all_t['user'] == user_name
+                                df_all_t.loc[mask_t, 'deleted'] = 'True'
+                                conn.update(worksheet="transactions", data=df_all_t)
+                                st.session_state['confirm_reset'] = False
+                                st.success("✅ Alle Transaktionen gelöscht.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Fehler: {e}")
+                    with rc2:
+                        if st.button("Abbrechen", use_container_width=True):
+                            st.session_state['confirm_reset'] = False
+                            st.rerun()
+
+            with col_r:
+                section_header("Account löschen", "Entfernt alle Daten unwiderruflich")
+
+                if 'confirm_delete_account' not in st.session_state:
+                    st.session_state['confirm_delete_account'] = False
+
+                if not st.session_state['confirm_delete_account']:
+                    if st.button("🗑️ Account und alle Daten löschen", use_container_width=True, type="secondary"):
+                        st.session_state['confirm_delete_account'] = True
+                        st.rerun()
+                else:
+                    st.markdown(
+                        "<div style='background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);"
+                        "border-left:3px solid #f87171;border-radius:10px;padding:14px;margin-bottom:10px;'>"
+                        "<p style='font-family:DM Sans,sans-serif;color:#fca5a5;font-size:14px;"
+                        "font-weight:600;margin:0 0 4px 0;'>🔴 Account unwiderruflich löschen?</p>"
+                        "<p style='font-family:DM Sans,sans-serif;color:#64748b;font-size:13px;margin:0;'>"
+                        "Alle Transaktionen, Spartöpfe, Sparziele und Einstellungen werden gelöscht.</p></div>",
+                        unsafe_allow_html=True
+                    )
+                    da1, da2 = st.columns(2)
+                    with da1:
+                        if st.button("Ja, Account löschen", use_container_width=True, type="primary"):
+                            try:
+                                # Transaktionen löschen
+                                df_t2 = conn.read(worksheet="transactions", ttl="0")
+                                if 'deleted' not in df_t2.columns:
+                                    df_t2['deleted'] = ''
+                                df_t2.loc[df_t2['user'] == user_name, 'deleted'] = 'True'
+                                conn.update(worksheet="transactions", data=df_t2)
+                                # Töpfe löschen
+                                try:
+                                    df_tp = conn.read(worksheet="toepfe", ttl="0")
+                                    df_tp.loc[df_tp['user'] == user_name, 'deleted'] = 'True'
+                                    conn.update(worksheet="toepfe", data=df_tp)
+                                except Exception:
+                                    pass
+                                # Goals löschen
+                                try:
+                                    df_g2 = conn.read(worksheet="goals", ttl="0")
+                                    df_g2 = df_g2[df_g2['user'] != user_name]
+                                    conn.update(worksheet="goals", data=df_g2)
+                                except Exception:
+                                    pass
+                                # Settings löschen
+                                try:
+                                    df_s2 = conn.read(worksheet="settings", ttl="0")
+                                    df_s2 = df_s2[df_s2['user'] != user_name]
+                                    conn.update(worksheet="settings", data=df_s2)
+                                except Exception:
+                                    pass
+                                # User-Eintrag als gelöscht markieren
+                                df_u3 = conn.read(worksheet="users", ttl="0")
+                                if 'deleted' not in df_u3.columns:
+                                    df_u3['deleted'] = ''
+                                df_u3.loc[df_u3['username'] == user_name, 'deleted'] = 'True'
+                                conn.update(worksheet="users", data=df_u3)
+                                # Ausloggen
+                                st.session_state['logged_in'] = False
+                                st.session_state['user_name'] = ""
+                                st.session_state['confirm_delete_account'] = False
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Fehler beim Löschen: {e}")
+                    with da2:
+                        if st.button("Abbrechen", use_container_width=True, key="cancel_del_acc"):
+                            st.session_state['confirm_delete_account'] = False
+                            st.rerun()
+
+
 
 
 # ============================================================
@@ -2782,7 +3375,7 @@ else:
 
                 if st.form_submit_button("Anmelden", use_container_width=True):
                     time.sleep(1)
-                    df_u     = conn.read(worksheet="users", ttl="5")
+                    df_u     = conn.read(worksheet="users", ttl="0")
                     matching = df_u[df_u['username'] == u_in]
                     user_row = matching.iloc[[-1]] if not matching.empty else matching
 
@@ -2835,7 +3428,7 @@ else:
                         elif s_pass != c_pass:
                             st.error("❌ Die Passwörter stimmen nicht überein.")
                         else:
-                            df_u = conn.read(worksheet="users", ttl="5")
+                            df_u = conn.read(worksheet="users", ttl="0")
                             if s_user in df_u['username'].values:
                                 st.error("⚠️ Dieser Username ist bereits vergeben.")
                             elif s_email.strip().lower() in df_u['email'].values:
@@ -2891,7 +3484,7 @@ else:
                     elif code_input.strip() != st.session_state['verify_code']:
                         st.error("❌ Falscher Code.")
                     else:
-                        df_u  = conn.read(worksheet="users", ttl="5")
+                        df_u  = conn.read(worksheet="users", ttl="0")
                         new_u = pd.DataFrame([{
                             **st.session_state['pending_user'],
                             "verified": "True", "token": "", "token_expiry": "",
@@ -2927,7 +3520,7 @@ else:
                     if not is_valid_email(forgot_email):
                         st.error("❌ Bitte gib eine gültige E-Mail-Adresse ein.")
                     else:
-                        df_u = conn.read(worksheet="users", ttl="5")
+                        df_u = conn.read(worksheet="users", ttl="0")
                         idx  = df_u[df_u['email'] == forgot_email.strip().lower()].index
                         if idx.empty:
                             st.success("✅ Falls diese E-Mail registriert ist, wurde ein Code gesendet.")
@@ -2980,7 +3573,7 @@ else:
                         elif pw_neu != pw_neu2:
                             st.error("❌ Die neuen Passwörter stimmen nicht überein.")
                         else:
-                            df_u = conn.read(worksheet="users", ttl="5")
+                            df_u = conn.read(worksheet="users", ttl="0")
                             idx  = df_u[df_u['email'] == st.session_state['reset_email']].index
                             if not idx.empty:
                                 df_u.loc[idx[0], 'password'] = make_hashes(pw_neu)
@@ -2995,7 +3588,3 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-
-
-
-
