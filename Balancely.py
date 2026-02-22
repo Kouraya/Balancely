@@ -70,11 +70,14 @@ st.markdown("""
     }
 
     /* Datum-Input gleiche Optik */
-    div[data-testid="stDateInput"] > div {
-        background-color: rgba(15, 23, 42, 0.6) !important;
-        border: 1px solid #1e293b !important;
-        border-radius: 8px !important;
-    }
+    div[data-testid="stDateInput"] > div,
+div[data-baseweb="input"] {
+    background-color: #0C1222 !important;
+    border: 1px solid #1e293b !important;
+    border-radius: 8px !important;
+    padding-right: 0 !important;
+    gap: 0 !important;
+}
 
     input { padding-left: 15px !important; color: #f1f5f9 !important; }
 
@@ -243,3 +246,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
