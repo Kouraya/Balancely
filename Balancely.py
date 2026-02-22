@@ -304,7 +304,7 @@ if st.session_state['logged_in']:
         st.markdown("---")
         menu = st.radio(
             "Navigation",
-            ["📈 Dashboard", "💸 Transaktion", "📂 Analysen", "⚙️ Einstellungen"],
+            ["📈 Dashboard", "💸 Transaktionen", "📂 Analysen", "⚙️ Einstellungen"],
             label_visibility="collapsed"
         )
         st.markdown("<div style='height:30vh;'></div>", unsafe_allow_html=True)
@@ -804,3 +804,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
