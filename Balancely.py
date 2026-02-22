@@ -49,6 +49,7 @@ st.markdown("""
         border-radius: 8px !important;
         padding-right: 0 !important;
         gap: 0 !important;
+        box-shadow: none !important;
     }
     div[data-baseweb="input"]:focus-within,
     div[data-baseweb="base-input"]:focus-within {
@@ -56,43 +57,39 @@ st.markdown("""
         border-color: #38bdf8 !important;
         box-shadow: none !important;
     }
-    /* Roten Fokus-Ring vom number_input entfernen */
-    div[data-testid="stNumberInput"] div[data-baseweb="input"]:focus-within,
-    div[data-testid="stNumberInput"] div[data-baseweb="base-input"]:focus-within,
-    div[data-testid="stNumberInputContainer"] div[data-baseweb="input"]:focus-within {
-        border-color: #38bdf8 !important;
+    /* Alle roten Ränder/Schatten entfernen */
+    div[data-baseweb="input"],
+    div[data-baseweb="base-input"],
+    div[data-baseweb="input"] *,
+    div[data-baseweb="base-input"] * {
         box-shadow: none !important;
         outline: none !important;
     }
-    input:focus {
+    input, input:focus, input:focus-visible {
+        padding-left: 15px !important;
+        color: #f1f5f9 !important;
+        box-shadow: none !important;
         outline: none !important;
-        box-shadow: none !important;
-    }
-    /* Alle roten Ränder wegmachen */
-    [data-baseweb="input"] [aria-invalid="true"],
-    div[data-baseweb="input"]:has(input[aria-invalid="true"]) {
-        border-color: #1e293b !important;
-        box-shadow: none !important;
     }
     div[data-testid="stDateInput"] > div {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
+        box-shadow: none !important;
     }
     div[data-baseweb="select"] > div:first-child {
         background-color: transparent !important;
         border: 1px solid #1e293b !important;
         border-radius: 8px !important;
+        box-shadow: none !important;
     }
     div[data-baseweb="select"] > div:first-child:focus-within {
         border-color: #38bdf8 !important;
+        box-shadow: none !important;
     }
     button[data-testid="stNumberInputStepDown"],
     button[data-testid="stNumberInputStepUp"] {
         display: none !important;
-    }
-    div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-        border-radius: 8px !important;
     }
     div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
         display: none !important;
@@ -103,15 +100,10 @@ st.markdown("""
     div[class*="stInputInstructions"] {
         display: none !important;
         visibility: hidden !important;
-        opacity: 0 !important;
-        max-height: 0 !important;
         height: 0 !important;
-        width: 0 !important;
         overflow: hidden !important;
         position: absolute !important;
-        pointer-events: none !important;
     }
-    input { padding-left: 15px !important; color: #f1f5f9 !important; }
     [data-testid="stSidebar"] {
         background-color: #0b0f1a !important;
         border-right: 1px solid #1e293b !important;
@@ -121,6 +113,53 @@ st.markdown("""
         border: none !important; height: 50px !important;
         border-radius: 12px !important; font-weight: 700 !important;
     }
+
+    /* ===== TOGGLE RADIO STYLING ===== */
+    /* Label komplett ausblenden */
+    div[data-testid="stRadio"] > label {
+        display: none !important;
+    }
+    /* Radio-Container horizontal */
+    div[data-testid="stRadio"] > div {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 10px !important;
+    }
+    /* Jede Radio-Option als Button stylen */
+    div[data-testid="stRadio"] > div > label {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 160px !important;
+        height: 42px !important;
+        border-radius: 10px !important;
+        border: 1px solid #334155 !important;
+        background: transparent !important;
+        color: #94a3b8 !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease !important;
+        padding: 0 !important;
+    }
+    /* Den echten Radio-Kreis verstecken */
+    div[data-testid="stRadio"] > div > label > div:first-child {
+        display: none !important;
+    }
+    /* Aktive Option - Ausgabe (erste) */
+    div[data-testid="stRadio"] > div > label:has(input:checked):first-of-type {
+        background: rgba(239,68,68,0.25) !important;
+        border: 2px solid #ef4444 !important;
+        color: #fca5a5 !important;
+        font-weight: 700 !important;
+    }
+    /* Aktive Option - Einnahme (zweite) */
+    div[data-testid="stRadio"] > div > label:has(input:checked):last-of-type {
+        background: rgba(16,185,129,0.25) !important;
+        border: 2px solid #10b981 !important;
+        color: #6ee7b7 !important;
+        font-weight: 700 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -128,14 +167,6 @@ if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
 if 'auth_mode' not in st.session_state: st.session_state['auth_mode'] = 'login'
 if 't_type' not in st.session_state: st.session_state['t_type'] = 'Ausgabe'
-
-# Query-Param auslesen OHNE Seite neu zu laden
-qp = st.query_params
-if 't' in qp and qp['t'] in ['Ausgabe', 'Einnahme']:
-    if st.session_state['t_type'] != qp['t']:
-        st.session_state['t_type'] = qp['t']
-    st.query_params.clear()
-    st.rerun()
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -175,38 +206,24 @@ if st.session_state['logged_in']:
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
-        t_type = st.session_state['t_type']
-        ausgabe_active = t_type == "Ausgabe"
 
-        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:2px;'>Typ wählen</p>", unsafe_allow_html=True)
 
-        # Toggle-Buttons: onclick setzt nur den Query-Param im selben Tab via JS
-        st.markdown(f"""
-            <div style="display:flex; gap:10px; margin-bottom:16px;">
-                <div onclick="window.parent.location.href = window.parent.location.pathname + '?t=Ausgabe'" style="
-                    width:160px; height:42px; border-radius:10px;
-                    display:flex; align-items:center; justify-content:center;
-                    font-size:14px; font-weight:{'700' if ausgabe_active else '500'};
-                    cursor:pointer;
-                    background:{'rgba(239,68,68,0.25)' if ausgabe_active else 'transparent'};
-                    border:{'2px solid #ef4444' if ausgabe_active else '1px solid #334155'};
-                    color:{'#fca5a5' if ausgabe_active else '#94a3b8'};
-                    font-family: sans-serif;
-                    user-select:none;
-                ">↗ Ausgabe {'✓' if ausgabe_active else ''}</div>
-                <div onclick="window.parent.location.href = window.parent.location.pathname + '?t=Einnahme'" style="
-                    width:160px; height:42px; border-radius:10px;
-                    display:flex; align-items:center; justify-content:center;
-                    font-size:14px; font-weight:{'700' if not ausgabe_active else '500'};
-                    cursor:pointer;
-                    background:{'rgba(16,185,129,0.25)' if not ausgabe_active else 'transparent'};
-                    border:{'2px solid #10b981' if not ausgabe_active else '1px solid #334155'};
-                    color:{'#6ee7b7' if not ausgabe_active else '#94a3b8'};
-                    font-family: sans-serif;
-                    user-select:none;
-                ">↙ Einnahme {'✓' if not ausgabe_active else ''}</div>
-            </div>
-        """, unsafe_allow_html=True)
+        # st.radio als Toggle - nativ, kein JS, kein Hack
+        t_type = st.radio(
+            "Typ",
+            ["↗ Ausgabe", "↙ Einnahme"],
+            index=0 if st.session_state['t_type'] == 'Ausgabe' else 1,
+            horizontal=True,
+            label_visibility="collapsed"
+        )
+        # Wert normalisieren
+        t_type_clean = "Ausgabe" if "Ausgabe" in t_type else "Einnahme"
+        if st.session_state['t_type'] != t_type_clean:
+            st.session_state['t_type'] = t_type_clean
+            st.rerun()
+
+        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
@@ -214,7 +231,7 @@ if st.session_state['logged_in']:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01, format="%.2f")
                 t_date = st.date_input("Datum", datetime.date.today())
             with col2:
-                cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
+                cats = ["Gehalt", "Bonus", "Verkauf"] if t_type_clean == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                 t_cat = st.selectbox("Kategorie", cats)
                 t_note = st.text_input("Notiz")
 
@@ -222,15 +239,15 @@ if st.session_state['logged_in']:
                 new_row = pd.DataFrame([{
                     "user": st.session_state['user_name'],
                     "datum": str(t_date),
-                    "typ": t_type,
+                    "typ": t_type_clean,
                     "kategorie": t_cat,
-                    "betrag": t_amount if t_type == "Einnahme" else -t_amount,
+                    "betrag": t_amount if t_type_clean == "Einnahme" else -t_amount,
                     "notiz": t_note
                 }])
                 df_old = conn.read(worksheet="transactions", ttl="0")
                 df_new = pd.concat([df_old, new_row], ignore_index=True)
                 conn.update(worksheet="transactions", data=df_new)
-                st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
+                st.success(f"✅ {t_type_clean} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
 
 else:
