@@ -508,18 +508,22 @@ def load_goal(user: str) -> float:
 
 def save_goal(user: str, goal: float):
     try:
-        df_g = conn.read(worksheet="goals", ttl="5")
+        df_g = conn.read(worksheet="goals", ttl="600")
     except Exception:
         df_g = pd.DataFrame(columns=['user', 'sparziel'])
+    
     if 'user' not in df_g.columns:
         df_g = pd.DataFrame(columns=['user', 'sparziel'])
+    
     mask = df_g['user'] == user
     if mask.any():
         df_g.loc[mask, 'sparziel'] = goal
     else:
-        df_g = pd.concat([df_g, pd.DataFrame([{'user': user, 'sparziel': goal}])],
-                         ignore_index=True)
+        new_entry = pd.DataFrame([{'user': user, 'sparziel': goal}])
+        df_g = pd.concat([df_g, new_entry], ignore_index=True)
+    
     conn.update(worksheet="goals", data=df_g)
+    st.cache_data.clear() 
 
 
 # ── Spartöpfe ────────────────────────────────────────────────
@@ -1369,7 +1373,7 @@ if st.session_state['logged_in']:
                     df_old = conn.read(worksheet="transactions", ttl="600")
                     df_new = pd.concat([df_old, new_row], ignore_index=True)
                     conn.update(worksheet="transactions", data=df_new)
-                    st.cache_data.clear()  # <-- Diese Zeile muss genau unter conn.update stehen
+                    st.cache_data.clear()
                     st.success("✅ Gespeichert!")
                     st.balloons()
 
@@ -2991,6 +2995,7 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+
 
 
 
