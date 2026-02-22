@@ -756,19 +756,15 @@ if st.session_state['logged_in']:
                     # Gesamtes Depot kumuliert (alle Monate)
                     dep_gesamt = alle[alle["typ"] == "Depot"]["betrag_num"].abs().sum()
 
-                    # Kumulierter Bankkontostand (alle Monate, Depot abgezogen)
-                    ein_ges  = alle[alle["typ"] == "Einnahme"]["betrag_num"].sum()
-                    aus_ges  = alle[alle["typ"] == "Ausgabe"]["betrag_num"].abs().sum()
-                    dep_ges2 = alle[alle["typ"] == "Depot"]["betrag_num"].abs().sum()
-                    bank_ges = ein_ges - aus_ges - dep_ges2
-
-                    # Gesamtvermögen = kumulierter Bankkontostand + gesamtes Depot
-                    networth = bank_ges + dep_gesamt  # = bank_ges + dep_ges2
+                    # Gesamtvermögen = Bankkontostand DIESEN MONAT + gesamtes Depot kumuliert
+                    networth = bank + dep_gesamt
 
                     bank_color = "#e2e8f0" if bank >= 0 else "#f87171"
                     bank_str   = f"{bank:,.2f} €" if bank >= 0 else f"-{abs(bank):,.2f} €"
                     nw_color   = "#4ade80" if networth >= 0 else "#f87171"
                     nw_str     = f"{networth:,.2f} €" if networth >= 0 else f"-{abs(networth):,.2f} €"
+                    # Ausgaben-Anzeige: niemals -0.00
+                    aus_str    = f"-{aus:,.2f} €" if aus > 0 else "0.00 €"
 
                     # ── KPI Cards ─────────────────────────────
                     # Zeile 1: Bankkontostand + Networth
