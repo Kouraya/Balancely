@@ -40,18 +40,6 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    /* CSS FIX NUR FÜR DIE FARBEN DES SEGMENTED CONTROLS */
-    div[data-testid="stSegmentedControl"] button:nth-of-type(1)[aria-checked="true"] {
-        background-color: rgba(239, 68, 68, 0.25) !important;
-        border: 2px solid #ef4444 !important;
-        color: #fca5a5 !important;
-    }
-    div[data-testid="stSegmentedControl"] button:nth-of-type(2)[aria-checked="true"] {
-        background-color: rgba(16, 185, 129, 0.25) !important;
-        border: 2px solid #10b981 !important;
-        color: #6ee7b7 !important;
-    }
-
     /* Äußerer Container */
     div[data-testid="stTextInputRootElement"] {
         background-color: transparent !important;
@@ -173,20 +161,25 @@ if st.session_state['logged_in']:
 
     elif menu == "💸 Transaktion":
         st.title("Buchung hinzufügen ✍️")
-        
-        # FIX FÜR HITBOXEN: Hier wurde die fehlerhafte manuelle Button-Logik ersetzt
+        t_type = st.session_state['t_type']
+
         st.markdown("<p style='color:#94a3b8; font-size:13px; margin-bottom:4px;'>Typ wählen</p>", unsafe_allow_html=True)
-        
-        t_type = st.segmented_control(
-            "Typ wählen", 
-            ["↗ Ausgabe", "↙ Einnahme"], 
-            default=f"↗ {st.session_state['t_type']}",
-            label_visibility="collapsed"
-        )
-        
-        # Reinigung des Strings für die Datenbank
-        selected_type = "Einnahme" if "Einnahme" in t_type else "Ausgabe"
-        st.session_state['t_type'] = selected_type
+
+        col_a, col_e, _ = st.columns([1, 1, 3])
+        with col_a:
+            if t_type == "Ausgabe":
+                st.markdown('<div style="background:rgba(239,68,68,0.25);border:2px solid #ef4444;border-radius:10px;padding:8px 16px;color:#fca5a5;font-weight:700;font-size:14px;text-align:center;">↗ Ausgabe ✓</div>', unsafe_allow_html=True)
+            else:
+                if st.button("↗ Ausgabe", key="btn_ausgabe", use_container_width=True):
+                    st.session_state['t_type'] = "Ausgabe"
+                    st.rerun()
+        with col_e:
+            if t_type == "Einnahme":
+                st.markdown('<div style="background:rgba(16,185,129,0.25);border:2px solid #10b981;border-radius:10px;padding:8px 16px;color:#6ee7b7;font-weight:700;font-size:14px;text-align:center;">↙ Einnahme ✓</div>', unsafe_allow_html=True)
+            else:
+                if st.button("↙ Einnahme", key="btn_einnahme", use_container_width=True):
+                    st.session_state['t_type'] = "Einnahme"
+                    st.rerun()
 
         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
@@ -196,7 +189,7 @@ if st.session_state['logged_in']:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01, format="%.2f")
                 t_date = st.date_input("Datum", datetime.date.today())
             with col2:
-                cats = ["Gehalt", "Bonus", "Verkauf"] if selected_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
+                cats = ["Gehalt", "Bonus", "Verkauf"] if t_type == "Einnahme" else ["Essen", "Miete", "Freizeit", "Transport", "Shopping"]
                 t_cat = st.selectbox("Kategorie", cats)
                 t_note = st.text_input("Notiz")
 
@@ -204,19 +197,18 @@ if st.session_state['logged_in']:
                 new_row = pd.DataFrame([{
                     "user": st.session_state['user_name'],
                     "datum": str(t_date),
-                    "typ": selected_type,
+                    "typ": t_type,
                     "kategorie": t_cat,
-                    "betrag": t_amount if selected_type == "Einnahme" else -t_amount,
+                    "betrag": t_amount if t_type == "Einnahme" else -t_amount,
                     "notiz": t_note
                 }])
                 df_old = conn.read(worksheet="transactions", ttl="0")
                 df_new = pd.concat([df_old, new_row], ignore_index=True)
                 conn.update(worksheet="transactions", data=df_new)
-                st.success(f"✅ {selected_type} über {t_amount:.2f} € gespeichert!")
+                st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
                 st.balloons()
 
 else:
-    # --- LOGIN / SIGNUP --- (Hier wurde NICHTS verändert)
     st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Balancely</h1>", unsafe_allow_html=True)
     st.markdown("<p class='sub-title'>Verwalte deine Finanzen mit Klarheit</p>", unsafe_allow_html=True)
