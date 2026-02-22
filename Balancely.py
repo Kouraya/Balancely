@@ -252,6 +252,44 @@ for key, val in defaults.items():
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+@st.dialog("Eintrag löschen")
+def confirm_delete(row_data):
+    st.markdown(
+        "<p style='color:#f1f5f9;font-size:16px;'>Wollen Sie diesen Eintrag wirklich löschen?</p>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f"<p style='color:#94a3b8;font-size:13px;'>"
+        f"{row_data['datum']} · {row_data['betrag_anzeige']} · {row_data['kategorie']}</p>",
+        unsafe_allow_html=True
+    )
+    col_ja, col_nein = st.columns(2)
+    with col_ja:
+        if st.button("✅ Ja, löschen", use_container_width=True, type="primary"):
+            df_all = conn.read(worksheet="transactions", ttl="0")
+            if 'deleted' not in df_all.columns:
+                df_all['deleted'] = ''
+            mask = (
+                (df_all['user'] == row_data['user']) &
+                (df_all['datum'].astype(str) == str(row_data['datum'])) &
+                (pd.to_numeric(df_all['betrag'], errors='coerce') ==
+                 pd.to_numeric(row_data['betrag'], errors='coerce')) &
+                (df_all['kategorie'] == row_data['kategorie']) &
+                (~df_all['deleted'].astype(str).str.strip().str.lower()
+                 .isin(['true', '1', '1.0']))
+            )
+            match_idx = df_all[mask].index
+            if len(match_idx) > 0:
+                df_all.loc[match_idx[0], 'deleted'] = 'True'
+                conn.update(worksheet="transactions", data=df_all)
+                st.session_state['edit_idx'] = None
+                st.rerun()
+            else:
+                st.error("❌ Eintrag nicht gefunden.")
+    with col_nein:
+        if st.button("❌ Abbrechen", use_container_width=True):
+            st.rerun()
+
 
 # ============================================================
 #  APP — Eingeloggt
@@ -414,31 +452,15 @@ if st.session_state['logged_in']:
                                              use_container_width=True):
                                     st.session_state['edit_idx'] = orig_idx
                                     st.rerun()
-                                st.markdown("---")
-                                st.markdown(
-                                    "<p style='color:#f87171;font-size:13px;margin-bottom:6px;'>"
-                                    "⚠️ Wirklich löschen?</p>",
-                                    unsafe_allow_html=True
-                                )
-                                col_ja, col_nein = st.columns(2)
-                                with col_ja:
-                                    if st.button("✅ Ja", key=f"del_ja_{orig_idx}",
-                                                 use_container_width=True, type="primary"):
-                                        df_all = conn.read(worksheet="transactions", ttl="0")
-                                        if 'deleted' not in df_all.columns:
-                                            df_all['deleted'] = ''
-                                        match_idx = df_all[find_row_mask(df_all, row)].index
-                                        if len(match_idx) > 0:
-                                            df_all.loc[match_idx[0], 'deleted'] = 'True'
-                                            conn.update(worksheet="transactions", data=df_all)
-                                            st.session_state['edit_idx'] = None
-                                            st.rerun()
-                                        else:
-                                            st.error("❌ Eintrag nicht gefunden.")
-                                with col_nein:
-                                    if st.button("❌ Nein", key=f"del_nein_{orig_idx}",
-                                                 use_container_width=True):
-                                        st.rerun()
+                                if st.button("🗑️ Löschen", key=f"del_btn_{orig_idx}",
+                                             use_container_width=True):
+                                    confirm_delete({
+                                        "user":          row['user'],
+                                        "datum":         row['datum'],
+                                        "betrag":        row['betrag'],
+                                        "betrag_anzeige": row['betrag_anzeige'],
+                                        "kategorie":     row['kategorie'],
+                                    })
 
                         # Bearbeitungsformular
                         if st.session_state['edit_idx'] == orig_idx:
