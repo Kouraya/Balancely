@@ -259,7 +259,7 @@ if st.session_state['logged_in']:
                 user_mask = df_t['user'] == st.session_state['user_name']
                 # Gelöschte ausfiltern
                 if 'deleted' in df_t.columns:
-                    deleted_mask = df_t['deleted'].astype(str).str.lower() != 'true'
+                    deleted_mask = ~df_t['deleted'].astype(str).str.strip().str.lower().isin(['true', '1', '1.0'])
                 else:
                     deleted_mask = pd.Series([True] * len(df_t), index=df_t.index)
                 user_df = df_t[user_mask & deleted_mask].copy()
@@ -285,9 +285,9 @@ if st.session_state['logged_in']:
                             mask = (
                                 (df_all['user'] == row['user']) &
                                 (df_all['datum'].astype(str) == str(row['datum'])) &
-                                (df_all['betrag'].astype(str) == str(row['betrag'])) &
+                                (pd.to_numeric(df_all['betrag'], errors='coerce') == pd.to_numeric(row['betrag'], errors='coerce')) &
                                 (df_all['kategorie'] == row['kategorie']) &
-                                (df_all['deleted'].astype(str).str.lower() != 'true')
+                                (~df_all['deleted'].astype(str).str.strip().str.lower().isin(['true', '1', '1.0']))
                             )
                             match_idx = df_all[mask].index
                             if len(match_idx) > 0:
@@ -523,3 +523,4 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
+                
