@@ -448,14 +448,22 @@ if st.session_state['logged_in']:
         st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
         # Kategorien zusammenbauen (Standard + eigene)
-        user_name = st.session_state['user_name']
+        user_name   = st.session_state['user_name']
         std_cats    = DEFAULT_CATS[t_type]
         custom_cats = load_custom_cats(user_name, t_type)
-        all_cats    = std_cats + custom_cats + ["➕ Neue Kategorie erstellen"]
+        all_cats    = std_cats + custom_cats
 
-        # Dialog öffnen wenn Kategorie-Erstellen gewählt wurde
+        # Dialog VOR dem Formular aufrufen (genau wie Löschen-Dialog)
         if st.session_state.get('show_new_cat'):
             new_category_dialog()
+
+        # Neue Kategorie Button AUSSERHALB des Formulars
+        btn_col, _ = st.columns([1, 4])
+        with btn_col:
+            if st.button("➕ Neue Kategorie", use_container_width=True, type="secondary"):
+                st.session_state['show_new_cat'] = True
+                st.session_state['new_cat_typ']  = t_type
+                st.rerun()
 
         with st.form("t_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
@@ -463,33 +471,24 @@ if st.session_state['logged_in']:
                 t_amount = st.number_input("Betrag in €", min_value=0.01, step=0.01, format="%.2f")
                 t_date   = st.date_input("Datum", datetime.date.today())
             with col2:
-                t_cat  = st.selectbox(
-                    "Kategorie", all_cats,
-                    key="t_cat_select"
-                )
-                if t_cat == "➕ Neue Kategorie erstellen":
-                    st.session_state['show_new_cat'] = True
-                    st.session_state['new_cat_typ']  = t_type
+                t_cat  = st.selectbox("Kategorie", all_cats)
                 t_note = st.text_input("Notiz (optional)", placeholder="z.B. Supermarkt, Tankstelle...")
 
             saved = st.form_submit_button("Speichern", use_container_width=True)
             if saved:
-                if t_cat == "➕ Neue Kategorie erstellen":
-                    st.warning("⚠️ Bitte zuerst eine Kategorie erstellen oder eine bestehende wählen.")
-                else:
-                    new_row = pd.DataFrame([{
-                        "user":      user_name,
-                        "datum":     str(t_date),
-                        "typ":       t_type,
-                        "kategorie": t_cat,
-                        "betrag":    t_amount if t_type == "Einnahme" else -t_amount,
-                        "notiz":     t_note,
-                    }])
-                    df_old = conn.read(worksheet="transactions", ttl="0")
-                    conn.update(worksheet="transactions",
-                                data=pd.concat([df_old, new_row], ignore_index=True))
-                    st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
-                    st.balloons()
+                new_row = pd.DataFrame([{
+                    "user":      user_name,
+                    "datum":     str(t_date),
+                    "typ":       t_type,
+                    "kategorie": t_cat,
+                    "betrag":    t_amount if t_type == "Einnahme" else -t_amount,
+                    "notiz":     t_note,
+                }])
+                df_old = conn.read(worksheet="transactions", ttl="0")
+                conn.update(worksheet="transactions",
+                            data=pd.concat([df_old, new_row], ignore_index=True))
+                st.success(f"✅ {t_type} über {t_amount:.2f} € gespeichert!")
+                st.balloons()
 
         # ── Neue Kategorie erstellen ─────────────────────────
         if t_cat == "➕ Neue Kategorie erstellen" or st.session_state['show_new_cat']:
