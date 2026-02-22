@@ -276,15 +276,27 @@ if st.session_state['logged_in']:
                         notiz = str(row.get('notiz', ''))
                         notiz = '' if notiz.lower() == 'nan' else notiz
                         c4.markdown(f"<span style='color:#64748b'>{notiz}</span>", unsafe_allow_html=True)
-                        # FIX: Löschen über echten DataFrame-Index (entspricht Google Sheets Zeile)
+                        # FIX: Löschen über Datum+Betrag+Kategorie Kombination (eindeutige Identifikation)
                         if c5.button("🗑️", key=f"del_{orig_idx}", help="Eintrag löschen"):
                             df_all = conn.read(worksheet="transactions", ttl="0")
                             if 'deleted' not in df_all.columns:
                                 df_all['deleted'] = ''
-                            df_all.loc[orig_idx, 'deleted'] = 'True'
-                            conn.update(worksheet="transactions", data=df_all)
-                            st.success("🗑️ Eintrag gelöscht!")
-                            st.rerun()
+                            # Finde die Zeile anhand von user+datum+betrag+kategorie
+                            mask = (
+                                (df_all['user'] == row['user']) &
+                                (df_all['datum'].astype(str) == str(row['datum'])) &
+                                (df_all['betrag'].astype(str) == str(row['betrag'])) &
+                                (df_all['kategorie'] == row['kategorie']) &
+                                (df_all['deleted'].astype(str).str.lower() != 'true')
+                            )
+                            match_idx = df_all[mask].index
+                            if len(match_idx) > 0:
+                                df_all.loc[match_idx[0], 'deleted'] = 'True'
+                                conn.update(worksheet="transactions", data=df_all)
+                                st.success("🗑️ Eintrag gelöscht!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Eintrag nicht gefunden.")
                 else:
                     st.info("Noch keine Buchungen vorhanden.")
         except Exception as e:
