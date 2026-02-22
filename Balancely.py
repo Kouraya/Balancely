@@ -569,42 +569,39 @@ if st.session_state['logged_in']:
     # ── Dashboard ────────────────────────────────────────────
     if menu == "📈 Dashboard":
         import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
 
-        now        = datetime.datetime.now()
-        monat_name = now.strftime("%B %Y")
+        now = datetime.datetime.now()
 
         st.markdown(
-            f"<h1 style='margin-bottom:2px;'>Dashboard</h1>"
+            f"<h1 style='margin-bottom:2px;'>Deine Übersicht, "
+            f"{st.session_state['user_name']}! ⚖️</h1>"
             f"<p style='color:#64748b;font-size:14px;margin-bottom:20px;'>"
-            f"Übersicht für {monat_name}</p>",
+            f"Monatliche Finanzübersicht</p>",
             unsafe_allow_html=True
         )
 
         # ── Monats-Selektor ──────────────────────────────────
-        col_prev, col_month, col_next = st.columns([1, 3, 1])
         if 'dash_month_offset' not in st.session_state:
             st.session_state['dash_month_offset'] = 0
         offset = st.session_state['dash_month_offset']
-        target_dt = now.replace(day=1) - datetime.timedelta(days=1) * 0
-        # Berechne Zielmonat anhand Offset
-        y, m = now.year, now.month
+        y, m   = now.year, now.month
         m_total = y * 12 + (m - 1) + offset
         t_year, t_month = divmod(m_total, 12)
         t_month += 1
         monat_label = datetime.date(t_year, t_month, 1).strftime("%B %Y")
 
-        with col_prev:
+        nav1, nav2, nav3 = st.columns([1, 3, 1])
+        with nav1:
             if st.button("◀", use_container_width=True, key="dash_prev"):
                 st.session_state['dash_month_offset'] -= 1
                 st.rerun()
-        with col_month:
+        with nav2:
             st.markdown(
-                f"<div style='text-align:center;font-size:18px;font-weight:700;"
+                f"<div style='text-align:center;font-size:17px;font-weight:700;"
                 f"color:#f1f5f9;padding:6px 0;'>{monat_label}</div>",
                 unsafe_allow_html=True
             )
-        with col_next:
+        with nav3:
             if st.button("▶", use_container_width=True, key="dash_next",
                          disabled=(offset >= 0)):
                 st.session_state['dash_month_offset'] += 1
@@ -612,260 +609,325 @@ if st.session_state['logged_in']:
 
         try:
             df_t = conn.read(worksheet="transactions", ttl="0")
-            if 'user' not in df_t.columns:
+            if "user" not in df_t.columns:
                 st.info("Noch keine Daten vorhanden.")
             else:
-                alle = df_t[df_t['user'] == st.session_state['user_name']].copy()
-                if 'deleted' in alle.columns:
-                    alle = alle[~alle['deleted'].astype(str).str.strip().str.lower()
-                                .isin(['true', '1', '1.0'])]
+                alle = df_t[df_t["user"] == st.session_state["user_name"]].copy()
+                if "deleted" in alle.columns:
+                    alle = alle[~alle["deleted"].astype(str).str.strip().str.lower()
+                                .isin(["true", "1", "1.0"])]
 
-                # Auf Zielmonat filtern
-                alle['datum_dt'] = pd.to_datetime(alle['datum'], errors='coerce')
+                alle["datum_dt"]  = pd.to_datetime(alle["datum"], errors="coerce")
                 monat_df = alle[
-                    (alle['datum_dt'].dt.year  == t_year) &
-                    (alle['datum_dt'].dt.month == t_month)
+                    (alle["datum_dt"].dt.year  == t_year) &
+                    (alle["datum_dt"].dt.month == t_month)
                 ].copy()
 
                 if monat_df.empty:
                     st.info(f"Keine Buchungen im {monat_label}.")
                 else:
-                    monat_df['betrag_num'] = pd.to_numeric(monat_df['betrag'], errors='coerce')
-                    ein = monat_df[monat_df['typ'] == "Einnahme"]['betrag_num'].sum()
-                    aus = abs(monat_df[monat_df['typ'] == "Ausgabe"]['betrag_num'].sum())
+                    monat_df["betrag_num"] = pd.to_numeric(monat_df["betrag"], errors="coerce")
+                    ein = monat_df[monat_df["typ"] == "Einnahme"]["betrag_num"].sum()
+                    aus = abs(monat_df[monat_df["typ"] == "Ausgabe"]["betrag_num"].sum())
                     bal = ein - aus
 
                     # ── KPI-Karten ────────────────────────────
                     k1, k2, k3 = st.columns(3)
                     def kpi_card(col, label, value, color):
                         col.markdown(
-                            f"<div style='background:rgba(30,41,59,0.7);border:1px solid #1e293b;"
-                            f"border-radius:16px;padding:20px 24px;text-align:center;'>"
-                            f"<div style='color:#64748b;font-size:12px;font-weight:600;"
-                            f"letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;'>"
-                            f"{label}</div>"
-                            f"<div style='color:{color};font-size:26px;font-weight:800;'>"
-                            f"{value}</div></div>",
+                            f"<div style='background:rgba(15,23,42,0.8);"
+                            f"border:1px solid #1e293b;border-radius:16px;"
+                            f"padding:18px 20px;text-align:center;'>"
+                            f"<div style='color:#475569;font-size:11px;font-weight:700;"
+                            f"letter-spacing:1.5px;text-transform:uppercase;"
+                            f"margin-bottom:8px;'>{label}</div>"
+                            f"<div style='color:{color};font-size:24px;font-weight:800;"
+                            f"letter-spacing:-0.5px;'>{value}</div></div>",
                             unsafe_allow_html=True
                         )
-                    bal_color = '#4ade80' if bal >= 0 else '#f87171'
+                    bal_color = "#4ade80" if bal >= 0 else "#f87171"
                     kpi_card(k1, "Kontostand", f"{bal:+,.2f} €", bal_color)
                     kpi_card(k2, "Einnahmen",  f"+{ein:,.2f} €", "#4ade80")
                     kpi_card(k3, "Ausgaben",   f"-{aus:,.2f} €", "#f87171")
 
-                    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
-                    # ── Farbpaletten ──────────────────────────
-                    FARBEN_AUSGABE = [
-                        "#f87171","#fb923c","#fbbf24","#a3e635","#34d399",
-                        "#22d3ee","#818cf8","#e879f9","#f472b6","#94a3b8",
-                        "#ef4444","#f97316","#eab308","#84cc16","#10b981",
+                    # ── Kategorien zusammenstellen ────────────
+                    ausg_df = monat_df[monat_df["typ"] == "Ausgabe"].copy()
+                    ausg_df["betrag_num"] = ausg_df["betrag_num"].abs()
+                    ausg_grp = (ausg_df.groupby("kategorie")["betrag_num"]
+                                .sum().reset_index()
+                                .sort_values("betrag_num", ascending=False))
+
+                    ein_df  = monat_df[monat_df["typ"] == "Einnahme"].copy()
+                    ein_grp = (ein_df.groupby("kategorie")["betrag_num"]
+                               .sum().reset_index()
+                               .sort_values("betrag_num", ascending=False))
+
+                    # ── Farben: Ausgaben = Rottöne, Einnahmen = Grüntöne ──
+                    PALETTE_AUS = [
+                        "#ef4444","#f97316","#f59e0b","#dc2626",
+                        "#ea580c","#d97706","#b91c1c","#c2410c",
+                        "#92400e","#7c3aed",
                     ]
-                    FARBEN_EINNAHME = [
-                        "#4ade80","#34d399","#6ee7b7","#86efac","#bbf7d0",
-                        "#22d3ee","#67e8f9","#38bdf8","#7dd3fc","#bae6fd",
+                    PALETTE_EIN = [
+                        "#22c55e","#16a34a","#15803d","#4ade80",
+                        "#86efac","#059669","#10b981","#34d399",
+                        "#6ee7b7","#047857",
                     ]
 
-                    ausg_df = monat_df[monat_df['typ'] == "Ausgabe"].copy()
-                    ausg_df['betrag_num'] = ausg_df['betrag_num'].abs()
-                    ausg_grp = ausg_df.groupby('kategorie')['betrag_num'].sum().reset_index()
-                    ausg_grp = ausg_grp.sort_values('betrag_num', ascending=False)
+                    # ── EIN Donut-Chart: außen = Ausgaben, innen = Einnahmen ──
+                    # Wir bauen ein zweilagiges Sunburst-artiges Diagramm:
+                    # Äußerer Ring: alle Kategorien (Ausgaben warm, Einnahmen grün)
+                    # Kontostand in der Mitte als Annotation
 
-                    ein_df  = monat_df[monat_df['typ'] == "Einnahme"].copy()
-                    ein_grp = ein_df.groupby('kategorie')['betrag_num'].sum().reset_index()
-                    ein_grp = ein_grp.sort_values('betrag_num', ascending=False)
+                    all_cats   = []
+                    all_vals   = []
+                    all_colors = []
+                    all_types  = []
 
-                    # ── Donut-Diagramme nebeneinander ─────────
-                    chart_col1, chart_col2 = st.columns(2)
+                    for i, row in ausg_grp.iterrows():
+                        all_cats.append(row["kategorie"])
+                        all_vals.append(row["betrag_num"])
+                        all_colors.append(PALETTE_AUS[len(all_cats) % len(PALETTE_AUS) - 1])
+                        all_types.append("Ausgabe")
 
-                    def make_donut(grp_df, titel, farben, center_label, center_val, center_color):
-                        if grp_df.empty:
-                            return None
-                        cats   = grp_df['kategorie'].tolist()
-                        vals   = grp_df['betrag_num'].tolist()
-                        colors = [farben[i % len(farben)] for i in range(len(cats))]
-                        fig = go.Figure(go.Pie(
-                            labels=cats,
-                            values=vals,
-                            hole=0.62,
-                            marker=dict(colors=colors,
-                                        line=dict(color='#0f172a', width=2)),
-                            textinfo='label+percent',
-                            textfont=dict(size=12, color='#f1f5f9'),
-                            hovertemplate='<b>%{label}</b><br>%{value:.2f} €'
-                                          '<br>%{percent}<extra></extra>',
-                            direction='clockwise',
-                            sort=True,
-                        ))
-                        fig.update_layout(
-                            title=dict(text=titel, font=dict(color='#f1f5f9', size=16),
-                                       x=0.5, xanchor='center'),
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            showlegend=False,
-                            margin=dict(t=50, b=10, l=10, r=10),
-                            height=380,
-                            annotations=[dict(
-                                text=f"<b style='font-size:15px'>{center_label}</b><br>"
-                                     f"<span style='font-size:18px;color:{center_color}'>"
-                                     f"<b>{center_val}</b></span>",
-                                x=0.5, y=0.5, showarrow=False,
-                                font=dict(size=13, color='#f1f5f9'),
-                                xref='paper', yref='paper', align='center',
-                            )],
+                    for i, row in ein_grp.iterrows():
+                        all_cats.append(row["kategorie"])
+                        all_vals.append(row["betrag_num"])
+                        all_colors.append(PALETTE_EIN[len(ein_grp) - 1 - list(ein_grp.index).index(i) if i in list(ein_grp.index) else 0])
+                        all_types.append("Einnahme")
+
+                    # Farben korrekt zuweisen
+                    all_colors = []
+                    for idx_c, t in enumerate(all_types):
+                        if t == "Ausgabe":
+                            j = sum(1 for x in all_types[:idx_c] if x == "Ausgabe")
+                            all_colors.append(PALETTE_AUS[j % len(PALETTE_AUS)])
+                        else:
+                            j = sum(1 for x in all_types[:idx_c] if x == "Einnahme")
+                            all_colors.append(PALETTE_EIN[j % len(PALETTE_EIN)])
+
+                    # Hover-Text: sauber lesbar
+                    hover_texts = []
+                    for idx_h, (cat, val, typ) in enumerate(zip(all_cats, all_vals, all_types)):
+                        pct = val / sum(all_vals) * 100
+                        hover_texts.append(
+                            f"<b>{cat}</b><br>"
+                            f"{val:,.2f} €<br>"
+                            f"{pct:.1f}% aller Buchungen<br>"
+                            f"<i style='color:#94a3b8'>{typ}</i>"
                         )
-                        return fig
 
-                    fig_aus = make_donut(
-                        ausg_grp, "💸 Ausgaben nach Kategorie",
-                        FARBEN_AUSGABE, "Ausgaben", f"{aus:,.2f} €", "#f87171"
+                    bal_str   = f"{bal:+,.2f} €"
+                    bal_color2 = "#4ade80" if bal >= 0 else "#f87171"
+
+                    fig = go.Figure(go.Pie(
+                        labels=all_cats,
+                        values=all_vals,
+                        hole=0.58,
+                        marker=dict(
+                            colors=all_colors,
+                            line=dict(color="#0f172a", width=3),
+                        ),
+                        text=all_cats,
+                        textinfo="none",
+                        customdata=hover_texts,
+                        hovertemplate="%{customdata}<extra></extra>",
+                        direction="clockwise",
+                        sort=False,
+                        rotation=90,
+                    ))
+
+                    fig.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        showlegend=False,
+                        margin=dict(t=20, b=20, l=20, r=20),
+                        height=420,
+                        hoverlabel=dict(
+                            bgcolor="#1e293b",
+                            bordercolor="#334155",
+                            font=dict(color="#f1f5f9", size=14),
+                            align="left",
+                        ),
+                        annotations=[
+                            dict(
+                                text="Kontostand",
+                                x=0.5, y=0.57, showarrow=False,
+                                font=dict(size=13, color="#64748b"),
+                                xref="paper", yref="paper",
+                            ),
+                            dict(
+                                text=f"<b>{bal_str}</b>",
+                                x=0.5, y=0.46, showarrow=False,
+                                font=dict(size=22, color=bal_color2),
+                                xref="paper", yref="paper",
+                            ),
+                            dict(
+                                text=f"<span style='color:#475569;font-size:11px'>"
+                                     f"↑ {ein:,.0f} €  ↓ {aus:,.0f} €</span>",
+                                x=0.5, y=0.36, showarrow=False,
+                                font=dict(size=11, color="#475569"),
+                                xref="paper", yref="paper",
+                            ),
+                        ],
                     )
-                    fig_ein = make_donut(
-                        ein_grp, "💰 Einnahmen nach Kategorie",
-                        FARBEN_EINNAHME, "Einnahmen", f"{ein:,.2f} €", "#4ade80"
-                    )
 
-                    # ── Klick-Details: selected_cat im session_state ───
-                    if 'dash_selected_aus' not in st.session_state:
-                        st.session_state['dash_selected_aus'] = None
-                    if 'dash_selected_ein' not in st.session_state:
-                        st.session_state['dash_selected_ein'] = None
+                    # ── Layout: Chart links, Legende rechts ───
+                    chart_col, legend_col = st.columns([3, 2])
 
-                    with chart_col1:
-                        if fig_aus:
-                            ev_aus = st.plotly_chart(
-                                fig_aus, use_container_width=True,
-                                key="donut_ausgaben", on_select="rerun",
-                                selection_mode="points",
+                    with chart_col:
+                        ev = st.plotly_chart(
+                            fig, use_container_width=True,
+                            key="donut_combined", on_select="rerun",
+                            selection_mode="points",
+                        )
+
+                    # ── Legende + Klick-Detail ────────────────
+                    with legend_col:
+                        # Segment ausgewählt?
+                        sel_cat  = None
+                        sel_typ  = None
+                        sel_color = None
+                        try:
+                            pts = ev.selection.get("points", [])
+                            if pts:
+                                sel_label = pts[0].get("label")
+                                if sel_label in all_cats:
+                                    idx_s = all_cats.index(sel_label)
+                                    sel_cat   = sel_label
+                                    sel_typ   = all_types[idx_s]
+                                    sel_color = all_colors[idx_s]
+                        except Exception:
+                            pass
+
+                        if sel_cat:
+                            # Detail-Ansicht
+                            src_df  = ausg_df if sel_typ == "Ausgabe" else ein_df
+                            detail  = src_df[src_df["kategorie"] == sel_cat]
+                            total_d = detail["betrag_num"].sum()
+                            sign    = "-" if sel_typ == "Ausgabe" else "+"
+                            st.markdown(
+                                f"<div style='background:rgba(15,23,42,0.9);"
+                                f"border:1px solid {sel_color};border-radius:14px;"
+                                f"padding:16px 18px;'>"
+                                f"<div style='color:{sel_color};font-weight:700;"
+                                f"font-size:15px;margin-bottom:4px;'>{sel_cat}</div>"
+                                f"<div style='color:#f1f5f9;font-size:20px;"
+                                f"font-weight:800;margin-bottom:12px;'>"
+                                f"{sign}{total_d:,.2f} €</div>",
+                                unsafe_allow_html=True
                             )
-                            # Detail-Karte bei Klick
-                            sel_aus = None
-                            try:
-                                pts = ev_aus.selection.get("points", [])
-                                if pts:
-                                    sel_aus = pts[0].get("label")
-                            except Exception:
-                                pass
-                            if sel_aus:
-                                detail = ausg_df[ausg_df['kategorie'] == sel_aus]
-                                total  = detail['betrag_num'].sum()
+                            for _, tr in detail.sort_values("datum_dt", ascending=False).iterrows():
+                                notiz = str(tr.get("notiz", ""))
+                                notiz = "" if notiz.lower() == "nan" else notiz
                                 st.markdown(
-                                    f"<div style='background:rgba(248,113,113,0.1);"
-                                    f"border:1px solid #f87171;border-radius:12px;"
-                                    f"padding:14px 18px;margin-top:4px;'>"
-                                    f"<div style='color:#f87171;font-weight:700;font-size:15px;"
-                                    f"margin-bottom:8px;'>{sel_aus} — {total:.2f} €</div>",
+                                    f"<div style='display:flex;justify-content:space-between;"
+                                    f"align-items:center;padding:7px 0;"
+                                    f"border-bottom:1px solid #1e293b;'>"
+                                    f"<div>"
+                                    f"<span style='color:#94a3b8;font-size:13px;'>"
+                                    f"{tr['datum_dt'].strftime('%d.%m.')}</span>"
+                                    + (f"<span style='color:#475569;font-size:12px;"
+                                       f"margin-left:8px;'>{notiz}</span>" if notiz else "")
+                                    + f"</div>"
+                                    f"<span style='color:{sel_color};font-weight:700;"
+                                    f"font-size:14px;'>{sign}{tr['betrag_num']:,.2f} €</span>"
+                                    f"</div>",
                                     unsafe_allow_html=True
                                 )
-                                for _, tr in detail.sort_values('datum_dt', ascending=False).iterrows():
-                                    notiz = str(tr.get('notiz', ''))
-                                    notiz = '' if notiz.lower() == 'nan' else f' · {notiz}'
-                                    st.markdown(
-                                        f"<div style='color:#94a3b8;font-size:13px;"
-                                        f"padding:3px 0;border-bottom:1px solid #1e293b;'>"
-                                        f"{tr['datum_dt'].strftime('%d.%m.')} "
-                                        f"<span style='color:#f87171;font-weight:600;'>"
-                                        f"{tr['betrag_num']:.2f} €</span>{notiz}</div>",
-                                        unsafe_allow_html=True
-                                    )
-                                st.markdown("</div>", unsafe_allow_html=True)
-                        else:
-                            st.info("Keine Ausgaben in diesem Monat.")
+                            st.markdown("</div>", unsafe_allow_html=True)
 
-                    with chart_col2:
-                        if fig_ein:
-                            ev_ein = st.plotly_chart(
-                                fig_ein, use_container_width=True,
-                                key="donut_einnahmen", on_select="rerun",
-                                selection_mode="points",
+                        else:
+                            # Normale Legende — alle Kategorien
+                            st.markdown(
+                                "<p style='color:#475569;font-size:11px;font-weight:700;"
+                                "letter-spacing:1.5px;text-transform:uppercase;"
+                                "margin-bottom:12px;'>Kategorien</p>",
+                                unsafe_allow_html=True
                             )
-                            sel_ein = None
-                            try:
-                                pts = ev_ein.selection.get("points", [])
-                                if pts:
-                                    sel_ein = pts[0].get("label")
-                            except Exception:
-                                pass
-                            if sel_ein:
-                                detail = ein_df[ein_df['kategorie'] == sel_ein]
-                                total  = detail['betrag_num'].sum()
+                            for cat, val, color, typ in zip(all_cats, all_vals,
+                                                             all_colors, all_types):
+                                pct  = val / sum(all_vals) * 100
+                                sign = "-" if typ == "Ausgabe" else "+"
                                 st.markdown(
-                                    f"<div style='background:rgba(74,222,128,0.1);"
-                                    f"border:1px solid #4ade80;border-radius:12px;"
-                                    f"padding:14px 18px;margin-top:4px;'>"
-                                    f"<div style='color:#4ade80;font-weight:700;font-size:15px;"
-                                    f"margin-bottom:8px;'>{sel_ein} — {total:.2f} €</div>",
+                                    f"<div style='display:flex;align-items:center;"
+                                    f"justify-content:space-between;"
+                                    f"padding:6px 0;border-bottom:1px solid #0f172a;'>"
+                                    f"<div style='display:flex;align-items:center;gap:10px;'>"
+                                    f"<div style='width:10px;height:10px;border-radius:50%;"
+                                    f"background:{color};flex-shrink:0;'></div>"
+                                    f"<span style='color:#cbd5e1;font-size:13px;'>{cat}</span>"
+                                    f"</div>"
+                                    f"<div style='text-align:right;'>"
+                                    f"<span style='color:{color};font-weight:700;"
+                                    f"font-size:13px;'>{sign}{val:,.2f} €</span>"
+                                    f"<span style='color:#475569;font-size:11px;"
+                                    f"margin-left:6px;'>{pct:.0f}%</span>"
+                                    f"</div></div>",
                                     unsafe_allow_html=True
                                 )
-                                for _, tr in detail.sort_values('datum_dt', ascending=False).iterrows():
-                                    notiz = str(tr.get('notiz', ''))
-                                    notiz = '' if notiz.lower() == 'nan' else f' · {notiz}'
-                                    st.markdown(
-                                        f"<div style='color:#94a3b8;font-size:13px;"
-                                        f"padding:3px 0;border-bottom:1px solid #1e293b;'>"
-                                        f"{tr['datum_dt'].strftime('%d.%m.')} "
-                                        f"<span style='color:#4ade80;font-weight:600;'>"
-                                        f"{tr['betrag_num']:.2f} €</span>{notiz}</div>",
-                                        unsafe_allow_html=True
-                                    )
-                                st.markdown("</div>", unsafe_allow_html=True)
-                        else:
-                            st.info("Keine Einnahmen in diesem Monat.")
 
-                    # ── Verlaufs-Balkendiagramm (Tagesverlauf) ────────
-                    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+                    # ── Tagesverlauf ──────────────────────────
+                    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
                     st.markdown(
-                        "<p style='color:#64748b;font-size:12px;font-weight:600;"
-                        "letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;'>"
-                        "Tagesverlauf</p>",
+                        "<p style='color:#475569;font-size:11px;font-weight:700;"
+                        "letter-spacing:1.5px;text-transform:uppercase;"
+                        "margin-bottom:8px;'>Tagesverlauf</p>",
                         unsafe_allow_html=True
                     )
-                    # Kumulierter Kontostand über den Monat
-                    tages = monat_df.groupby('datum_dt')['betrag_num'].sum().reset_index()
-                    tages = tages.sort_values('datum_dt')
-                    tages['kumuliert'] = tages['betrag_num'].cumsum()
+                    tages = monat_df.groupby("datum_dt")["betrag_num"].sum().reset_index()
+                    tages = tages.sort_values("datum_dt")
+                    tages["kumuliert"] = tages["betrag_num"].cumsum()
 
                     fig_line = go.Figure()
+                    # Fläche unter der Kurve einfärben je nach Vorzeichen
                     fig_line.add_trace(go.Scatter(
-                        x=tages['datum_dt'],
-                        y=tages['kumuliert'],
-                        mode='lines+markers',
-                        line=dict(color='#38bdf8', width=2.5, shape='spline'),
-                        marker=dict(size=7, color='#38bdf8',
-                                    line=dict(color='#0f172a', width=2)),
-                        fill='tozeroy',
-                        fillcolor='rgba(56,189,248,0.08)',
-                        hovertemplate='%{x|%d.%m.}<br><b>%{y:+.2f} €</b><extra></extra>',
-                        name='Netto',
+                        x=tages["datum_dt"],
+                        y=tages["kumuliert"],
+                        mode="lines+markers",
+                        line=dict(color="#38bdf8", width=2.5, shape="spline"),
+                        marker=dict(size=6, color="#38bdf8",
+                                    line=dict(color="#0f172a", width=2)),
+                        fill="tozeroy",
+                        fillcolor="rgba(56,189,248,0.07)",
+                        hovertemplate=(
+                            "<b>%{x|%d. %B}</b><br>"
+                            "Kumuliert: <b>%{y:+,.2f} €</b>"
+                            "<extra></extra>"
+                        ),
+                        name="Netto",
                     ))
                     fig_line.update_layout(
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        height=220,
-                        margin=dict(t=10, b=30, l=50, r=10),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        height=200,
+                        margin=dict(t=8, b=30, l=55, r=10),
                         xaxis=dict(
                             showgrid=False, zeroline=False,
-                            tickfont=dict(color='#64748b', size=11),
-                            tickformat='%d.%m.',
+                            tickfont=dict(color="#475569", size=11),
+                            tickformat="%d.%m.",
                         ),
                         yaxis=dict(
                             showgrid=True,
-                            gridcolor='rgba(30,41,59,0.8)',
+                            gridcolor="rgba(30,41,59,0.9)",
                             zeroline=True,
-                            zerolinecolor='rgba(100,116,139,0.4)',
-                            tickfont=dict(color='#64748b', size=11),
-                            ticksuffix=' €',
+                            zerolinecolor="rgba(100,116,139,0.35)",
+                            tickfont=dict(color="#475569", size=11),
+                            ticksuffix=" €",
                         ),
                         hoverlabel=dict(
-                            bgcolor='#1e293b', bordercolor='#38bdf8',
-                            font=dict(color='#f1f5f9'),
+                            bgcolor="#1e293b",
+                            bordercolor="#334155",
+                            font=dict(color="#f1f5f9", size=13),
+                            align="left",
                         ),
                     )
                     st.plotly_chart(fig_line, use_container_width=True, key="line_verlauf")
 
         except Exception as e:
             st.warning(f"Verbindung wird hergestellt... ({e})")
-
     # ── Transaktionen ────────────────────────────────────────
     elif menu == "💸 Transaktionen":
         user_name   = st.session_state['user_name']
