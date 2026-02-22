@@ -6,8 +6,6 @@ import datetime
 import re
 
 st.set_page_config(page_title="Balancely", page_icon="⚖️", layout="wide")
-# TEMPORÄR - Version prüfen
-st.write(st.__version__)
 
 def make_hashes(text):
     return hashlib.sha256(str.encode(text)).hexdigest()
@@ -42,7 +40,7 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
 
-    /* Alle Input-Felder */
+    /* Input-Felder */
     div[data-baseweb="input"] {
         background-color: rgba(15, 23, 42, 0.6) !important;
         border: 1px solid #1e293b !important;
@@ -54,21 +52,24 @@ st.markdown("""
     div[data-baseweb="input"] > div:not(:has(input)):not(:has(button)):not(:has(svg)) {
         display: none !important;
     }
-    /* "Press Enter" Text — immer ausblenden, auch bei Fokus */
+
+    /* FIX "Press Enter" für Streamlit 1.54 */
+    [data-testid="InputInstructions"],
     [data-testid="stInputInstructions"],
-    div[data-testid="stInputInstructions"],
-    small[data-testid="stInputInstructions"],
     div[class*="InputInstructions"],
-    div[class*="input-instructions"] {
+    div[class*="stInputInstructions"] {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
-        width: 0 !important;
+        max-height: 0 !important;
         height: 0 !important;
+        width: 0 !important;
         overflow: hidden !important;
+        position: absolute !important;
+        pointer-events: none !important;
     }
 
-    /* Datum-Input gleiche Optik wie Text-Inputs */
+    /* Datum-Input gleiche Optik */
     div[data-testid="stDateInput"] > div {
         background-color: rgba(15, 23, 42, 0.6) !important;
         border: 1px solid #1e293b !important;
@@ -242,4 +243,3 @@ else:
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'
                 st.rerun()
-
