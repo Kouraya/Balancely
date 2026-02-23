@@ -14,8 +14,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] { font-fa
 }
 h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: -0.5px; }
 [data-testid="stMain"] .block-container { padding-top: 2rem !important; max-width: 1200px !important; }
-/* Streamlit's nativen Multipage-Nav verstecken */
-[data-testid="stSidebarNav"] { display: none !important; }
 .main-title {
     text-align: center; color: #f8fafc; font-size: clamp(48px, 8vw, 72px);
     font-weight: 700; letter-spacing: -3px; margin-bottom: 0; line-height: 1;
@@ -27,7 +25,7 @@ h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: 
     background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(10,16,32,0.95) 100%) !important;
     backdrop-filter: blur(20px) !important; padding: 40px !important;
     border-radius: 20px !important; border: 1px solid rgba(148,163,184,0.08) !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
 div[data-testid="stTextInputRootElement"] { background-color: transparent !important; }
 div[data-baseweb="input"], div[data-baseweb="base-input"] {
