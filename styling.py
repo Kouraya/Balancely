@@ -14,6 +14,8 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] { font-fa
 }
 h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: -0.5px; }
 [data-testid="stMain"] .block-container { padding-top: 2rem !important; max-width: 1200px !important; }
+/* Streamlit's nativen Multipage-Nav verstecken */
+[data-testid="stSidebarNav"] { display: none !important; }
 .main-title {
     text-align: center; color: #f8fafc; font-size: clamp(48px, 8vw, 72px);
     font-weight: 700; letter-spacing: -3px; margin-bottom: 0; line-height: 1;
