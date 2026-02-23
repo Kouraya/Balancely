@@ -58,6 +58,9 @@ if st.session_state['logged_in']:
 
     inject_theme(_t)
 
+    # Scroll-to-top direkt nach Tab-Wechsel – muss vor allem anderen laufen
+    maybe_scroll_to_top()
+
     if _user_settings.get('theme') and _user_settings['theme'] != st.session_state.get('theme'):
         st.session_state['theme'] = _user_settings['theme']
 
@@ -121,7 +124,6 @@ if st.session_state['logged_in']:
 
     # ── Page routing ──────────────────────────────────────────
     user_name = st.session_state['user_name']
-    maybe_scroll_to_top()
     if menu == "📈 Dashboard":
         page_dashboard.render(user_name, _user_settings, _t, _currency_sym)
     elif menu == "💸 Transaktionen":
