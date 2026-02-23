@@ -176,14 +176,14 @@ def _render_design(user_name, theme_name):
         is_active = (theme_name == tname)
         with theme_cols[i]:
             _tc_bor = t_data['primary'] + 'ff' if is_active else t_data['primary'] + '30'
-            # Kein box-shadow mehr – verhindert Überlappung zwischen den Cards
+            _tc_sha = f"box-shadow:0 0 20px {t_data['primary']}30;" if is_active else ""
             _tc_badge = (
                 f"<div style='margin-top:8px;font-family:DM Mono,monospace;color:{t_data['primary']};font-size:9px;letter-spacing:1.5px;'>✓ AKTIV</div>"
                 if is_active else ""
             )
             st.markdown(
                 f"<div style='background:linear-gradient(135deg,{t_data['bg1']},{t_data['bg2']});border:2px solid {_tc_bor};"
-                f"border-radius:14px;padding:16px;margin-bottom:10px;text-align:center;'>"
+                f"border-radius:14px;padding:16px;margin-bottom:10px;text-align:center;{_tc_sha}'>"
                 f"<div style='font-size:24px;margin-bottom:8px;'>{theme_icons[tname]}</div>"
                 f"<div style='display:flex;justify-content:center;gap:6px;margin-bottom:10px;'>"
                 f"<div style='width:16px;height:16px;border-radius:50%;background:{t_data['primary']};'></div>"
