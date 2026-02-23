@@ -1398,7 +1398,7 @@ if st.session_state['logged_in']:
                 df_month['betrag_num'] = pd.to_numeric(df_month['betrag'], errors='coerce')
                 monat_ein        = df_month[df_month['typ']=='Einnahme']['betrag_num'].sum()
                 monat_aus        = df_month[df_month['typ']=='Ausgabe']['betrag_num'].abs().sum()
-                monat_dep        = df_month[df_month['typ']=='Depot']['betrag_num'].sum()
+                monat_dep        = df_month[df_month['typ']=='Depot']['betrag_num'].abs().sum()
                 monat_sp_einzahl = abs(df_month[(df_month['typ']=='Spartopf')&(df_month['betrag_num']<0)]['betrag_num'].sum())
                 monat_sp_netto   = df_month[df_month['typ']=='Spartopf']['betrag_num'].sum()
                 bank_aktuell     = monat_ein - monat_aus - monat_dep + monat_sp_netto
@@ -1987,3 +1987,4 @@ else:
                                 st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen."); st.rerun()
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'; st.rerun()
+
