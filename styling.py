@@ -1,49 +1,6 @@
 import streamlit as st
 
 
-def scroll_to_top():
-    """Flag setzen – wird beim nächsten Render (nach rerun) ausgeführt."""
-    st.session_state['_scroll_to_top'] = True
-
-
-def maybe_scroll_to_top():
-    """Am Anfang jeder Page aufrufen – führt Scroll aus falls Flag gesetzt."""
-    if st.session_state.pop('_scroll_to_top', False):
-        st.components.v1.html(
-            """<script>
-            (function() {
-                function scrollAll(win) {
-                    try {
-                        var selectors = [
-                            '[data-testid="stAppViewContainer"]',
-                            '[data-testid="stMain"]',
-                            '.main',
-                            'section.main',
-                        ];
-                        selectors.forEach(function(sel) {
-                            var el = win.document.querySelector(sel);
-                            if (el) { el.scrollTop = 0; el.scrollLeft = 0; }
-                        });
-                        win.document.documentElement.scrollTop = 0;
-                        win.document.body.scrollTop = 0;
-                        win.scrollTo(0, 0);
-                    } catch(e) {}
-                }
-
-                function run() {
-                    scrollAll(window.parent);
-                    try { if (window.top !== window.parent) scrollAll(window.top); } catch(e) {}
-                }
-
-                run();
-                setTimeout(run, 100);
-                setTimeout(run, 300);
-            })();
-            </script>""",
-            height=0,
-        )
-
-
 BASE_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
@@ -57,9 +14,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] { font-fa
 }
 h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: -0.5px; }
 [data-testid="stMain"] .block-container { padding-top: 2rem !important; max-width: 1200px !important; }
-/* Scroll-Anker: stellt sicher dass der Container scrollbar ist und wir ihn per JS ansprechen können */
-[data-testid="stAppViewContainer"] { overflow-y: auto; }
-[data-testid="stMain"] { overflow-anchor: none; }
 .main-title {
     text-align: center; color: #f8fafc; font-size: clamp(48px, 8vw, 72px);
     font-weight: 700; letter-spacing: -3px; margin-bottom: 0; line-height: 1;
