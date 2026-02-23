@@ -2,14 +2,29 @@ import streamlit as st
 
 
 def scroll_to_top():
-    st.components.v1.html(
-        "<script>"
-        "window.parent.document.querySelectorAll('[data-testid=\"stMain\"]').forEach(el => el.scrollTo(0,0));"
-        "window.parent.document.querySelectorAll('.main').forEach(el => el.scrollTo(0,0));"
-        "window.parent.scrollTo(0,0);"
-        "</script>",
-        height=0,
-    )
+    """Flag setzen – wird beim nächsten Render (nach rerun) ausgeführt."""
+    st.session_state['_scroll_to_top'] = True
+
+
+def maybe_scroll_to_top():
+    """Am Anfang jeder Page aufrufen – führt Scroll aus falls Flag gesetzt."""
+    if st.session_state.pop('_scroll_to_top', False):
+        st.markdown(
+            "<script>"
+            "(function(){"
+            "  var attempt = 0;"
+            "  function tryScroll() {"
+            "    var main = window.parent.document.querySelector('[data-testid=\"stMain\"]');"
+            "    if (main) { main.scrollTop = 0; }"
+            "    window.parent.scrollTo(0, 0);"
+            "    document.documentElement.scrollTop = 0;"
+            "    if (attempt < 5) { attempt++; setTimeout(tryScroll, 80); }"
+            "  }"
+            "  tryScroll();"
+            "})();"
+            "</script>",
+            unsafe_allow_html=True,
+        )
 
 
 BASE_CSS = """
