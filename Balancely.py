@@ -13,7 +13,7 @@ from database import (
     _gs_read, _gs_update, _gs_invalidate,
     load_user_settings, apply_dauerauftraege,
 )
-from styling import inject_base_css, inject_theme, scroll_to_top, maybe_scroll_to_top
+from styling import inject_base_css, inject_theme
 from utils import make_hashes, check_password_strength, is_valid_email, generate_code, send_email, email_html, is_verified
 
 import pages.dashboard    as page_dashboard
@@ -58,8 +58,6 @@ if st.session_state['logged_in']:
 
     inject_theme(_t)
 
-    # Scroll-to-top direkt nach Tab-Wechsel – muss vor allem anderen laufen
-    maybe_scroll_to_top()
 
     if _user_settings.get('theme') and _user_settings['theme'] != st.session_state.get('theme'):
         st.session_state['theme'] = _user_settings['theme']
@@ -119,7 +117,8 @@ if st.session_state['logged_in']:
 
     if menu != st.session_state.get('_last_menu', menu):
         st.session_state['edit_idx'] = None
-        scroll_to_top()
+        # Query-Param ändern → Browser scrollt automatisch nach oben (echter Navigation-Reset)
+        st.query_params["page"] = menu.split(" ")[1] if " " in menu else menu
     st.session_state['_last_menu'] = menu
 
     # ── Page routing ──────────────────────────────────────────
