@@ -50,7 +50,7 @@ with center_col:
                         st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
                     else:
                         st.session_state.update({'logged_in': True, 'user_name': u_in})
-                        st.switch_page("pages/1_Dashboard.py")
+                        st.switch_page("balancely/pages/1_Dashboard.py")
                 else:
                     st.error("❌ Login ungültig.")
         col1, col2 = st.columns(2)
