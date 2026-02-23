@@ -13,7 +13,7 @@ from database import (
     _gs_read, _gs_update, _gs_invalidate,
     load_user_settings, apply_dauerauftraege,
 )
-from styling import inject_base_css, inject_theme, scroll_to_top
+from styling import inject_base_css, inject_theme, scroll_to_top, maybe_scroll_to_top
 from utils import make_hashes, check_password_strength, is_valid_email, generate_code, send_email, email_html, is_verified
 
 import pages.dashboard    as page_dashboard
@@ -121,6 +121,7 @@ if st.session_state['logged_in']:
 
     # ── Page routing ──────────────────────────────────────────
     user_name = st.session_state['user_name']
+    maybe_scroll_to_top()
     if menu == "📈 Dashboard":
         page_dashboard.render(user_name, _user_settings, _t, _currency_sym)
     elif menu == "💸 Transaktionen":
