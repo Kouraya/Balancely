@@ -9,21 +9,38 @@ def scroll_to_top():
 def maybe_scroll_to_top():
     """Am Anfang jeder Page aufrufen – führt Scroll aus falls Flag gesetzt."""
     if st.session_state.pop('_scroll_to_top', False):
-        st.markdown(
-            "<script>"
-            "(function(){"
-            "  var attempt = 0;"
-            "  function tryScroll() {"
-            "    var main = window.parent.document.querySelector('[data-testid=\"stMain\"]');"
-            "    if (main) { main.scrollTop = 0; }"
-            "    window.parent.scrollTo(0, 0);"
-            "    document.documentElement.scrollTop = 0;"
-            "    if (attempt < 5) { attempt++; setTimeout(tryScroll, 80); }"
-            "  }"
-            "  tryScroll();"
-            "})();"
-            "</script>",
-            unsafe_allow_html=True,
+        st.components.v1.html(
+            """<script>
+            (function() {
+                function scrollAll(win) {
+                    try {
+                        var selectors = [
+                            '[data-testid="stAppViewContainer"]',
+                            '[data-testid="stMain"]',
+                            '.main',
+                            'section.main',
+                        ];
+                        selectors.forEach(function(sel) {
+                            var el = win.document.querySelector(sel);
+                            if (el) { el.scrollTop = 0; el.scrollLeft = 0; }
+                        });
+                        win.document.documentElement.scrollTop = 0;
+                        win.document.body.scrollTop = 0;
+                        win.scrollTo(0, 0);
+                    } catch(e) {}
+                }
+
+                function run() {
+                    scrollAll(window.parent);
+                    try { if (window.top !== window.parent) scrollAll(window.top); } catch(e) {}
+                }
+
+                run();
+                setTimeout(run, 100);
+                setTimeout(run, 300);
+            })();
+            </script>""",
+            height=0,
         )
 
 
@@ -40,6 +57,9 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] { font-fa
 }
 h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: -0.5px; }
 [data-testid="stMain"] .block-container { padding-top: 2rem !important; max-width: 1200px !important; }
+/* Scroll-Anker: stellt sicher dass der Container scrollbar ist und wir ihn per JS ansprechen können */
+[data-testid="stAppViewContainer"] { overflow-y: auto; }
+[data-testid="stMain"] { overflow-anchor: none; }
 .main-title {
     text-align: center; color: #f8fafc; font-size: clamp(48px, 8vw, 72px);
     font-weight: 700; letter-spacing: -3px; margin-bottom: 0; line-height: 1;
