@@ -90,6 +90,7 @@ hr { border-color: rgba(148,163,184,0.08) !important; margin: 24px 0 !important;
 [data-testid="stMarkdownContainer"] h3 { font-size: 15px !important; font-weight: 600 !important; color: #64748b !important; letter-spacing: 0.5px !important; text-transform: uppercase !important; }
 [data-testid="stAlert"] { border-radius: 10px !important; font-family: 'DM Sans', sans-serif !important; font-size: 14px !important; }
 [data-testid="stExpander"] { border: 1px solid rgba(148,163,184,0.08) !important; border-radius: 12px !important; background: rgba(10,16,32,0.5) !important; }
+[data-testid="stSidebarNav"] { display: none !important; }
 </style>
 """
 
