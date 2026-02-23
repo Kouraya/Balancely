@@ -15,6 +15,7 @@ from database import (
 )
 from styling import inject_base_css, inject_theme
 from utils import make_hashes, check_password_strength, is_valid_email, generate_code, send_email, email_html, is_verified
+from onboarding import onboarding_dialog
 
 import pages.dashboard    as page_dashboard
 import pages.transactions as page_transactions
@@ -42,6 +43,9 @@ _DEFAULTS = {
     'theme': 'Ocean Blue',
     'confirm_reset': False, 'confirm_delete_account': False,
     'tx_page': 0, 'tx_search': "",
+    # Onboarding
+    'show_onboarding': False, 'onboarding_step': 1,
+    'onboarding_theme': 'Ocean Blue', 'onboarding_currency': 'EUR',
 }
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:
@@ -66,6 +70,10 @@ if st.session_state['logged_in']:
         if booked > 0:
             _gs_invalidate("transactions")
             st.toast(f"✅ {booked} Dauerauftrag/-aufträge gebucht", icon="⚙️")
+
+    # ── Onboarding-Dialog (nur beim ersten Login) ─────────────
+    if st.session_state.get('show_onboarding'):
+        onboarding_dialog(st.session_state['user_name'])
 
     # ── Sidebar ───────────────────────────────────────────────
     with st.sidebar:
@@ -155,7 +163,15 @@ else:
                         if not is_verified(user_row.iloc[0].get('verified', 'True')):
                             st.error("❌ Bitte verifiziere zuerst deine E-Mail-Adresse.")
                         else:
-                            st.session_state.update({'logged_in': True, 'user_name': u_in})
+                            # Prüfen ob Onboarding bereits abgeschlossen
+                            onboarding_done = str(user_row.iloc[0].get('onboarding_done', '')).strip().lower()
+                            is_first_login  = onboarding_done not in ('true', '1', '1.0')
+                            st.session_state.update({
+                                'logged_in': True,
+                                'user_name': u_in,
+                                'show_onboarding': is_first_login,
+                                'onboarding_step': 1,
+                            })
                             st.rerun()
                     else:
                         st.error("❌ Login ungültig.")
@@ -219,7 +235,13 @@ else:
                         st.error("❌ Falscher Code.")
                     else:
                         df_u  = _gs_read("users")
-                        new_u = pd.DataFrame([{**st.session_state['pending_user'], "verified": "True", "token": "", "token_expiry": ""}])
+                        new_u = pd.DataFrame([{
+                            **st.session_state['pending_user'],
+                            "verified": "True",
+                            "token": "",
+                            "token_expiry": "",
+                            "onboarding_done": "",   # leer = noch nicht abgeschlossen
+                        }])
                         _gs_update("users", pd.concat([df_u, new_u], ignore_index=True))
                         st.session_state.update({'pending_user': {}, 'verify_code': "", 'verify_expiry': None, 'auth_mode': 'login'})
                         st.success("✅ E-Mail verifiziert! Du kannst dich jetzt einloggen.")
