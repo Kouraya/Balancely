@@ -25,17 +25,16 @@ h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: 
     background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(10,16,32,0.95) 100%) !important;
     backdrop-filter: blur(20px) !important; padding: 40px !important;
     border-radius: 20px !important; border: 1px solid rgba(148,163,184,0.08) !important;
-    box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
 div[data-testid="stTextInputRootElement"] { background-color: transparent !important; }
 div[data-baseweb="input"], div[data-baseweb="base-input"] {
     background-color: rgba(15,23,42,0.6) !important; border: 1px solid rgba(148,163,184,0.1) !important;
-    border-radius: 10px !important; transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    border-radius: 10px !important; transition: border-color 0.2s ease !important;
     padding-right: 0 !important; gap: 0 !important; box-shadow: none !important;
 }
 div[data-baseweb="input"]:focus-within, div[data-baseweb="base-input"]:focus-within {
     background-color: rgba(15,23,42,0.8) !important; border-color: rgba(56,189,248,0.5) !important;
-    box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important;
+    box-shadow: none !important;
 }
 input { padding-left: 15px !important; color: #e2e8f0 !important; font-family: 'DM Sans', sans-serif !important; font-size: 14px !important; }
 input::placeholder { color: #334155 !important; }
@@ -48,7 +47,7 @@ div[data-baseweb="select"] > div:first-child {
     border-radius: 10px !important; box-shadow: none !important;
 }
 div[data-baseweb="select"] > div:first-child:focus-within {
-    border-color: rgba(56,189,248,0.5) !important; box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important;
+    border-color: rgba(56,189,248,0.5) !important; box-shadow: none !important;
 }
 button[kind="primaryFormSubmit"], button[kind="secondaryFormSubmit"] {
     height: 48px !important; border-radius: 10px !important; font-weight: 600 !important;
@@ -83,7 +82,7 @@ div[data-testid="stDialog"] > div, div[role="dialog"] {
     position: fixed !important; top: 50% !important; left: 50% !important;
     transform: translate(-50%, -50%) !important; margin: 0 !important; max-height: 90vh !important; overflow-y: auto !important;
     background: linear-gradient(145deg, #0d1729, #0a1020) !important;
-    border: 1px solid rgba(148,163,184,0.1) !important; border-radius: 18px !important; box-shadow: 0 40px 80px rgba(0,0,0,0.6) !important;
+    border: 1px solid rgba(148,163,184,0.1) !important; border-radius: 18px !important;
 }
 div[data-testid="stDialog"] { display: flex !important; align-items: center !important; justify-content: center !important; }
 hr { border-color: rgba(148,163,184,0.08) !important; margin: 24px 0 !important; }
@@ -91,6 +90,7 @@ hr { border-color: rgba(148,163,184,0.08) !important; margin: 24px 0 !important;
 [data-testid="stAlert"] { border-radius: 10px !important; font-family: 'DM Sans', sans-serif !important; font-size: 14px !important; }
 [data-testid="stExpander"] { border: 1px solid rgba(148,163,184,0.08) !important; border-radius: 12px !important; background: rgba(10,16,32,0.5) !important; }
 [data-testid="stSidebarNav"] { display: none !important; }
+* { box-shadow: none !important; }
 </style>
 """
 
@@ -110,15 +110,15 @@ def inject_theme(t):
     button[kind="primary"], button[kind="primaryFormSubmit"], [data-testid="baseButton-primary"],
     div[data-testid="stFormSubmitButton"] > button {{
         background: linear-gradient(135deg, {t['accent']}, {t['accent2']}) !important; border: none !important;
-        color: #ffffff !important; box-shadow: 0 4px 15px {t['primary']}40 !important; transition: all 0.2s ease !important;
+        color: #ffffff !important; box-shadow: none !important; transition: all 0.2s ease !important;
     }}
     button[kind="secondary"], [data-testid="baseButton-secondary"] {{
         background: rgba(255,255,255,0.04) !important; border: 1px solid {t['primary']}30 !important;
-        color: {t['primary']} !important; transition: all 0.2s ease !important;
+        color: {t['primary']} !important; transition: all 0.2s ease !important; box-shadow: none !important;
     }}
     [data-testid="stDownloadButton"] > button {{
         background: linear-gradient(135deg, {t['accent']}, {t['accent2']}) !important;
-        border: none !important; color: #ffffff !important; box-shadow: 0 4px 15px {t['primary']}40 !important;
+        border: none !important; color: #ffffff !important; box-shadow: none !important;
     }}
     </style>""", unsafe_allow_html=True)
 
