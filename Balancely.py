@@ -1191,7 +1191,7 @@ if st.session_state['logged_in']:
                             height=280, margin=dict(t=0,b=0,l=0,r=10), dragmode=False,
                             xaxis=dict(showgrid=False,showticklabels=False,showline=False,fixedrange=True),
                             yaxis=dict(tickfont=dict(size=12,color='#94a3b8',family='DM Sans, sans-serif'),showgrid=False,showline=False,fixedrange=True,automargin=True))
-                        st.markdown(f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:8px;'>Top Ausgabe-Kategorien — Ø pro Monat</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:8px;'>Top Ausgabe-Kategorien — Ø des Jahres</p>", unsafe_allow_html=True)
                         st.plotly_chart(fig_kat, use_container_width=True, key="kat_chart", config={"displayModeBar":False,"staticPlot":True})
                     else: st.info("Keine Ausgaben vorhanden.")
                 with kv_r:
@@ -1987,4 +1987,5 @@ else:
                                 st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen."); st.rerun()
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'; st.rerun()
+
 
