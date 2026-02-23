@@ -1162,29 +1162,41 @@ if st.session_state['logged_in']:
 
                 st.markdown("<hr>", unsafe_allow_html=True)
 
-                st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Kaufverhalten</p>", unsafe_allow_html=True)
+                # ── CHANGE 3: Kaufverhalten — Ø der letzten 12 Monate ──
+                st.markdown("<p style='font-family:DM Mono,monospace;color:#334155;font-size:10px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;'>Kaufverhalten <span style=\"font-size:9px;color:#1e293b;\">(Ø letzte 12 Monate)</span></p>", unsafe_allow_html=True)
                 kv_l, kv_r = st.columns(2)
                 with kv_l:
-                    aus_all = df_all[df_all['typ']=='Ausgabe'].copy(); aus_all['betrag_num'] = aus_all['betrag_num'].abs()
-                    kat_grp = aus_all.groupby('kategorie')['betrag_num'].sum().reset_index().sort_values('betrag_num',ascending=True).tail(8)
+                    # Filter to last 12 months for a yearly average
+                    _twelve_months_ago = now - datetime.timedelta(days=365)
+                    aus_all = df_all[(df_all['typ']=='Ausgabe') & (df_all['datum_dt'] >= _twelve_months_ago)].copy()
+                    aus_all['betrag_num'] = aus_all['betrag_num'].abs()
+                    # Calculate monthly average per category
+                    _months_in_range = max(aus_all['datum_dt'].dt.to_period('M').nunique(), 1)
+                    kat_grp_sum = aus_all.groupby('kategorie')['betrag_num'].sum()
+                    kat_avg = (kat_grp_sum / _months_in_range).reset_index()
+                    kat_grp = kat_avg.sort_values('betrag_num', ascending=True).tail(8)
                     if not kat_grp.empty:
                         REDS = ['#7f1d1d','#991b1b','#b91c1c','#dc2626','#ef4444','#f87171','#fca5a5','#fecaca']
                         fig_kat = go.Figure(go.Bar(
                             x=kat_grp['betrag_num'], y=kat_grp['kategorie'], orientation='h',
                             marker=dict(color=REDS[:len(kat_grp)], cornerradius=6),
-                            text=[f"{v:,.0f} {_currency_sym}" for v in kat_grp['betrag_num']], textposition='outside',
-                            textfont=dict(size=11,color='#64748b',family='DM Mono, monospace'), hovertemplate=None))
+                            # CHANGE 2: text inside bars
+                            text=[f"Ø {v:,.0f} {_currency_sym}" for v in kat_grp['betrag_num']],
+                            textposition='inside', insidetextanchor='middle',
+                            textfont=dict(size=11,color='rgba(255,255,255,0.85)',family='DM Mono, monospace'),
+                            hovertemplate=None))
                         fig_kat.update_traces(hovertemplate=None)
                         fig_kat.update_layout(
                             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                            height=280, margin=dict(t=0,b=0,l=0,r=60), dragmode=False,
+                            height=280, margin=dict(t=0,b=0,l=0,r=10), dragmode=False,
                             xaxis=dict(showgrid=False,showticklabels=False,showline=False,fixedrange=True),
                             yaxis=dict(tickfont=dict(size=12,color='#94a3b8',family='DM Sans, sans-serif'),showgrid=False,showline=False,fixedrange=True,automargin=True))
-                        st.markdown("<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:8px;'>Top Ausgabe-Kategorien (gesamt)</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='font-family:DM Sans,sans-serif;color:#475569;font-size:13px;margin-bottom:8px;'>Top Ausgabe-Kategorien — Ø pro Monat</p>", unsafe_allow_html=True)
                         st.plotly_chart(fig_kat, use_container_width=True, key="kat_chart", config={"displayModeBar":False,"staticPlot":True})
                     else: st.info("Keine Ausgaben vorhanden.")
                 with kv_r:
-                    aus_all2 = df_all[df_all['typ']=='Ausgabe'].copy(); aus_all2['betrag_num'] = aus_all2['betrag_num'].abs()
+                    aus_all2 = df_all[(df_all['typ']=='Ausgabe') & (df_all['datum_dt'] >= _twelve_months_ago)].copy()
+                    aus_all2['betrag_num'] = aus_all2['betrag_num'].abs()
                     aus_all2['wochentag'] = aus_all2['datum_dt'].dt.day_name()
                     wt_order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
                     wt_de    = {'Monday':'Mo','Tuesday':'Di','Wednesday':'Mi','Thursday':'Do','Friday':'Fr','Saturday':'Sa','Sunday':'So'}
@@ -1390,7 +1402,8 @@ if st.session_state['logged_in']:
                 monat_sp_einzahl = abs(df_month[(df_month['typ']=='Spartopf')&(df_month['betrag_num']<0)]['betrag_num'].sum())
                 monat_sp_netto   = df_month[df_month['typ']=='Spartopf']['betrag_num'].sum()
                 bank_aktuell     = monat_ein - monat_aus - monat_dep + monat_sp_netto
-                akt_spar         = bank_aktuell + monat_sp_einzahl
+                # CHANGE 1: Depot zählt als "gespart" (wie Spartopf-Einzahlungen)
+                akt_spar         = bank_aktuell + monat_sp_einzahl + abs(monat_dep)
 
                 sg_col_l, sg_col_r = st.columns([1,1])
                 with sg_col_l:
@@ -1405,10 +1418,10 @@ if st.session_state['logged_in']:
                         f"<div style='font-family:DM Mono,monospace;font-size:9px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;'>{now.strftime('%B %Y')}</div>"
                         f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Einnahmen</div><div style='font-family:DM Mono,monospace;color:#4ade80;font-size:12px;'>+{monat_ein:,.2f} {_currency_sym}</div></div>"
                         f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Ausgaben</div><div style='font-family:DM Mono,monospace;color:#f87171;font-size:12px;'>-{monat_aus:,.2f} {_currency_sym}</div></div>"
-                        + (f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Depot</div><div style='font-family:DM Mono,monospace;color:#38bdf8;font-size:12px;'>-{monat_dep:,.2f} {_currency_sym}</div></div>" if monat_dep>0 else "")
+                        + (f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Depot</div><div style='font-family:DM Mono,monospace;color:#38bdf8;font-size:12px;'>📦 {abs(monat_dep):,.2f} {_currency_sym}</div></div>" if monat_dep!=0 else "")
                         + (f"<div style='display:flex;justify-content:space-between;'><div style='font-family:DM Sans,sans-serif;color:#475569;font-size:12px;'>Spartöpfe</div><div style='font-family:DM Mono,monospace;color:#a78bfa;font-size:12px;'>🪣 {monat_sp_einzahl:,.2f} {_currency_sym}</div></div>" if monat_sp_einzahl>0 else "")
                         + f"<div style='border-top:1px solid rgba(148,163,184,0.08);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;'>"
-                        f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:12px;font-weight:500;'>Gespart (inkl. Töpfe)</div>"
+                        f"<div style='font-family:DM Sans,sans-serif;color:#64748b;font-size:12px;font-weight:500;'>Gespart (inkl. Töpfe &amp; Depot)</div>"
                         f"<div style='font-family:DM Mono,monospace;color:{spar_color};font-size:13px;font-weight:600;'>{spar_str}</div></div></div>",
                         unsafe_allow_html=True)
                 with sg_col_r:
@@ -1761,10 +1774,8 @@ if st.session_state['logged_in']:
                         if cancel:
                             st.session_state.update({'email_verify_code':"",'email_verify_new':""}); st.rerun()
 
-        # ── Daten Tab — alles untereinander, sauber ──────────────
         elif active_tab == "Daten":
 
-            # ── Excel-Export ──────────────────────────────────────
             section_header("Excel-Export")
             try:
                 import io
@@ -1792,7 +1803,6 @@ if st.session_state['logged_in']:
 
             st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
-            # ── Daten zurücksetzen ────────────────────────────────
             section_header("Daten zurücksetzen")
             if not st.session_state['confirm_reset']:
                 _, rst_col, _ = st.columns([1, 2, 1])
@@ -1821,7 +1831,6 @@ if st.session_state['logged_in']:
 
             st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
-            # ── Account löschen ───────────────────────────────────
             section_header("Account löschen")
             if not st.session_state['confirm_delete_account']:
                 _, del_col, _ = st.columns([1, 2, 1])
@@ -1978,6 +1987,3 @@ else:
                                 st.success("✅ Passwort geändert! Du kannst dich jetzt einloggen."); st.rerun()
             if st.button("Zurück zum Login", use_container_width=True):
                 st.session_state['auth_mode'] = 'login'; st.rerun()
-
-
-
