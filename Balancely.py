@@ -20,7 +20,6 @@ if st.session_state['logged_in']:
     # Kleiner Buffer damit Streamlit Pages vollständig registriert sind
     if st.session_state.get('_switch_ready'):
         st.session_state.pop('_switch_ready', None)
-        st.switch_page("pages/1_Dashboard.py")
     else:
         st.session_state['_switch_ready'] = True
         st.rerun()
