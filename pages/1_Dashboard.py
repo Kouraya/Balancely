@@ -1,8 +1,8 @@
 import streamlit as st
-from shared import setup
-import pages.dashboard as page_dashboard
+st.set_page_config(page_title="Dashboard · Balancely", page_icon="⚖️", layout="wide")
 
-user_settings, t, currency_sym = setup("Dashboard · Balancely")
+from shared import setup
+user_settings, t, currency_sym = setup()
 if user_settings is None:
     st.stop()
 
