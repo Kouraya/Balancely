@@ -37,6 +37,7 @@ def init_session():
 
 def setup(page_title="Balancely"):
     """Initialisiert Session, CSS, Theme, Sidebar. Gibt user_settings etc. zurück."""
+    st.set_page_config(page_title=page_title, page_icon="⚖️", layout="wide")
     init_session()
     inject_base_css()
 
