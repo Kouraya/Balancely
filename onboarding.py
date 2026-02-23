@@ -19,8 +19,8 @@ WALKTHROUGH_STEPS = [
         "subtitle": "Deine Finanzübersicht auf einen Blick",
         "color": "#38bdf8",
         "features": [
-            ("💳", "Bankkontostand", "Sieh deinen monatlichen Kontostand — Einnahmen minus Ausgaben minus Depot."),
-            ("📊", "Donut-Chart", "Interaktives Kreisdiagramm nach Kategorie — klicke auf einen Sektor für Details."),
+            ("💳", "Bankkontostand", "Sieh deinen monatlichen Kontostand — Einnahmen — Ausgaben — Depot."),
+            ("📊", "Donut-Chart", "Kreisdiagramm nach Kategorie — klicke auf einen Sektor für Details."),
             ("🎯", "Sparziel-Alarm", "Automatische Warnung wenn du dein Monatssparziel unterschreitest."),
             ("📅", "Monatsnavigation", "Blätter durch vergangene Monate mit den Pfeiltasten links & rechts."),
         ],
@@ -55,7 +55,7 @@ WALKTHROUGH_STEPS = [
         "subtitle": "Virtuelle Töpfe für deine Ziele",
         "color": "#4ade80",
         "features": [
-            ("🎯", "Sparziele setzen", "Erstelle Töpfe mit Zielbetrag — z.B. Urlaub, Neues Laptop, Notgroschen."),
+            ("🎯", "Sparziele setzen", "Erstelle Töpfe mit Zielbetrag — z.B. Urlaub, Neuer Laptop, Notgroschen."),
             ("💰", "Ein- & Auszahlen", "Zahle jederzeit in Töpfe ein oder entnehme Geld — wird als Transaktion erfasst."),
             ("📊", "Fortschrittsanzeige", "Jeder Topf zeigt deinen Fortschritt mit einem farbigen Balken."),
             ("🎉", "Ziel erreicht!", "Wenn ein Topf sein Ziel erreicht, erhältst du eine Erfolgsmeldung."),
