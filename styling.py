@@ -1,6 +1,17 @@
 import streamlit as st
 
 
+def scroll_to_top():
+    st.components.v1.html(
+        "<script>"
+        "window.parent.document.querySelectorAll('[data-testid=\"stMain\"]').forEach(el => el.scrollTo(0,0));"
+        "window.parent.document.querySelectorAll('.main').forEach(el => el.scrollTo(0,0));"
+        "window.parent.scrollTo(0,0);"
+        "</script>",
+        height=0,
+    )
+
+
 BASE_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
@@ -25,7 +36,7 @@ h1, h2, h3, h4 { font-family: 'DM Sans', sans-serif !important; letter-spacing: 
     background: linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(10,16,32,0.95) 100%) !important;
     backdrop-filter: blur(20px) !important; padding: 40px !important;
     border-radius: 20px !important; border: 1px solid rgba(148,163,184,0.08) !important;
-    box-shadow: 0 25px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
 div[data-testid="stTextInputRootElement"] { background-color: transparent !important; }
 div[data-baseweb="input"], div[data-baseweb="base-input"] {
