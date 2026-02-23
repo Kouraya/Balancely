@@ -1,7 +1,8 @@
-streamlit==1.40.0
+streamlit
 pandas
 plotly
 streamlit-authenticator
 st-gsheets-connection
 openpyxl>=3.1.0
+
 
